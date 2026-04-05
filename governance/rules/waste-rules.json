@@ -1,0 +1,20 @@
+{
+  "version": "waste-rules.v1",
+  "purge_conditions": {
+    "trivial_acknowledgement_max_chars": 40,
+    "short_general_segment_max_messages": 2,
+    "short_general_segment_max_chars": 80,
+    "assistant_only_fragment_max_chars": 120
+  },
+  "trivial_patterns": [
+    "thanks",
+    "thank you",
+    "ok",
+    "okay",
+    "cool",
+    "got it",
+    "hi",
+    "hello",
+    "hey"
+  ]
+}

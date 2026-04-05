@@ -1,0 +1,15 @@
+{
+  "version": "signal-thresholds.v1",
+  "health_thresholds": {
+    "duplicate_rate_warning": 0.20,
+    "private_review_rate_warning": 0.15,
+    "low_segment_yield_warning": 0.80,
+    "purge_rate_warning": 0.30
+  },
+  "signal_scoring": {
+    "high_signal_min_score": 5,
+    "substantial_content_chars": 400,
+    "moderate_content_chars": 150,
+    "multi_message_min": 4
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "version": "topic-rules.v1",
+  "canonical_topics": {
+    "docker_networking": ["docker", "container", "nginx", "compose", "reverse proxy", "port"],
+    "ci_cd": ["github", "actions", "workflow", "pipeline", "build", "ci"],
+    "typescript_node": ["typescript", "node", "npm", "tsx", "module"],
+    "python_backend": ["python", "pip", "venv", "uvicorn", "fastapi"],
+    "database_sql": ["sql", "database", "query", "schema", "table"],
+    "api_integration": ["api", "endpoint", "request", "response", "token"],
+    "ai_systems": ["prompt", "llm", "model", "ollama", "chatgpt", "gemini", "claude"],
+    "governance": ["governance", "policy", "rules", "compliance", "audit"]
+  }
+}

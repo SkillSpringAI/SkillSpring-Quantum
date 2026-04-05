@@ -1,0 +1,23 @@
+{
+  "version": "redaction-rules.v1",
+  "hard_private_patterns": [
+    "password",
+    "bank",
+    "account number",
+    "passport",
+    "driver license",
+    "social security",
+    "ssn",
+    "credit card"
+  ],
+  "redaction_targets": [
+    "email",
+    "phone",
+    "url",
+    "address"
+  ],
+  "private_review_triggers": {
+    "redaction_count_min": 2,
+    "strong_flags": ["email", "phone", "address"]
+  }
+}

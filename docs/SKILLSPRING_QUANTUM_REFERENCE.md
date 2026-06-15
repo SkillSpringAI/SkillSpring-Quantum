@@ -29,6 +29,7 @@ SkillSpring Quantum is a local-first Electron + Vite + React desktop application
 - auditability through manifests, diagnostics, and governance reports
 - governance-first design with machine-readable rules
 - UI controls mapped to real backend workflows, not placeholder lifecycle actions
+- user-visible capability growth should stay ahead of governance/documentation drag
 
 ## Current Gaps / Next Build Targets
 
@@ -38,3 +39,12 @@ SkillSpring Quantum is a local-first Electron + Vite + React desktop application
 - add richer markdown archive filtering/search and file-open actions
 - add direct UI controls for curated promotion, purge restore, and folder merge flows
 - tighten README command formatting and keep docs aligned with implemented scripts
+
+## Adjacent Project Signals
+
+These are future-facing notes only. PathWarden and SkillSpring Transformer are separate projects and should not dictate Quantum implementation details.
+
+- PathWarden reinforces an MVP discipline: keep governance useful, but do not let approvals, policy, or documentation outrun visible user capability.
+- SkillSpring Transformer implies Quantum may later need a `capabilities.v1.json` contract describing import, archive, dataset, diagnostics, governance, and review workflows.
+- Quantum should stay independently useful first, then expose stable capability metadata for federation/orchestration later.
+- Future interop should prefer explicit schemas, permission boundaries, and traceable command results over shared monolithic code.

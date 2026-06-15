@@ -1,0 +1,10 @@
+{
+  "program_name": "SkillSpring Quantum",
+  "program_version": "0.1.0",
+  "pipeline_version": "pipeline.v1",
+  "dataset_version": "v1",
+  "topic_rules_version": "topic-rules.v1",
+  "segmentation_version": "segmenter.v1",
+  "redaction_version": "redaction.v1",
+  "diagnostics_version": "diagnostics.v1"
+}

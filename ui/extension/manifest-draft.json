@@ -1,0 +1,9 @@
+{
+  "name": "SkillSpring Quantum Bridge",
+  "version": "0.1.0-draft",
+  "description": "Lightweight handoff extension for the SkillSpring Quantum desktop application.",
+  "intent": {
+    "desktop_first": true,
+    "extension_role": "bridge"
+  }
+}

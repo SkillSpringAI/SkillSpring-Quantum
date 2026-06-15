@@ -1,0 +1,9 @@
+{
+  "version": "review-decision-rules.v1",
+  "allow_approve": true,
+  "allow_reject": true,
+  "require_reason": true,
+  "collections": {
+    "review_queue.topic_segments": true
+  }
+}

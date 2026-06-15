@@ -1,0 +1,7 @@
+{
+  "name": "skillspring-quantum-ui",
+  "version": "0.1.0-draft",
+  "private": true,
+  "intent": "desktop-first shell scaffold",
+  "future_stack_options": ["tauri", "electron", "react"]
+}

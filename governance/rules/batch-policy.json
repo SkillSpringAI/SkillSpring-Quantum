@@ -1,0 +1,10 @@
+{
+  "version": "batch-policy.v1",
+  "input_pattern": "^conversations-\\\\d+\\\\.json$",
+  "ignore_files": ["export_manifest.json"],
+  "fail_on_any_file_error": true,
+  "write_batch_report": true,
+  "write_batch_aggregate_diagnostics": true,
+  "write_batch_delta_report": true,
+  "default_output_root": "organized_output"
+}

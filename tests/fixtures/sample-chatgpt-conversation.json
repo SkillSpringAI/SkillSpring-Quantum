@@ -1,0 +1,39 @@
+{
+  "title": "Docker networking help",
+  "create_time": 1736899200,
+  "conversation_id": "sample-convo-001",
+  "mapping": {
+    "1": {
+      "id": "1",
+      "message": {
+        "author": { "role": "user" },
+        "content": { "parts": ["How do I expose a Docker port to localhost?"] },
+        "create_time": 1736899201
+      }
+    },
+    "2": {
+      "id": "2",
+      "message": {
+        "author": { "role": "assistant" },
+        "content": { "parts": ["Use docker run -p host:container to map the port."] },
+        "create_time": 1736899202
+      }
+    },
+    "3": {
+      "id": "3",
+      "message": {
+        "author": { "role": "user" },
+        "content": { "parts": ["Now my nginx reverse proxy fails."] },
+        "create_time": 1736899203
+      }
+    },
+    "4": {
+      "id": "4",
+      "message": {
+        "author": { "role": "assistant" },
+        "content": { "parts": ["Check the upstream host and container network settings."] },
+        "create_time": 1736899204
+      }
+    }
+  }
+}

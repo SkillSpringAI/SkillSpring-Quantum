@@ -1,0 +1,100 @@
+export type DesktopCommandName =
+  | "pipeline.runFile"
+  | "batch.run"
+  | "batch.diagnostics"
+  | "batch.delta"
+  | "db.review.buildQueue"
+  | "db.review.decide"
+  | "db.promote"
+  | "db.listCollections"
+  | "db.readCollection"
+  | "governance.listRules"
+  | "governance.readRule"
+  | "governance.writeRule"
+  | "diagnostics.run"
+  | "folders.merge"
+  | "purge.restore";
+
+export interface DesktopCommandRequest<TPayload = Record<string, unknown>> {
+  command: DesktopCommandName;
+  payload: TPayload;
+}
+
+export interface DesktopCommandSuccess<TResult = unknown> {
+  ok: true;
+  command: DesktopCommandName;
+  result: TResult;
+  message?: string;
+  error?: string;
+  stdout?: string;
+  stderr?: string;
+  code?: number;
+}
+
+export interface DesktopCommandFailure {
+  ok: false;
+  command: DesktopCommandName;
+  error: string;
+  details?: string;
+  stdout?: string;
+  stderr?: string;
+  code?: number;
+}
+
+export type DesktopCommandResponse<TResult = unknown> =
+  | DesktopCommandSuccess<TResult>
+  | DesktopCommandFailure;
+
+export interface RunFilePayload {
+  inputFile: string;
+  outputRoot: string;
+}
+
+export interface BatchRunPayload {
+  inputFolder: string;
+  outputRoot: string;
+}
+
+export interface ReviewDecisionPayload {
+  outputRoot: string;
+  decision: "approve" | "reject";
+  queueKey: string;
+  reason: string;
+}
+
+export interface PromotePayload {
+  outputRoot: string;
+}
+
+export interface RestorePayload {
+  sourceFile: string;
+  outputRoot: string;
+}
+
+export interface MergeFoldersPayload {
+  outputRoot: string;
+}
+
+export interface DbListCollectionsPayload {
+  outputRoot: string;
+}
+
+export interface DbReadCollectionPayload {
+  outputRoot: string;
+  tier: string;
+  collection: string;
+  limit: number;
+}
+
+export interface GovernanceListRulesPayload {
+  rootPath: string;
+}
+
+export interface GovernanceReadRulePayload {
+  filePath: string;
+}
+
+export interface GovernanceWriteRulePayload {
+  filePath: string;
+  rawText: string;
+}

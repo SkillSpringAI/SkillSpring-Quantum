@@ -1,0 +1,24 @@
+node_modules/
+
+# Build output
+dist/
+ui/app/dist/
+
+# Local processing output and exports
+organized_output/
+/data/
+/db/
+Exports/
+exports/
+eports/
+backups/
+
+# Runtime logs and temporary files
+governance/logs/backups/
+governance/logs/writes/
+.electron-temp-rule.json
+temp-*.json
+
+# Local OS/editor noise
+.DS_Store
+Thumbs.db

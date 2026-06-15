@@ -1,0 +1,6 @@
+{
+  "version": "topic-filter-rules.v1",
+  "include_topics": [],
+  "exclude_topics": [],
+  "exclude_general_by_default": false
+}

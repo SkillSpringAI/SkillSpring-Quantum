@@ -1,0 +1,13 @@
+{
+  "primary": [
+    "Dashboard",
+    "Imports",
+    "Organized Output",
+    "Datasets",
+    "Tiered DB",
+    "Review Queue",
+    "Diagnostics",
+    "Governance",
+    "Settings"
+  ]
+}

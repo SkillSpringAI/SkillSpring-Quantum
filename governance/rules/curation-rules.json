@@ -1,0 +1,14 @@
+{
+  "version": "curation-rules.v1",
+  "allowed_signal_tiers": ["high_signal"],
+  "excluded_topics": [],
+  "minimum_signal_score": 5,
+  "require_nonempty_text": true,
+  "max_redaction_count": 0,
+  "allow_private_review": false,
+  "collections": {
+    "topic_segments": true,
+    "prompt_response_pairs": false,
+    "micro_segments": false
+  }
+}

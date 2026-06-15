@@ -1,0 +1,27 @@
+{
+  "version": "dataset-routing.v1",
+  "tiers": {
+    "high_signal": {
+      "export": true,
+      "priority": 1
+    },
+    "low_signal": {
+      "export": true,
+      "priority": 2
+    },
+    "private_review": {
+      "export": true,
+      "priority": 3
+    }
+  },
+  "dataset_classes": {
+    "topic_segments": true,
+    "prompt_response_pairs": true,
+    "micro_segments": true
+  },
+  "future_classes": {
+    "curated": false,
+    "workflow_sequences": false,
+    "evaluation_fixtures": false
+  }
+}

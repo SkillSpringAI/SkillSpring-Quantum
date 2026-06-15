@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SkillSpring Quantum UI Draft</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">SkillSpring Quantum</div>
+      <nav id="nav"></nav>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 id="screen-title">Dashboard</h1>
+          <p class="muted">Desktop-first control plane draft</p>
+        </div>
+        <div class="status-group">
+          <span class="pill success">Ready</span>
+          <button class="primary-btn">Import Exports</button>
+        </div>
+      </header>
+
+      <section class="content-grid">
+        <div class="panel large">
+          <h2>System Snapshot</h2>
+          <div class="stats">
+            <div class="stat-card">
+              <span class="label">Conversations</span>
+              <strong>7 months</strong>
+            </div>
+            <div class="stat-card">
+              <span class="label">Review Queue</span>
+              <strong>Pending</strong>
+            </div>
+            <div class="stat-card">
+              <span class="label">Curated Tier</span>
+              <strong>Active</strong>
+            </div>
+            <div class="stat-card">
+              <span class="label">Diagnostics</span>
+              <strong>Tracked</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Recent Recommendations</h2>
+          <ul class="list">
+            <li>Reduce duplicate rate through stronger alias collapse</li>
+            <li>Review queue should gate near-curated records</li>
+            <li>Desktop app should remain the main operating surface</li>
+          </ul>
+        </div>
+
+        <div class="panel">
+          <h2>Tiered DB</h2>
+          <ul class="list">
+            <li>Tier0 Raw</li>
+            <li>Tier1 Processed</li>
+            <li>Tier2 Curated</li>
+            <li>Tier3 Private Review</li>
+          </ul>
+        </div>
+
+        <div class="panel">
+          <h2>Diagnostics View</h2>
+          <p class="muted">
+            Batch diagnostics, delta reports, and run-level summaries should all be visible here.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <aside class="detail-pane">
+      <h2>Detail Pane</h2>
+      <p class="muted">
+        Selected record details, manifest data, governance notes, and actions will appear here.
+      </p>
+      <div class="detail-box">
+        <strong>Target UX</strong>
+        <p>
+          Table or folder in center, metadata and actions on the right.
+        </p>
+      </div>
+    </aside>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

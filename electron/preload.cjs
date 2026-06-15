@@ -27,6 +27,13 @@ contextBridge.exposeInMainWorld("skillspringDesktop", {
     batchDelta: () => ipcRenderer.invoke("batch:delta")
   },
 
+  notifications: {
+    archive: (outputRoot, limit) =>
+      ipcRenderer.invoke("notifications:archive", { outputRoot, limit }),
+    markdownArchive: (outputRoot, filePath) =>
+      ipcRenderer.invoke("archive:markdown", { outputRoot, filePath })
+  },
+
   pipeline: {
     runFile: (inputFile, outputRoot) =>
       ipcRenderer.invoke("pipeline:runFile", { inputFile, outputRoot }),

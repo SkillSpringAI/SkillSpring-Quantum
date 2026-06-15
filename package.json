@@ -11,6 +11,8 @@
     "diag:run": "tsx core/diagnostics/diagRunner.ts organized_output",
     "purge:restore": "tsx core/pipeline/restorePurged.ts",
     "folders:merge": "tsx core/pipeline/mergeTopicFolders.ts organized_output",
+    "notifications:archive": "tsx core/notifications/readArchiveNotifications.ts organized_output",
+    "archive:markdown": "tsx core/notifications/readMarkdownArchive.ts organized_output",
     "batch:run": "tsx core/batch/runBatch.ts",
     "batch:diag": "tsx core/batch/buildBatchDiagnostics.ts organized_output",
     "batch:delta": "tsx core/batch/buildBatchDelta.ts organized_output",
@@ -28,6 +30,8 @@
     "test:segmenter": "tsx tests/pipeline/segmenter.test.ts",
     "test:segmenter:drift": "tsx tests/pipeline/topic-drift-segmenter.test.ts",
     "test:markdown:time": "tsx tests/pipeline/markdown-relative-time.test.ts",
+    "test:archive:notifications": "tsx tests/pipeline/archive-notifications.test.ts",
+    "test:archive:markdown": "tsx tests/pipeline/markdown-archive-reader.test.ts",
     "test:topic": "tsx tests/pipeline/topic-normalizer.test.ts",
     "test:waste": "tsx tests/governance/waste-classifier.test.ts",
     "test:scorer": "tsx tests/governance/topic-scorer.test.ts",
@@ -40,7 +44,7 @@
     "test:governance:fs": "tsx tests/governance/governance-fs.test.ts",
     "test:governance:write": "tsx tests/governance/governance-write-report.test.ts",
     "test:governance:validate": "tsx tests/governance/governance-validate-rule.test.ts",
-    "test:all": "npm run test:parser && npm run test:segmenter && npm run test:segmenter:drift && npm run test:markdown:time && npm run test:topic && npm run test:waste && npm run test:scorer && npm run test:filter && npm run test:curation && npm run test:fingerprint && npm run test:review && npm run test:review:decision && npm run test:paths && npm run test:governance:fs && npm run test:governance:write && npm run test:governance:validate"
+    "test:all": "npm run test:parser && npm run test:segmenter && npm run test:segmenter:drift && npm run test:markdown:time && npm run test:archive:notifications && npm run test:archive:markdown && npm run test:topic && npm run test:waste && npm run test:scorer && npm run test:filter && npm run test:curation && npm run test:fingerprint && npm run test:review && npm run test:review:decision && npm run test:paths && npm run test:governance:fs && npm run test:governance:write && npm run test:governance:validate"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

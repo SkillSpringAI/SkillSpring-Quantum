@@ -12,6 +12,8 @@ export type DesktopCommandName =
   | "governance.readRule"
   | "governance.writeRule"
   | "diagnostics.run"
+  | "notifications.archive"
+  | "archive.markdown"
   | "folders.merge"
   | "purge.restore";
 
@@ -97,4 +99,14 @@ export interface GovernanceReadRulePayload {
 export interface GovernanceWriteRulePayload {
   filePath: string;
   rawText: string;
+}
+
+export interface ArchiveNotificationsPayload {
+  outputRoot: string;
+  limit: number;
+}
+
+export interface MarkdownArchivePayload {
+  outputRoot: string;
+  filePath?: string;
 }

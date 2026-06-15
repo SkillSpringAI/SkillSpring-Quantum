@@ -11,7 +11,9 @@ import type {
   ReviewDecisionPayload,
   PromotePayload,
   MergeFoldersPayload,
-  RestorePayload
+  RestorePayload,
+  ArchiveNotificationsPayload,
+  MarkdownArchivePayload
 } from "../types/bridge";
 
 import type {
@@ -79,6 +81,14 @@ export async function executeMockDesktopCommand(
         return fromBridge(await bridge.diagnostics.batchDiag());
       case "batch.delta":
         return fromBridge(await bridge.diagnostics.batchDelta());
+      case "notifications.archive": {
+        const p = payload as ArchiveNotificationsPayload;
+        return fromBridge(await bridge.notifications.archive(p.outputRoot, p.limit));
+      }
+      case "archive.markdown": {
+        const p = payload as MarkdownArchivePayload;
+        return fromBridge(await bridge.notifications.markdownArchive(p.outputRoot, p.filePath));
+      }
       case "pipeline.runFile": {
         const p = payload as RunFilePayload;
         return fromBridge(await bridge.pipeline.runFile(p.inputFile, p.outputRoot));
@@ -166,6 +176,36 @@ export async function executeMockDesktopCommand(
     case "batch.run": {
       const _p = payload as BatchRunPayload;
       return ok(command, {}, "Mock batch run acknowledged.");
+    }
+
+    case "notifications.archive": {
+      const p = payload as ArchiveNotificationsPayload;
+      return ok(
+        command,
+        {
+          outputRoot: p.outputRoot,
+          notificationsRoot: p.outputRoot + "/notifications",
+          eventsFile: p.outputRoot + "/notifications/archive-events.jsonl",
+          latestFile: p.outputRoot + "/notifications/latest-archive-event.json",
+          latest: null,
+          events: []
+        },
+        "Mock archive notifications returned."
+      );
+    }
+
+    case "archive.markdown": {
+      const p = payload as MarkdownArchivePayload;
+      return ok(
+        command,
+        {
+          outputRoot: p.outputRoot,
+          topics: [],
+          selectedFile: null,
+          content: ""
+        },
+        "Mock markdown archive returned."
+      );
     }
 
     default:

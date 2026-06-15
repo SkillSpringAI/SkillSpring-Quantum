@@ -124,6 +124,23 @@ function registerIpc() {
     return result.ok ? ok(result, "Batch delta completed.") : fail(result, "Failed to build batch delta.");
   });
 
+  ipcMain.handle("notifications:archive", async (_event, payload = {}) => {
+    const result = await runTsx("core/notifications/readArchiveNotifications.ts", [
+      payload.outputRoot || "organized_output",
+      String(payload.limit || 20)
+    ]);
+
+    return result.ok ? ok(result, "Archive notifications loaded.") : fail(result, "Failed to load archive notifications.");
+  });
+
+  ipcMain.handle("archive:markdown", async (_event, payload = {}) => {
+    const args = [payload.outputRoot || "organized_output"];
+    if (payload.filePath) args.push(payload.filePath);
+
+    const result = await runTsx("core/notifications/readMarkdownArchive.ts", args);
+    return result.ok ? ok(result, "Markdown archive loaded.") : fail(result, "Failed to load markdown archive.");
+  });
+
   ipcMain.handle("db:review:buildQueue", async (_event, payload = {}) => {
     const result = await runTsx("core/db/buildReviewQueue.ts", [payload.outputRoot || "organized_output"]);
     return result.ok ? ok(result, "Review queue built.") : fail(result, "Failed to build review queue.");

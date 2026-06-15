@@ -34,6 +34,10 @@ declare global {
         batchDiag: () => Promise<unknown>;
         batchDelta: () => Promise<unknown>;
       };
+      notifications: {
+        archive: (outputRoot: string, limit: number) => Promise<unknown>;
+        markdownArchive: (outputRoot: string, filePath?: string) => Promise<unknown>;
+      };
       pipeline: {
         runFile: (inputFile: string, outputRoot: string) => Promise<unknown>;
         runBatch: () => Promise<unknown>;

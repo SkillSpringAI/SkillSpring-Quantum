@@ -156,6 +156,13 @@ code {
   padding: 16px;
 }
 
+.panel-heading-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
 .panel.large {
   grid-column: span 2;
 }
@@ -324,6 +331,48 @@ select {
   border-radius: 12px;
   background: var(--panel-alt);
   border: 1px solid var(--border);
+}
+
+.archive-event-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.archive-event-list li {
+  display: grid;
+  gap: 4px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.archive-event-list small {
+  color: var(--muted);
+}
+
+.markdown-archive-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 360px) 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.markdown-topic-list {
+  max-height: 640px;
+  overflow: auto;
+}
+
+.markdown-topic-group {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.markdown-preview {
+  max-height: 640px;
 }
 
 .save-ok {

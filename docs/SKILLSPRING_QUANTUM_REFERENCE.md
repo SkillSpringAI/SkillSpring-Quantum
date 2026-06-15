@@ -10,6 +10,8 @@ SkillSpring Quantum is a local-first Electron + Vite + React desktop application
 - deterministic deduplication and text fingerprinting
 - human-readable markdown organized by inferred topic, with relative timestamps beside absolute message timestamps
 - archive notification artifacts for human-readable markdown output events
+- desktop archive notification panel on Imports and Organized Output screens
+- desktop markdown archive browser grouped by inferred topic folder
 - governance rule loading, validation, editing, and write reports
 - tiered database storage for raw, processed, curated, and private-review records
 - anonymized versioned dataset records derived from segmented conversation content
@@ -33,6 +35,6 @@ SkillSpring Quantum is a local-first Electron + Vite + React desktop application
 - continue replacing demo/static UI states with file-backed or IPC-backed data
 - expand desktop bridge coverage when new backend scripts are added
 - improve review queue screen states for empty, missing, and failed queue files
-- expose archive notifications in the desktop UI after import runs
+- add richer markdown archive filtering/search and file-open actions
 - add direct UI controls for curated promotion, purge restore, and folder merge flows
 - tighten README command formatting and keep docs aligned with implemented scripts

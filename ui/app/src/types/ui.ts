@@ -16,9 +16,16 @@ declare global {
         pickFile: () => Promise<unknown>;
         pickFolder: () => Promise<unknown>;
       };
+      shell: {
+        openPath: (targetPath: string) => Promise<unknown>;
+      };
       imports: {
         inspectSource: (inputPath: string) => Promise<unknown>;
         runSource: (inputPath: string, outputRoot: string) => Promise<unknown>;
+        readHistory: (outputRoot: string, limit: number) => Promise<unknown>;
+      };
+      datasets: {
+        readLatestRun: (outputRoot: string) => Promise<unknown>;
       };
       governance: {
         listRules: () => Promise<unknown>;

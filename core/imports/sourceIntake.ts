@@ -48,6 +48,12 @@ export interface ImportRunFileResult {
   kind: ImportSourceKind;
   status: "imported" | "skipped" | "failed";
   message: string;
+  artifacts?: ImportArtifact[];
+}
+
+export interface ImportArtifact {
+  label: string;
+  path: string;
 }
 
 export interface ImportRunSummary {
@@ -62,6 +68,7 @@ export interface ImportRunSummary {
   genericDocumentsProcessed: number;
   pdfFilesArchived: number;
   unsupportedFilesSkipped: number;
+  artifacts: ImportArtifact[];
   results: ImportRunFileResult[];
 }
 
@@ -180,6 +187,7 @@ export async function runImportSource(
 
   const runAt = new Date().toISOString();
   const results: ImportRunFileResult[] = [];
+  const artifacts: ImportArtifact[] = [];
   let filesImported = 0;
   let filesFailed = 0;
   let conversationFilesProcessed = 0;
@@ -221,11 +229,14 @@ export async function runImportSource(
 
         conversationFilesProcessed += 1;
         filesImported += 1;
+        const conversationArtifacts = collectConversationArtifacts(outputRoot);
+        artifacts.push(...conversationArtifacts);
         results.push({
           path: filePath,
           kind: entry.kind,
           status: "imported",
-          message: "Conversation export processed."
+          message: "Conversation export processed.",
+          artifacts: conversationArtifacts
         });
         continue;
       }
@@ -234,7 +245,7 @@ export async function runImportSource(
         throw new Error("Unsupported generic import kind: " + entry.kind);
       }
 
-      await importGenericFile(filePath, outputRoot, entry.kind, runAt);
+      const imported = await importGenericFile(filePath, outputRoot, entry.kind, runAt);
       filesImported += 1;
 
       if (entry.kind === "pdf_document") {
@@ -243,6 +254,7 @@ export async function runImportSource(
         genericDocumentsProcessed += 1;
       }
 
+      artifacts.push(...imported.artifacts);
       results.push({
         path: filePath,
         kind: entry.kind,
@@ -250,7 +262,8 @@ export async function runImportSource(
         message:
           entry.kind === "pdf_document"
             ? "PDF archived with metadata."
-            : "Generic document archived and dataset record written."
+            : "Generic document archived and dataset record written.",
+        artifacts: imported.artifacts
       });
     } catch (error) {
       filesFailed += 1;
@@ -274,6 +287,7 @@ export async function runImportSource(
     genericDocumentsProcessed,
     pdfFilesArchived,
     unsupportedFilesSkipped,
+    artifacts: buildRunArtifacts(outputRoot, artifacts),
     results
   });
 
@@ -289,6 +303,7 @@ export async function runImportSource(
     genericDocumentsProcessed,
     pdfFilesArchived,
     unsupportedFilesSkipped,
+    artifacts: buildRunArtifacts(outputRoot, artifacts),
     results
   };
 
@@ -303,7 +318,7 @@ async function importGenericFile(
   outputRoot: string,
   kind: Exclude<ImportSourceKind, "chatgpt_export" | "unsupported">,
   importedAt: string
-): Promise<void> {
+): Promise<{ artifacts: ImportArtifact[] }> {
   const stat = await fs.stat(filePath);
   const ext = path.extname(filePath).toLowerCase();
   const sourceId = sha256(filePath + "|" + stat.size + "|" + stat.mtimeMs);
@@ -380,7 +395,13 @@ async function importGenericFile(
       }
     });
 
-    return;
+    return {
+      artifacts: [
+        { label: "PDF archive", path: archivePath },
+        { label: "PDF preview markdown", path: summaryPath },
+        { label: "Source documents collection", path: path.join(dbRoot, "tier1_processed", "source_documents.jsonl") }
+      ]
+    };
   }
 
   const rawText = await readGenericTextFile(filePath, kind);
@@ -425,6 +446,13 @@ async function importGenericFile(
       content: redacted.text
     }
   });
+
+  return {
+    artifacts: [
+      { label: "Archived markdown", path: archivePath },
+      { label: "Source documents collection", path: path.join(dbRoot, "tier1_processed", "source_documents.jsonl") }
+    ]
+  };
 }
 
 async function writeSourceRecords(
@@ -459,6 +487,41 @@ async function writeImportRunHistory(
   );
 
   return historyPath;
+}
+
+function buildRunArtifacts(outputRoot: string, resultArtifacts: ImportArtifact[]): ImportArtifact[] {
+  const merged = [
+    { label: "Output root", path: outputRoot },
+    { label: "Imports root", path: path.join(outputRoot, "imports") },
+    { label: "Source archive root", path: path.join(outputRoot, "source_archive") },
+    { label: "DB root", path: path.join(outputRoot, "db") },
+    ...resultArtifacts
+  ];
+
+  return dedupeArtifacts(merged);
+}
+
+function collectConversationArtifacts(outputRoot: string): ImportArtifact[] {
+  return [
+    { label: "Output root", path: outputRoot },
+    { label: "Notifications", path: path.join(outputRoot, "notifications") },
+    { label: "DB root", path: path.join(outputRoot, "db") },
+    { label: "Diagnostics", path: path.join(outputRoot, "diagnostics") }
+  ];
+}
+
+function dedupeArtifacts(items: ImportArtifact[]): ImportArtifact[] {
+  const seen = new Set<string>();
+  const output: ImportArtifact[] = [];
+
+  for (const item of items) {
+    const key = item.label + "|" + item.path;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    output.push(item);
+  }
+
+  return output;
 }
 
 async function readGenericTextFile(

@@ -1,16 +1,21 @@
 # SkillSpring Quantum Reference
 
-SkillSpring Quantum is a local-first Electron + Vite + React desktop application and TypeScript processing engine for turning ChatGPT export JSON files into structured, auditable knowledge assets and datasets.
+SkillSpring Quantum is a local-first Electron + Vite + React desktop application and TypeScript processing engine for turning ChatGPT export JSON files and general local documents into structured, auditable knowledge assets and datasets.
 
 ## Implemented Spine
 
 - ChatGPT export parsing and raw conversation normalization
+- generic local document intake for JSON, text-like files, and PDFs
 - intent-based topic segmentation that can split a mislabeled or topic-shifting thread into multiple segments
 - topic scoring, topic filtering, and canonical topic normalization
 - deterministic deduplication and text fingerprinting
 - human-readable markdown organized by inferred topic, with relative timestamps beside absolute message timestamps
 - archive notification artifacts for human-readable markdown output events
+- source archive output for generic imported documents
+- import history manifests and latest import summaries
+- latest dataset summary reader
 - desktop archive notification panel on Imports and Organized Output screens
+- desktop import history panel with per-file output links
 - desktop markdown archive browser grouped by inferred topic folder
 - governance rule loading, validation, editing, and write reports
 - tiered database storage for raw, processed, curated, and private-review records
@@ -34,12 +39,12 @@ SkillSpring Quantum is a local-first Electron + Vite + React desktop application
 
 ## Current Gaps / Next Build Targets
 
-- continue replacing demo/static UI states with file-backed or IPC-backed data
-- expand desktop bridge coverage when new backend scripts are added
+- expand parser coverage beyond ChatGPT
+- connect import summaries, archive browsing, and dataset browsing more tightly across screens
 - improve review queue screen states for empty, missing, and failed queue files
 - add richer markdown archive filtering/search and file-open actions
 - add direct UI controls for curated promotion, purge restore, and folder merge flows
-- tighten README command formatting and keep docs aligned with implemented scripts
+- explain redaction and dataset outputs more clearly in the app
 
 ## Adjacent Project Signals
 

@@ -14,7 +14,10 @@ import type {
   GovernanceListRulesPayload,
   GovernanceReadRulePayload,
   GovernanceWriteRulePayload,
-  InspectImportSourcePayload
+  InspectImportSourcePayload,
+  ImportHistoryPayload,
+  OpenPathPayload,
+  DatasetLatestRunPayload
 } from "../types/bridge";
 import { executeMockDesktopCommand } from "./mockDesktopExecutor";
 
@@ -71,6 +74,24 @@ export async function inspectImportPath(
   });
 }
 
+export async function readImportHistory(
+  payload: ImportHistoryPayload
+): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<ImportHistoryPayload, Record<string, unknown>>({
+    command: "imports.history",
+    payload
+  });
+}
+
+export async function readLatestDatasetRun(
+  payload: DatasetLatestRunPayload
+): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<DatasetLatestRunPayload, Record<string, unknown>>({
+    command: "datasets.latestRun",
+    payload
+  });
+}
+
 export async function pickDesktopFile(): Promise<DesktopCommandResponse> {
   return invokeDesktopCommand<Record<string, never>, Record<string, unknown>>({
     command: "dialog.pickFile",
@@ -82,6 +103,15 @@ export async function pickDesktopFolder(): Promise<DesktopCommandResponse> {
   return invokeDesktopCommand<Record<string, never>, Record<string, unknown>>({
     command: "dialog.pickFolder",
     payload: {}
+  });
+}
+
+export async function openDesktopPath(
+  payload: OpenPathPayload
+): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<OpenPathPayload, Record<string, unknown>>({
+    command: "shell.openPath",
+    payload
   });
 }
 

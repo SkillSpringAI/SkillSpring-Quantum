@@ -1,5 +1,5 @@
 const path = require("node:path");
-const { ipcMain, dialog } = require("electron");
+const { ipcMain, dialog, shell } = require("electron");
 const { runCommand } = require("../lib/runCommand.cjs");
 const { readJsonOutput } = require("../lib/readJsonOutput.cjs");
 
@@ -85,6 +85,25 @@ function registerIpc() {
     };
   });
 
+  ipcMain.handle("shell:openPath", async (_event, payload) => {
+    const fs = require("node:fs/promises");
+
+    try {
+      const stat = await fs.stat(payload.targetPath);
+      if (stat.isDirectory()) {
+        const error = await shell.openPath(payload.targetPath);
+        return error
+          ? { ok: false, error }
+          : { ok: true, result: { targetPath: payload.targetPath } };
+      }
+
+      shell.showItemInFolder(payload.targetPath);
+      return { ok: true, result: { targetPath: payload.targetPath } };
+    } catch {
+      return { ok: false, error: "Path not found: " + payload.targetPath };
+    }
+  });
+
   ipcMain.handle("imports:inspect", async (_event, payload) => {
     const result = await runTsx("core/imports/inspectImportSource.ts", [payload.inputPath]);
     return result.ok ? ok(result, "Import source inspected.") : fail(result, "Failed to inspect import source.");
@@ -93,6 +112,21 @@ function registerIpc() {
   ipcMain.handle("imports:run", async (_event, payload) => {
     const result = await runTsx("core/imports/runImportSource.ts", [payload.inputPath, payload.outputRoot || "organized_output"]);
     return result.ok ? ok(result, "Import source processed.") : fail(result, "Failed to process import source.");
+  });
+
+  ipcMain.handle("imports:history", async (_event, payload = {}) => {
+    const result = await runTsx("core/imports/readImportHistory.ts", [
+      payload.outputRoot || "organized_output",
+      String(payload.limit || 10)
+    ]);
+    return result.ok ? ok(result, "Import history loaded.") : fail(result, "Failed to load import history.");
+  });
+
+  ipcMain.handle("datasets:latestRun", async (_event, payload = {}) => {
+    const result = await runTsx("core/pipeline/readLatestDatasetRun.ts", [
+      payload.outputRoot || "organized_output"
+    ]);
+    return result.ok ? ok(result, "Dataset summary loaded.") : fail(result, "Failed to load dataset summary.");
   });
 
   ipcMain.handle("governance:listRules", async () => {

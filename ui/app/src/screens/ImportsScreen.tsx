@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ImportForm from "../components/ImportForm";
+import ImportHistoryPanel from "../components/ImportHistoryPanel";
 import RunStatusPanel from "../components/RunStatusPanel";
 import RunLogPanel from "../components/RunLogPanel";
 import ArchiveNotificationPanel from "../components/ArchiveNotificationPanel";
@@ -18,7 +19,9 @@ import {
   submitImportJob,
   updateActiveImportPath
 } from "../services/importBridge";
+import { loadImportHistory } from "../services/importHistoryBridge";
 import { loadArchiveNotifications } from "../services/archiveNotificationsBridge";
+import type { ImportHistoryResult, ImportRunSummary } from "../types/importHistory";
 
 function makeLogEntry(
   level: RunLogEntry["level"],
@@ -46,11 +49,23 @@ export default function ImportsScreen() {
   const [latestArchive, setLatestArchive] = useState<ArchiveNotification | null>(null);
   const [archiveEvents, setArchiveEvents] = useState<ArchiveNotification[]>([]);
   const [sourceSummary, setSourceSummary] = useState<ImportSourceSummary | null>(null);
+  const [importHistory, setImportHistory] = useState<ImportHistoryResult | null>(null);
+  const [selectedRun, setSelectedRun] = useState<ImportRunSummary | null>(null);
 
   async function refreshArchiveNotifications() {
     const result = await loadArchiveNotifications(form.outputRoot, 5);
     setLatestArchive(result.latest);
     setArchiveEvents(result.events);
+  }
+
+  async function refreshImportHistory() {
+    const result = await loadImportHistory(form.outputRoot, 8);
+    setImportHistory(result);
+    setSelectedRun((current) => {
+      if (!result.latest) return null;
+      if (!current) return result.latest;
+      return result.runs.find((run) => run.runAt === current.runAt) ?? result.latest;
+    });
   }
 
   async function refreshSourceSummary(nextPath?: string) {
@@ -111,6 +126,7 @@ export default function ImportsScreen() {
         ...prev
       ]);
       await refreshArchiveNotifications();
+      await refreshImportHistory();
       await refreshSourceSummary();
       return;
     }
@@ -122,6 +138,11 @@ export default function ImportsScreen() {
       ...prev
     ]);
   }
+
+  useEffect(() => {
+    refreshImportHistory();
+    refreshArchiveNotifications();
+  }, [form.outputRoot]);
 
   return (
     <section className="screen-grid imports-layout">
@@ -155,6 +176,13 @@ export default function ImportsScreen() {
           <li>Output root should stay stable across related runs.</li>
         </ul>
       </div>
+
+      <ImportHistoryPanel
+        history={importHistory}
+        selectedRun={selectedRun}
+        onSelectRun={setSelectedRun}
+        onRefresh={refreshImportHistory}
+      />
 
       <div className="panel large">
         <h2>Source Summary</h2>

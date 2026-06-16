@@ -15,7 +15,10 @@ import type {
   RestorePayload,
   ArchiveNotificationsPayload,
   MarkdownArchivePayload,
-  InspectImportSourcePayload
+  InspectImportSourcePayload,
+  ImportHistoryPayload,
+  OpenPathPayload,
+  DatasetLatestRunPayload
 } from "../types/bridge";
 
 import type {
@@ -53,6 +56,10 @@ export async function executeMockDesktopCommand(
         return fromBridge(await bridge.dialogs.pickFile());
       case "dialog.pickFolder":
         return fromBridge(await bridge.dialogs.pickFolder());
+      case "shell.openPath": {
+        const p = payload as OpenPathPayload;
+        return fromBridge(await bridge.shell.openPath(p.targetPath));
+      }
       case "imports.inspect": {
         const p = payload as InspectImportSourcePayload;
         return fromBridge(await bridge.imports.inspectSource(p.inputPath));
@@ -60,6 +67,14 @@ export async function executeMockDesktopCommand(
       case "imports.run": {
         const p = payload as ImportPathPayload;
         return fromBridge(await bridge.imports.runSource(p.inputPath, p.outputRoot));
+      }
+      case "imports.history": {
+        const p = payload as ImportHistoryPayload;
+        return fromBridge(await bridge.imports.readHistory(p.outputRoot, p.limit));
+      }
+      case "datasets.latestRun": {
+        const p = payload as DatasetLatestRunPayload;
+        return fromBridge(await bridge.datasets.readLatestRun(p.outputRoot));
       }
       case "governance.listRules":
         return fromBridge(await bridge.governance.listRules());
@@ -135,6 +150,11 @@ export async function executeMockDesktopCommand(
     case "dialog.pickFolder":
       return ok(command, { canceled: true, path: null }, "Mock dialog returned no path.");
 
+    case "shell.openPath": {
+      const p = payload as OpenPathPayload;
+      return ok(command, { targetPath: p.targetPath }, "Mock path open accepted.");
+    }
+
     case "imports.inspect": {
       const p = payload as InspectImportSourcePayload;
       return ok(command, {
@@ -170,6 +190,28 @@ export async function executeMockDesktopCommand(
         unsupportedFilesSkipped: 0,
         results: []
       }, "Mock import run accepted.");
+    }
+
+    case "imports.history": {
+      const p = payload as ImportHistoryPayload;
+      return ok(command, {
+        outputRoot: p.outputRoot,
+        importsRoot: p.outputRoot + "/imports",
+        latestFile: p.outputRoot + "/imports/latest-import-run.json",
+        historyDir: p.outputRoot + "/imports/history",
+        latest: null,
+        runs: []
+      }, "Mock import history returned.");
+    }
+
+    case "datasets.latestRun": {
+      const p = payload as DatasetLatestRunPayload;
+      return ok(command, {
+        outputRoot: p.outputRoot,
+        datasetsRoot: p.outputRoot + "/datasets",
+        manifestPath: p.outputRoot + "/db/manifests/latest-dataset-run.json",
+        latest: null
+      }, "Mock dataset summary returned.");
     }
 
     case "governance.listRules": {

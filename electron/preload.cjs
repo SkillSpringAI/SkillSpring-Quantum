@@ -8,9 +8,18 @@ contextBridge.exposeInMainWorld("skillspringDesktop", {
     pickFolder: () => ipcRenderer.invoke("dialog:pickFolder")
   },
 
+  shell: {
+    openPath: (targetPath) => ipcRenderer.invoke("shell:openPath", { targetPath })
+  },
+
   imports: {
     inspectSource: (inputPath) => ipcRenderer.invoke("imports:inspect", { inputPath }),
-    runSource: (inputPath, outputRoot) => ipcRenderer.invoke("imports:run", { inputPath, outputRoot })
+    runSource: (inputPath, outputRoot) => ipcRenderer.invoke("imports:run", { inputPath, outputRoot }),
+    readHistory: (outputRoot, limit) => ipcRenderer.invoke("imports:history", { outputRoot, limit })
+  },
+
+  datasets: {
+    readLatestRun: (outputRoot) => ipcRenderer.invoke("datasets:latestRun", { outputRoot })
   },
 
   governance: {

@@ -1,6 +1,9 @@
 export type DesktopCommandName =
   | "imports.run"
   | "imports.inspect"
+  | "imports.history"
+  | "datasets.latestRun"
+  | "shell.openPath"
   | "dialog.pickFile"
   | "dialog.pickFolder"
   | "pipeline.runFile"
@@ -123,4 +126,17 @@ export interface MarkdownArchivePayload {
 
 export interface InspectImportSourcePayload {
   inputPath: string;
+}
+
+export interface ImportHistoryPayload {
+  outputRoot: string;
+  limit: number;
+}
+
+export interface OpenPathPayload {
+  targetPath: string;
+}
+
+export interface DatasetLatestRunPayload {
+  outputRoot: string;
 }

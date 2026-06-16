@@ -264,6 +264,17 @@ select {
   align-items: end;
 }
 
+.inline-action-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.compact-btn {
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
 .status-row {
   margin-bottom: 12px;
 }
@@ -363,6 +374,13 @@ select {
 .markdown-archive-grid {
   display: grid;
   grid-template-columns: minmax(260px, 360px) 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.import-history-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) 1fr;
   gap: 16px;
   align-items: start;
 }

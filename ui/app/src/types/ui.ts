@@ -12,6 +12,14 @@ declare global {
   interface Window {
     skillspringDesktop?: {
       ping: () => Promise<unknown>;
+      dialogs: {
+        pickFile: () => Promise<unknown>;
+        pickFolder: () => Promise<unknown>;
+      };
+      imports: {
+        inspectSource: (inputPath: string) => Promise<unknown>;
+        runSource: (inputPath: string, outputRoot: string) => Promise<unknown>;
+      };
       governance: {
         listRules: () => Promise<unknown>;
         readRule: (filePath: string) => Promise<unknown>;
@@ -19,7 +27,13 @@ declare global {
       };
       db: {
         listCollections: () => Promise<unknown>;
-        readCollection: (outputRoot: string, tier: string, collection: string, limit: number) => Promise<unknown>;
+        readCollection: (
+          outputRoot: string,
+          tier: string,
+          collection: string,
+          limit: number,
+          offset?: number
+        ) => Promise<unknown>;
         buildReviewQueue: (outputRoot: string) => Promise<unknown>;
         decideReviewQueueRecord: (
           outputRoot: string,

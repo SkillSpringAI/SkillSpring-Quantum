@@ -1,5 +1,5 @@
 const path = require("node:path");
-const { ipcMain } = require("electron");
+const { ipcMain, dialog } = require("electron");
 const { runCommand } = require("../lib/runCommand.cjs");
 const { readJsonOutput } = require("../lib/readJsonOutput.cjs");
 
@@ -53,6 +53,48 @@ function registerIpc() {
     return { ok: true, message: "electron-main-ready" };
   });
 
+  ipcMain.handle("dialog:pickFile", async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ["openFile"],
+      filters: [
+        { name: "Supported Files", extensions: ["json", "txt", "md", "markdown", "csv", "log", "pdf"] },
+        { name: "All Files", extensions: ["*"] }
+      ]
+    });
+
+    return {
+      ok: true,
+      result: {
+        canceled: result.canceled,
+        path: result.filePaths[0] || null
+      }
+    };
+  });
+
+  ipcMain.handle("dialog:pickFolder", async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ["openDirectory"]
+    });
+
+    return {
+      ok: true,
+      result: {
+        canceled: result.canceled,
+        path: result.filePaths[0] || null
+      }
+    };
+  });
+
+  ipcMain.handle("imports:inspect", async (_event, payload) => {
+    const result = await runTsx("core/imports/inspectImportSource.ts", [payload.inputPath]);
+    return result.ok ? ok(result, "Import source inspected.") : fail(result, "Failed to inspect import source.");
+  });
+
+  ipcMain.handle("imports:run", async (_event, payload) => {
+    const result = await runTsx("core/imports/runImportSource.ts", [payload.inputPath, payload.outputRoot || "organized_output"]);
+    return result.ok ? ok(result, "Import source processed.") : fail(result, "Failed to process import source.");
+  });
+
   ipcMain.handle("governance:listRules", async () => {
     const result = await runTsx("core/governance/listRules.ts");
     return result.ok ? ok(result, "Governance rules listed.") : fail(result, "Failed to list governance rules.");
@@ -89,7 +131,8 @@ function registerIpc() {
       payload.outputRoot,
       payload.tier,
       payload.collection,
-      String(payload.limit || 25)
+      String(payload.limit || 25),
+      String(payload.offset || 0)
     ]);
 
     return result.ok ? ok(result, "DB collection loaded.") : fail(result, "Failed to read DB collection.");
@@ -109,8 +152,12 @@ function registerIpc() {
     return result.ok ? ok(result, "Single-file pipeline run completed.") : fail(result, "Failed to run pipeline.");
   });
 
-  ipcMain.handle("batch:run", async () => {
-    const result = await runTsx("core/batch/runBatch.ts", []);
+  ipcMain.handle("batch:run", async (_event, payload = {}) => {
+    const args = [];
+    if (payload.inputFolder) args.push(payload.inputFolder);
+    if (payload.outputRoot) args.push(payload.outputRoot);
+
+    const result = await runTsx("core/batch/runBatch.ts", args);
     return result.ok ? ok(result, "Batch run completed.") : fail(result, "Failed to run batch.");
   });
 

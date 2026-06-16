@@ -3,6 +3,16 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("skillspringDesktop", {
   ping: () => ipcRenderer.invoke("app:ping"),
 
+  dialogs: {
+    pickFile: () => ipcRenderer.invoke("dialog:pickFile"),
+    pickFolder: () => ipcRenderer.invoke("dialog:pickFolder")
+  },
+
+  imports: {
+    inspectSource: (inputPath) => ipcRenderer.invoke("imports:inspect", { inputPath }),
+    runSource: (inputPath, outputRoot) => ipcRenderer.invoke("imports:run", { inputPath, outputRoot })
+  },
+
   governance: {
     listRules: () => ipcRenderer.invoke("governance:listRules"),
     readRule: (filePath) => ipcRenderer.invoke("governance:readRule", { filePath }),
@@ -11,8 +21,8 @@ contextBridge.exposeInMainWorld("skillspringDesktop", {
 
   db: {
     listCollections: () => ipcRenderer.invoke("db:listCollections"),
-    readCollection: (outputRoot, tier, collection, limit) =>
-      ipcRenderer.invoke("db:readCollection", { outputRoot, tier, collection, limit }),
+    readCollection: (outputRoot, tier, collection, limit, offset) =>
+      ipcRenderer.invoke("db:readCollection", { outputRoot, tier, collection, limit, offset }),
     buildReviewQueue: (outputRoot) =>
       ipcRenderer.invoke("db:review:buildQueue", { outputRoot }),
     decideReviewQueueRecord: (outputRoot, decision, queueKey, reason) =>

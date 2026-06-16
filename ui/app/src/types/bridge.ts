@@ -1,4 +1,8 @@
 export type DesktopCommandName =
+  | "imports.run"
+  | "imports.inspect"
+  | "dialog.pickFile"
+  | "dialog.pickFolder"
   | "pipeline.runFile"
   | "batch.run"
   | "batch.diagnostics"
@@ -52,6 +56,11 @@ export interface RunFilePayload {
   outputRoot: string;
 }
 
+export interface ImportPathPayload {
+  inputPath: string;
+  outputRoot: string;
+}
+
 export interface BatchRunPayload {
   inputFolder: string;
   outputRoot: string;
@@ -86,6 +95,7 @@ export interface DbReadCollectionPayload {
   tier: string;
   collection: string;
   limit: number;
+  offset?: number;
 }
 
 export interface GovernanceListRulesPayload {
@@ -109,4 +119,8 @@ export interface ArchiveNotificationsPayload {
 export interface MarkdownArchivePayload {
   outputRoot: string;
   filePath?: string;
+}
+
+export interface InspectImportSourcePayload {
+  inputPath: string;
 }

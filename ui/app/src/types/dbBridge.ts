@@ -15,6 +15,7 @@ export interface DbReadCollectionPayload {
   tier: string;
   collection: string;
   limit: number;
+  offset?: number;
 }
 
 export interface DbReadCollectionResult {
@@ -22,5 +23,8 @@ export interface DbReadCollectionResult {
   tier: string;
   collection: string;
   limit: number;
-  records: DbRecord[];
+  offset: number;
+  totalRecords: number;
+  hasMore: boolean;
+  records: unknown[];
 }

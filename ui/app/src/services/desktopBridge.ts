@@ -2,6 +2,7 @@ import type {
   DesktopCommandRequest,
   DesktopCommandResponse,
   DesktopCommandName,
+  ImportPathPayload,
   ReviewDecisionPayload,
   RunFilePayload,
   BatchRunPayload,
@@ -12,7 +13,8 @@ import type {
   DbReadCollectionPayload,
   GovernanceListRulesPayload,
   GovernanceReadRulePayload,
-  GovernanceWriteRulePayload
+  GovernanceWriteRulePayload,
+  InspectImportSourcePayload
 } from "../types/bridge";
 import { executeMockDesktopCommand } from "./mockDesktopExecutor";
 
@@ -34,7 +36,6 @@ export async function invokeDesktopCommand<TPayload, TResult>(
 ): Promise<DesktopCommandResponse<TResult>> {
   console.log("Desktop bridge request:", request);
 
-  // TODO replace with real Electron/Tauri shell execution layer
   const mockResponse = await executeMockDesktopCommand(
     request.command,
     request.payload
@@ -49,6 +50,38 @@ export async function runFile(
   return invokeDesktopCommand<RunFilePayload, Record<string, unknown>>({
     command: "pipeline.runFile",
     payload
+  });
+}
+
+export async function runImportPath(
+  payload: ImportPathPayload
+): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<ImportPathPayload, Record<string, unknown>>({
+    command: "imports.run",
+    payload
+  });
+}
+
+export async function inspectImportPath(
+  payload: InspectImportSourcePayload
+): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<InspectImportSourcePayload, Record<string, unknown>>({
+    command: "imports.inspect",
+    payload
+  });
+}
+
+export async function pickDesktopFile(): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<Record<string, never>, Record<string, unknown>>({
+    command: "dialog.pickFile",
+    payload: {}
+  });
+}
+
+export async function pickDesktopFolder(): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<Record<string, never>, Record<string, unknown>>({
+    command: "dialog.pickFolder",
+    payload: {}
   });
 }
 

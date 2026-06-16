@@ -4,6 +4,9 @@ interface ImportFormProps {
   value: ImportJobForm;
   onChange: (next: ImportJobForm) => void;
   onSubmit: () => void;
+  onBrowseSource: () => void;
+  onBrowseOutput: () => void;
+  onInspectSource: () => void;
   disabled?: boolean;
 }
 
@@ -36,46 +39,70 @@ export default function ImportForm(props: ImportFormProps) {
 
       {mode === "single_file" ? (
         <label className="form-label">
-          Input File
-          <input
-            className="text-input"
-            value={props.value.inputFile}
-            onChange={(e) => update("inputFile", e.target.value)}
-            placeholder="C:\Users\Laptop\Desktop\ChatGPT Exports\conversations-000.json"
-            disabled={props.disabled}
-          />
+          Source File
+          <div className="input-with-action">
+            <input
+              className="text-input"
+              value={props.value.inputFile}
+              onChange={(e) => update("inputFile", e.target.value)}
+              placeholder="C:\Users\Laptop\Desktop\ChatGPT Exports\conversations-000.json"
+              disabled={props.disabled}
+            />
+            <button className="primary-btn" onClick={props.onBrowseSource} disabled={props.disabled}>
+              Browse
+            </button>
+          </div>
         </label>
       ) : (
         <label className="form-label">
-          Input Folder
-          <input
-            className="text-input"
-            value={props.value.inputFolder}
-            onChange={(e) => update("inputFolder", e.target.value)}
-            placeholder="C:\Users\Laptop\Desktop\ChatGPT Exports"
-            disabled={props.disabled}
-          />
+          Source Folder
+          <div className="input-with-action">
+            <input
+              className="text-input"
+              value={props.value.inputFolder}
+              onChange={(e) => update("inputFolder", e.target.value)}
+              placeholder="C:\Users\Laptop\Desktop\ChatGPT Exports"
+              disabled={props.disabled}
+            />
+            <button className="primary-btn" onClick={props.onBrowseSource} disabled={props.disabled}>
+              Browse
+            </button>
+          </div>
         </label>
       )}
 
       <label className="form-label">
         Output Root
-        <input
-          className="text-input"
-          value={props.value.outputRoot}
-          onChange={(e) => update("outputRoot", e.target.value)}
-          placeholder="organized_output"
-          disabled={props.disabled}
-        />
+        <div className="input-with-action">
+          <input
+            className="text-input"
+            value={props.value.outputRoot}
+            onChange={(e) => update("outputRoot", e.target.value)}
+            placeholder="organized_output"
+            disabled={props.disabled}
+          />
+          <button className="primary-btn" onClick={props.onBrowseOutput} disabled={props.disabled}>
+            Browse
+          </button>
+        </div>
       </label>
 
-      <button
-        className="primary-btn"
-        onClick={props.onSubmit}
-        disabled={props.disabled}
-      >
-        Run Import
-      </button>
+      <div className="action-bar">
+        <button
+          className="primary-btn"
+          onClick={props.onInspectSource}
+          disabled={props.disabled}
+        >
+          Inspect Source
+        </button>
+        <button
+          className="primary-btn"
+          onClick={props.onSubmit}
+          disabled={props.disabled}
+        >
+          Run Import
+        </button>
+      </div>
     </div>
   );
 }

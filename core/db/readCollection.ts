@@ -7,6 +7,9 @@ interface ReadResult {
   tier: string;
   collection: string;
   limit: number;
+  offset: number;
+  totalRecords: number;
+  hasMore: boolean;
   records: unknown[];
 }
 
@@ -15,17 +18,20 @@ function parseArgs(argv: string[]): {
   tier?: string;
   collection?: string;
   limit: number;
+  offset: number;
 } {
   const outputRoot = resolveOutputRoot(argv[2]);
   const tier = argv[3];
   const collection = argv[4];
   const limit = Number(argv[5] || 25);
+  const offset = Number(argv[6] || 0);
 
   return {
     outputRoot,
     tier,
     collection,
-    limit: Number.isFinite(limit) && limit > 0 ? limit : 25
+    limit: Number.isFinite(limit) && limit > 0 ? limit : 25,
+    offset: Number.isFinite(offset) && offset >= 0 ? offset : 0
   };
 }
 
@@ -33,7 +39,7 @@ async function main(): Promise<void> {
   const args = parseArgs(process.argv);
 
   if (!args.tier || !args.collection) {
-    console.error("Usage: npm run db:read -- <outputRoot> <tier> <collection> [limit]");
+    console.error("Usage: npm run db:read -- <outputRoot> <tier> <collection> [limit] [offset]");
     process.exit(1);
   }
 
@@ -47,11 +53,13 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const records = raw
+  const lines = raw
     .split(/\r?\n/)
     .map(line => line.trim())
-    .filter(Boolean)
-    .slice(0, args.limit)
+    .filter(Boolean);
+
+  const records = lines
+    .slice(args.offset, args.offset + args.limit)
     .map(line => {
       try {
         return JSON.parse(line);
@@ -65,6 +73,9 @@ async function main(): Promise<void> {
     tier: args.tier,
     collection: args.collection,
     limit: args.limit,
+    offset: args.offset,
+    totalRecords: lines.length,
+    hasMore: args.offset + records.length < lines.length,
     records
   };
 

@@ -1,4 +1,5 @@
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { readJsonFile } from "../utils/fs.js";
 import { parseChatGPTExport } from "../parser/index.js";
 import { segmentConversation } from "./segmenter.js";
@@ -37,8 +38,10 @@ function parseCliArgs(argv: string[]): { filePath?: string; outputRoot: string }
   };
 }
 
-async function main(): Promise<void> {
-  const parsedArgs = parseCliArgs(process.argv);
+export async function runConversationPipeline(
+  inputFile: string | undefined,
+  outputRootArg: string | undefined
+): Promise<RunDiagnostics> {
   const startedAt = new Date();
   const signalRules = loadSignalThresholdRules();
 
@@ -73,12 +76,12 @@ async function main(): Promise<void> {
     },
     settings: {
       segment_window_size: SEGMENT_WINDOW_SIZE,
-      output_root: parsedArgs.outputRoot || "organized_output"
+      output_root: outputRootArg || "organized_output"
     }
   };
 
   try {
-    const preflight = await runPipelinePreflight(parsedArgs.filePath, parsedArgs.outputRoot);
+    const preflight = await runPipelinePreflight(inputFile, outputRootArg);
 
     diagnostics.settings.output_root = preflight.resolved.outputRoot;
 
@@ -101,7 +104,7 @@ async function main(): Promise<void> {
       diagnostics.completed_at = new Date().toISOString();
       await writeDiagnostics(preflight.resolved.outputRoot, diagnostics);
       console.error("Preflight failed:", preflight.errors.join(" | "));
-      process.exit(1);
+      return diagnostics;
     }
 
     const filePath = preflight.resolved.inputFile;
@@ -125,7 +128,7 @@ async function main(): Promise<void> {
       diagnostics.completed_at = new Date().toISOString();
       await writeDiagnostics(outputRoot, diagnostics);
       console.warn("No conversations found in file:", filePath);
-      process.exit(0);
+      return diagnostics;
     }
 
     diagnostics.conversations_found = parsed.conversations.length;
@@ -273,23 +276,37 @@ async function main(): Promise<void> {
       privateReviewSegments: datasetSummary.private_review_segments,
       dbWriteStats: datasetSummary.db_write_stats
     });
+    return diagnostics;
   } catch (error) {
     diagnostics.status = "failed";
     diagnostics.completed_at = new Date().toISOString();
     diagnostics.errors.push({
       code: "PIPELINE_FAILURE",
       message: error instanceof Error ? error.message : "Unknown pipeline error",
-      file: parsedArgs.filePath,
+      file: inputFile,
       stack: error instanceof Error ? error.stack : undefined
     });
 
     await writeDiagnostics(diagnostics.settings.output_root, diagnostics);
     console.error("Pipeline failed:", error);
-    process.exit(1);
+    return diagnostics;
   }
 }
 
-main().catch((error) => {
-  console.error("Fatal pipeline bootstrap failure:", error);
-  process.exit(1);
-});
+async function main(): Promise<void> {
+  const parsedArgs = parseCliArgs(process.argv);
+  const diagnostics = await runConversationPipeline(parsedArgs.filePath, parsedArgs.outputRoot);
+
+  process.exit(diagnostics.status === "success" ? 0 : 1);
+}
+
+const isDirectRun =
+  typeof process.argv[1] === "string" &&
+  import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isDirectRun) {
+  main().catch((error) => {
+    console.error("Fatal pipeline bootstrap failure:", error);
+    process.exit(1);
+  });
+}

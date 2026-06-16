@@ -1,6 +1,7 @@
 import type {
   DesktopCommandName,
   DesktopCommandResponse,
+  ImportPathPayload,
   GovernanceListRulesPayload,
   GovernanceReadRulePayload,
   GovernanceWriteRulePayload,
@@ -13,7 +14,8 @@ import type {
   MergeFoldersPayload,
   RestorePayload,
   ArchiveNotificationsPayload,
-  MarkdownArchivePayload
+  MarkdownArchivePayload,
+  InspectImportSourcePayload
 } from "../types/bridge";
 
 import type {
@@ -47,6 +49,18 @@ export async function executeMockDesktopCommand(
 
   if (bridge) {
     switch (command) {
+      case "dialog.pickFile":
+        return fromBridge(await bridge.dialogs.pickFile());
+      case "dialog.pickFolder":
+        return fromBridge(await bridge.dialogs.pickFolder());
+      case "imports.inspect": {
+        const p = payload as InspectImportSourcePayload;
+        return fromBridge(await bridge.imports.inspectSource(p.inputPath));
+      }
+      case "imports.run": {
+        const p = payload as ImportPathPayload;
+        return fromBridge(await bridge.imports.runSource(p.inputPath, p.outputRoot));
+      }
       case "governance.listRules":
         return fromBridge(await bridge.governance.listRules());
       case "governance.readRule": {
@@ -61,7 +75,15 @@ export async function executeMockDesktopCommand(
         return fromBridge(await bridge.db.listCollections());
       case "db.readCollection": {
         const p = payload as DbReadCollectionPayload;
-        return fromBridge(await bridge.db.readCollection(p.outputRoot, p.tier, p.collection, p.limit));
+        return fromBridge(
+          await bridge.db.readCollection(
+            p.outputRoot,
+            p.tier,
+            p.collection,
+            p.limit,
+            p.offset
+          )
+        );
       }
       case "db.review.buildQueue": {
         const p = payload as { outputRoot: string };
@@ -109,6 +131,47 @@ export async function executeMockDesktopCommand(
   }
 
   switch (command) {
+    case "dialog.pickFile":
+    case "dialog.pickFolder":
+      return ok(command, { canceled: true, path: null }, "Mock dialog returned no path.");
+
+    case "imports.inspect": {
+      const p = payload as InspectImportSourcePayload;
+      return ok(command, {
+        inputPath: p.inputPath,
+        inputType: "missing",
+        totalFiles: 0,
+        supportedFiles: 0,
+        unsupportedFiles: 0,
+        countsByKind: {
+          chatgpt_export: 0,
+          json_document: 0,
+          text_document: 0,
+          pdf_document: 0,
+          unsupported: 0
+        },
+        notes: ["Mock inspection only. Launch through Electron for real path inspection."],
+        sampleFiles: []
+      }, "Mock import source inspection returned.");
+    }
+
+    case "imports.run": {
+      const p = payload as ImportPathPayload;
+      return ok(command, {
+        runAt: new Date().toISOString(),
+        inputPath: p.inputPath,
+        outputRoot: p.outputRoot,
+        filesDiscovered: 0,
+        filesImported: 0,
+        filesFailed: 0,
+        conversationFilesProcessed: 0,
+        genericDocumentsProcessed: 0,
+        pdfFilesArchived: 0,
+        unsupportedFilesSkipped: 0,
+        results: []
+      }, "Mock import run accepted.");
+    }
+
     case "governance.listRules": {
       const p = payload as GovernanceListRulesPayload;
       const result: GovernanceListRulesResult = {
@@ -162,6 +225,9 @@ export async function executeMockDesktopCommand(
           tier: p.tier,
           collection: p.collection,
           limit: p.limit,
+          offset: p.offset ?? 0,
+          totalRecords: 0,
+          hasMore: false,
           records: []
         },
         "Mock DB collection read returned."

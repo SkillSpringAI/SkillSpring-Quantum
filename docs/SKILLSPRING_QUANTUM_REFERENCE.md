@@ -30,6 +30,7 @@ SkillSpring Quantum is a local-first Electron + Vite + React desktop application
 - governance-first design with machine-readable rules
 - UI controls mapped to real backend workflows, not placeholder lifecycle actions
 - user-visible capability growth should stay ahead of governance/documentation drag
+- MVP direction and anti-drift reference: see `docs/SKILLSPRING_QUANTUM_MVP_DIRECTION.md`
 
 ## Current Gaps / Next Build Targets
 

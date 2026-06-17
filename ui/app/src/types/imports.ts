@@ -11,7 +11,7 @@ export interface ImportJobForm {
 
 export interface ImportSourceEntry {
   path: string;
-  kind: "chatgpt_export" | "json_document" | "text_document" | "pdf_document" | "unsupported";
+  kind: "chatgpt_export" | "conversation_json" | "json_document" | "text_document" | "pdf_document" | "unsupported";
   supported: boolean;
   reason: string;
 }

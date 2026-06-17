@@ -22,6 +22,8 @@ The system converts raw exported conversation data into:
 SkillSpring Quantum currently supports:
 
 - ChatGPT export JSON files
+- Grok export manifest JSON files with referenced attachment blob preservation when the blob folders are present
+- generic conversation JSON files, including third-party or manually extracted conversation records from tools like Claude, Gemini, DeepSeek, Kimi, and Perplexity
 - generic JSON documents
 - text-like local files such as `.txt`, `.md`, `.markdown`, `.csv`, and `.log`
 - PDF files with best-effort local text extraction plus intact archive fallback behavior
@@ -67,6 +69,13 @@ npm run batch:delta
 ```powershell
 node .\node_modules\tsx\dist\cli.mjs core\imports\inspectImportSource.ts "C:\path\to\source"
 ```
+
+### Inspect a conversation export fixture shape
+```powershell
+node .\node_modules\tsx\dist\cli.mjs core\imports\inspectConversationFixture.ts "tests\fixtures\sample-generic-conversation.json"
+```
+
+For Grok vendor exports, inspect the root manifest JSON such as `prod-grok-backend.json` rather than a UUID blob folder.
 
 ### Run the general import flow
 ```powershell

@@ -1,0 +1,21 @@
+[
+  {
+    "id": "m1",
+    "speaker": "customer",
+    "body": "What remains to finish the MVP?",
+    "timestamp": "2026-03-01T08:00:00.000Z"
+  },
+  {
+    "id": "m2",
+    "speaker": "bot",
+    "response": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Parser breadth, archive search, and dataset UX remain."
+        }
+      ]
+    },
+    "timestamp": "2026-03-01T08:01:00.000Z"
+  }
+]

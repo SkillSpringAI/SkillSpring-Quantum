@@ -1,0 +1,30 @@
+{
+  "platform": "gemini",
+  "url": "https://gemini.example/conversation/1",
+  "title": "Gemini Export Sample",
+  "timestamp": "2026-06-17T10:00:00.000Z",
+  "messages": [
+    {
+      "id": "gemini-user-1",
+      "role": "user",
+      "markdown": "Build a strategic governance framework.",
+      "tokens": [
+        {
+          "type": "paragraph",
+          "text": "Build a strategic governance framework."
+        }
+      ]
+    },
+    {
+      "id": "gemini-assistant-1",
+      "role": "assistant",
+      "markdown": "Here is a structured governance framework with phased rollout guidance.",
+      "tokens": [
+        {
+          "type": "paragraph",
+          "text": "Here is a structured governance framework with phased rollout guidance."
+        }
+      ]
+    }
+  ]
+}

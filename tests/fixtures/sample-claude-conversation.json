@@ -1,0 +1,43 @@
+[
+  {
+    "uuid": "claude-conversation-1",
+    "name": "Claude Export Sample",
+    "created_at": "2026-04-04T05:29:29.317Z",
+    "updated_at": "2026-04-04T05:35:06.550Z",
+    "chat_messages": [
+      {
+        "uuid": "claude-message-1",
+        "text": "lets create a game, it should be able to be tested/ played well we check how what needs editing, used attached file",
+        "content": [
+          {
+            "type": "text",
+            "text": "lets create a game, it should be able to be tested/ played well we check how what needs editing, used attached file"
+          }
+        ],
+        "sender": "human",
+        "created_at": "2026-04-04T05:29:31.577Z"
+      },
+      {
+        "uuid": "claude-message-2",
+        "text": "This is a meaty design doc - let me build a playable prototype of Era of Ruin.",
+        "content": [
+          {
+            "type": "tool_use",
+            "message": "Reading frontend design skill"
+          },
+          {
+            "type": "tool_result",
+            "content": [
+              {
+                "type": "text",
+                "text": "Large tool output that should not override the main assistant reply."
+              }
+            ]
+          }
+        ],
+        "sender": "assistant",
+        "created_at": "2026-04-04T05:32:17.861Z"
+      }
+    ]
+  }
+]

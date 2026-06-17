@@ -1,7 +1,7 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { readJsonFile } from "../utils/fs.js";
-import { parseChatGPTExport } from "../parser/index.js";
+import { detectAndParseConversationExport } from "../parser/index.js";
 import { segmentConversation } from "./segmenter.js";
 import { exportPurgedSegmentMarkdown, exportSegmentMarkdown } from "./exporter.js";
 import { loadIndex, saveIndex, upsertGroup, rememberAlias } from "../index/indexStore.js";
@@ -14,6 +14,7 @@ import { loadSignalThresholdRules } from "../governance/loadRules.js";
 import { ingestRawConversations } from "../db/rawIngest.js";
 import { runPipelinePreflight } from "../diagnostics/preflight.js";
 import { writeArchiveNotification } from "./archiveNotifier.js";
+import { archiveGrokConversationAttachments } from "./grokAttachmentArchive.js";
 import programManifest from "../../config/programManifest.json" with { type: "json" };
 
 const PIPELINE_VERSION = programManifest.pipeline_version;
@@ -56,6 +57,9 @@ export async function runConversationPipeline(
     conversations_found: 0,
     raw_conversations_written: 0,
     raw_conversations_skipped: 0,
+    attachments_referenced: 0,
+    attachments_archived: 0,
+    attachments_missing: 0,
     segments_created: 0,
     segments_purged: 0,
     markdown_primary_written: 0,
@@ -113,14 +117,15 @@ export async function runConversationPipeline(
     diagnostics.files_processed = 1;
 
     const raw = await readJsonFile(filePath);
-    const parsed = parseChatGPTExport(raw);
+    const detected = detectAndParseConversationExport(raw);
+    const parsed = detected.parsed;
     const index = await loadIndex(outputRoot);
     const allSegments = [];
 
     if (parsed.conversations.length === 0) {
       diagnostics.warnings.push({
         code: "NO_CONVERSATIONS_FOUND",
-        message: "No conversations found in file",
+        message: "No conversations found in file for detected parser: " + detected.label,
         file: filePath
       });
 
@@ -133,6 +138,27 @@ export async function runConversationPipeline(
 
     diagnostics.conversations_found = parsed.conversations.length;
 
+    if (detected.kind === "grok_export") {
+      const attachmentSummary = await archiveGrokConversationAttachments(
+        parsed.conversations,
+        filePath,
+        outputRoot
+      );
+
+      diagnostics.attachments_referenced = attachmentSummary.attachments_referenced;
+      diagnostics.attachments_archived = attachmentSummary.attachments_archived;
+      diagnostics.attachments_missing = attachmentSummary.attachments_missing;
+
+      if (attachmentSummary.attachments_missing > 0) {
+        diagnostics.warnings.push({
+          code: "GROK_ATTACHMENTS_MISSING",
+          message:
+            "Some Grok attachment blobs were referenced but not found: " +
+            attachmentSummary.attachments_missing
+        });
+      }
+    }
+
     const rawIngestSummary = await ingestRawConversations(
       parsed.conversations,
       outputRoot,
@@ -142,7 +168,14 @@ export async function runConversationPipeline(
     diagnostics.raw_conversations_written = rawIngestSummary.raw_conversations_written;
     diagnostics.raw_conversations_skipped = rawIngestSummary.raw_conversations_skipped;
 
-    console.log("Found " + parsed.conversations.length + " conversation(s) in " + path.basename(filePath));
+    console.log(
+      "Found " +
+      parsed.conversations.length +
+      " conversation(s) in " +
+      path.basename(filePath) +
+      " using " +
+      detected.label
+    );
 
     for (const conversation of parsed.conversations) {
       const segments = segmentConversation(conversation, SEGMENT_WINDOW_SIZE, index);

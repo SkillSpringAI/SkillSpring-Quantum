@@ -1,15 +1,21 @@
 # SkillSpring Quantum Reference
 
-SkillSpring Quantum is a local-first Electron + Vite + React desktop application and TypeScript processing engine for turning ChatGPT export JSON files and general local documents into structured, auditable knowledge assets and datasets.
+SkillSpring Quantum is a local-first Electron + Vite + React desktop application and TypeScript processing engine for turning mixed AI conversation exports and general local documents into structured, auditable knowledge assets and datasets.
 
 ## Implemented Spine
 
 - ChatGPT export parsing and raw conversation normalization
+- generic conversation export detection across ChatGPT, Grok manifests, and conversation-shaped JSON
+- parser coverage for Claude-shaped, Gemini-shaped, DeepSeek-shaped, Kimi-shaped, and Perplexity-shaped extracted conversation JSON
+- Grok vendor export parsing through root manifest JSON files
+- Grok attachment blob preservation via `file_attachments` when referenced blob folders are present
+- Grok attachment manifest output recording archived versus missing attachment blobs
 - generic local document intake for JSON, text-like files, and PDFs
 - intent-based topic segmentation that can split a mislabeled or topic-shifting thread into multiple segments
 - topic scoring, topic filtering, and canonical topic normalization
 - deterministic deduplication and text fingerprinting
 - human-readable markdown organized by inferred topic, with relative timestamps beside absolute message timestamps
+- human-readable markdown now includes preserved conversation attachment references when available
 - archive notification artifacts for human-readable markdown output events
 - source archive output for generic imported documents
 - import history manifests and latest import summaries
@@ -39,7 +45,8 @@ SkillSpring Quantum is a local-first Electron + Vite + React desktop application
 
 ## Current Gaps / Next Build Targets
 
-- expand parser coverage beyond ChatGPT
+- enrich preserved attachment metadata with better preview and file labeling
+- surface preserved conversation attachments more clearly in desktop history and archive browsing
 - connect import summaries, archive browsing, and dataset browsing more tightly across screens
 - improve review queue screen states for empty, missing, and failed queue files
 - add richer markdown archive filtering/search and file-open actions

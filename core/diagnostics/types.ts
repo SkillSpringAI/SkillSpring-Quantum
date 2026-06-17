@@ -31,6 +31,9 @@ export interface RunDiagnostics {
   conversations_found: number;
   raw_conversations_written: number;
   raw_conversations_skipped: number;
+  attachments_referenced: number;
+  attachments_archived: number;
+  attachments_missing: number;
   segments_created: number;
   segments_purged: number;
   markdown_primary_written: number;

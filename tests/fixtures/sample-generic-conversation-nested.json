@@ -1,0 +1,34 @@
+{
+  "conversation_id": "nested-convo-001",
+  "subject": "Vendor Nested Blocks",
+  "conversation": {
+    "turns": [
+      {
+        "id": "u1",
+        "sender": "human",
+        "parts": [
+          {
+            "type": "text",
+            "text": "Summarize the project status."
+          }
+        ],
+        "time": "2026-02-10T09:00:00.000Z"
+      },
+      {
+        "id": "a1",
+        "sender": "perplexity",
+        "blocks": [
+          {
+            "type": "text",
+            "text": "The project is on track, but parser coverage is still expanding."
+          },
+          {
+            "type": "text",
+            "text": "Next work should focus on vendor export support."
+          }
+        ],
+        "time": "2026-02-10T09:01:00.000Z"
+      }
+    ]
+  }
+}

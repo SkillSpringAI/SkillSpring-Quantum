@@ -37,6 +37,7 @@ export function renderConversationMarkdown(
         "## " + (index + 1) + ". " + msg.role + timestamp,
         "",
         escapeFence(msg.text || ""),
+        renderAttachmentSection(msg.attachments),
         ""
       ].join("\n");
     })
@@ -76,10 +77,40 @@ export function renderSegmentMarkdown(segment: ConversationSegment): string {
         "### " + (index + 1) + ". " + msg.role + timestamp,
         "",
         escapeFence(msg.text || ""),
+        renderAttachmentSection(msg.attachments),
         ""
       ].join("\n");
     })
     .join("\n");
 
   return header + title + "\n" + subtitle + "\n" + transcript.trim() + "\n";
+}
+
+function renderAttachmentSection(
+  attachments: Conversation["messages"][number]["attachments"]
+): string {
+  if (!attachments || attachments.length === 0) {
+    return "";
+  }
+
+  return [
+    "",
+    "Attachments:",
+    ...attachments.map((attachment) => {
+      const parts = ["- " + (attachment.label ? attachment.label : "`" + attachment.id + "`")];
+      if (attachment.label) {
+        parts.push("`" + attachment.id + "`");
+      }
+      if (attachment.mimeType) {
+        parts.push("(" + attachment.mimeType + ")");
+      }
+      if (attachment.archivePath) {
+        parts.push("archive: `" + attachment.archivePath + "`");
+      }
+      if (attachment.previewPath) {
+        parts.push("preview: `" + attachment.previewPath + "`");
+      }
+      return parts.join(" ");
+    })
+  ].join("\n");
 }

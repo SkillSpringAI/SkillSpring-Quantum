@@ -82,9 +82,9 @@ Quantum becomes more defensible when it handles mixed AI and non-AI source mater
 
 Priority items:
 
-- Claude export parser
-- Gemini export parser
+- official export adapters where vendor packages meaningfully differ from generic conversation JSON
 - generic threaded JSON adapters where possible
+- preserve referenced attachments and uploaded files when vendor exports include them
 - stronger generic document classification during intake
 
 Why this matters:
@@ -142,9 +142,10 @@ Use this as the practical sequence unless a clear blocking dependency changes it
 
 1. PDF extraction plus mixed-folder import completion
 2. Import inspection, import history, and import result visibility
-3. Claude and Gemini parser support
-4. Archive search and open actions
-5. Dataset browser and export usability
+3. Generic conversation adapter hardening plus true vendor-package coverage where needed
+4. Attachment preservation and preview usability for vendor exports
+5. Archive search and open actions
+6. Dataset browser and export usability
 
 ## Anti-drift rules
 
@@ -163,6 +164,7 @@ Quantum is moving in the right direction when:
 - a non-technical user can browse to a folder and run an import
 - the app clearly explains what it found and what it produced
 - archives are readable and easy to inspect
+- preserved attachments and uploaded files remain traceable when the source export includes them
 - anonymized datasets are visible and understandable
 - failed and partial imports are explainable without reading code or raw logs
 

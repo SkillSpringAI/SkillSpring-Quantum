@@ -65,7 +65,7 @@ export default function ImportHistoryPanel({
                     Imported {selectedRun.filesImported} of {selectedRun.filesDiscovered} file(s)
                   </p>
                   <p className="muted">
-                    ChatGPT: {selectedRun.conversationFilesProcessed} | Generic: {selectedRun.genericDocumentsProcessed} | PDF: {selectedRun.pdfFilesArchived}
+                    Conversations: {selectedRun.conversationFilesProcessed} | Generic: {selectedRun.genericDocumentsProcessed} | PDF: {selectedRun.pdfFilesArchived}
                   </p>
                   {selectedRun.artifacts.length > 0 ? (
                     <div className="action-bar">

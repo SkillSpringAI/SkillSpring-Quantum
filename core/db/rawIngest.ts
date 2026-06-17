@@ -15,6 +15,13 @@ export interface RawConversationRecord {
     role: string;
     text: string;
     timestamp?: string;
+    attachments?: Array<{
+      id: string;
+      label?: string;
+      mime_type?: string;
+      archive_path?: string;
+      preview_path?: string;
+    }>;
   }>;
 }
 
@@ -44,7 +51,14 @@ export async function ingestRawConversations(
       id: message.id,
       role: message.role,
       text: message.text,
-      timestamp: message.timestamp
+      timestamp: message.timestamp,
+      attachments: message.attachments?.map((attachment) => ({
+        id: attachment.id,
+        label: attachment.label,
+        mime_type: attachment.mimeType,
+        archive_path: attachment.archivePath,
+        preview_path: attachment.previewPath
+      }))
     }))
   }));
 

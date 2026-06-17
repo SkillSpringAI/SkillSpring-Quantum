@@ -1,0 +1,30 @@
+{
+  "title": "Generic Support Thread",
+  "createdAt": "2026-01-05T10:00:00.000Z",
+  "messages": [
+    {
+      "id": "m1",
+      "role": "user",
+      "text": "Please summarize our onboarding notes.",
+      "createdAt": "2026-01-05T10:00:00.000Z"
+    },
+    {
+      "id": "m2",
+      "role": "assistant",
+      "text": "Here is a concise onboarding summary.",
+      "createdAt": "2026-01-05T10:01:00.000Z"
+    },
+    {
+      "id": "m3",
+      "author": "human",
+      "content": "Also call out unresolved blockers.",
+      "createdAt": "2026-01-05T10:02:00.000Z"
+    },
+    {
+      "id": "m4",
+      "author": "claude",
+      "content": "The unresolved blockers are permissions and rollout timing.",
+      "createdAt": "2026-01-05T10:03:00.000Z"
+    }
+  ]
+}

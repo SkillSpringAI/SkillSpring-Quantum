@@ -170,9 +170,10 @@ export default function ImportsScreen() {
       <div className="panel">
         <h2>Import Notes</h2>
         <ul>
-          <li>ChatGPT export JSON files still use the conversation pipeline.</li>
+          <li>Conversation export JSON files run through the conversation pipeline, including Grok manifest exports and generic extracted conversation JSON.</li>
           <li>Generic text and JSON files are archived intact and added to anonymized source document datasets.</li>
           <li>PDF files are archived now and flagged for future text extraction.</li>
+          <li>Grok imports preserve referenced attachment blobs when the export package includes them, and record missing blobs when they are absent.</li>
           <li>Output root should stay stable across related runs.</li>
         </ul>
       </div>
@@ -203,8 +204,10 @@ export default function ImportsScreen() {
                 <strong>{sourceSummary.unsupportedFiles}</strong>
               </div>
               <div className="stat-card">
-                <span className="label">ChatGPT Exports</span>
-                <strong>{sourceSummary.countsByKind.chatgpt_export}</strong>
+                <span className="label">Conversation JSON</span>
+                <strong>
+                  {sourceSummary.countsByKind.chatgpt_export + sourceSummary.countsByKind.conversation_json}
+                </strong>
               </div>
               <div className="stat-card">
                 <span className="label">Generic Docs</span>

@@ -1,0 +1,42 @@
+{
+  "conversations": [
+    {
+      "conversation": {
+        "id": "grok-conversation-1",
+        "title": "Grok Export Sample",
+        "create_time": "2026-06-17T09:00:00.000Z"
+      },
+      "responses": [
+        {
+          "response": {
+            "_id": "grok-message-1",
+            "conversation_id": "grok-conversation-1",
+            "message": "Summarize the repository direction.",
+            "sender": "human",
+            "file_attachments": [
+              "grok-attachment-1"
+            ],
+            "create_time": {
+              "$date": {
+                "$numberLong": "1781658000000"
+              }
+            }
+          }
+        },
+        {
+          "response": {
+            "_id": "grok-message-2",
+            "conversation_id": "grok-conversation-1",
+            "message": "The repository is building a local-first archive and anonymization workflow for AI conversations and documents.",
+            "sender": "ASSISTANT",
+            "create_time": {
+              "$date": {
+                "$numberLong": "1781658060000"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

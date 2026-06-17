@@ -1,14 +1,15 @@
 import path from "node:path";
 import { promises as fs } from "node:fs";
-import { parseChatGPTExport } from "../parser/index.js";
+import { detectAndParseConversationExport } from "../parser/index.js";
 import { runConversationPipeline } from "../pipeline/pipeline.js";
-import { ensureDir, writeTextFile } from "../utils/fs.js";
+import { ensureDir, fileExists, writeTextFile } from "../utils/fs.js";
 import { safeFileStem } from "../utils/format.js";
 import { sha256 } from "../utils/hash.js";
 import { redactText } from "../pipeline/redaction.js";
 import { writeTierRecords, writeDbManifest } from "../db/tieredStore.js";
 import { resolveOutputRoot } from "../utils/paths.js";
 import { extractPdfText } from "./pdfText.js";
+import { buildDatasetPaths } from "../pipeline/datasetVersioning.js";
 
 const TEXT_EXTENSIONS = new Set([
   ".txt",
@@ -20,6 +21,7 @@ const TEXT_EXTENSIONS = new Set([
 
 export type ImportSourceKind =
   | "chatgpt_export"
+  | "conversation_json"
   | "json_document"
   | "text_document"
   | "pdf_document"
@@ -54,6 +56,12 @@ export interface ImportRunFileResult {
 export interface ImportArtifact {
   label: string;
   path: string;
+}
+
+interface GrokAttachmentManifestSummary {
+  attachments_referenced: number;
+  attachments_archived: number;
+  attachments_missing: number;
 }
 
 export interface ImportRunSummary {
@@ -108,6 +116,7 @@ export async function inspectImportSource(inputPath: string): Promise<ImportSour
   const normalizedPath = inputPath.trim().replace(/^["']|["']$/g, "");
   const countsByKind: Record<ImportSourceKind, number> = {
     chatgpt_export: 0,
+    conversation_json: 0,
     json_document: 0,
     text_document: 0,
     pdf_document: 0,
@@ -154,6 +163,10 @@ export async function inspectImportSource(inputPath: string): Promise<ImportSour
 
   if (countsByKind.chatgpt_export > 0) {
     notes.push("ChatGPT export JSON files will run through the conversation pipeline.");
+  }
+
+  if (countsByKind.conversation_json > 0) {
+    notes.push("Generic conversation-shaped JSON files will run through the conversation pipeline.");
   }
 
   if (countsByKind.text_document > 0 || countsByKind.json_document > 0) {
@@ -214,7 +227,7 @@ export async function runImportSource(
     }
 
     try {
-      if (entry.kind === "chatgpt_export") {
+      if (entry.kind === "chatgpt_export" || entry.kind === "conversation_json") {
         const diagnostics = await runConversationPipeline(filePath, outputRoot);
         if (diagnostics.status !== "success") {
           filesFailed += 1;
@@ -229,13 +242,20 @@ export async function runImportSource(
 
         conversationFilesProcessed += 1;
         filesImported += 1;
-        const conversationArtifacts = collectConversationArtifacts(outputRoot);
+        const conversationArtifacts = await collectConversationArtifacts(outputRoot, diagnostics);
         artifacts.push(...conversationArtifacts);
         results.push({
           path: filePath,
           kind: entry.kind,
           status: "imported",
-          message: "Conversation export processed.",
+          message:
+            (entry.kind === "chatgpt_export" ? "ChatGPT conversation import processed: " : "Conversation JSON import processed: ") +
+            diagnostics.conversations_found +
+            " conversation(s), " +
+            diagnostics.dataset_topic_segments +
+            " topic segment(s), " +
+            diagnostics.dataset_prompt_response_pairs +
+            " prompt/response pair(s).",
           artifacts: conversationArtifacts
         });
         continue;
@@ -404,13 +424,18 @@ async function importGenericFile(
     };
   }
 
-  const rawText = await readGenericTextFile(filePath, kind);
+  if (kind !== "json_document" && kind !== "text_document") {
+    throw new Error("Unsupported generic text import kind: " + kind);
+  }
+
+  const genericTextKind: "json_document" | "text_document" = kind;
+  const rawText = await readGenericTextFile(filePath, genericTextKind);
   const redacted = redactText(rawText);
   const archivePath = path.join(archiveDir, archiveName + ".md");
 
   await writeTextFile(archivePath, renderGenericArchiveMarkdown({
     sourceId,
-    kind,
+    kind: genericTextKind,
     importedAt,
     filePath,
     content: rawText
@@ -493,7 +518,6 @@ function buildRunArtifacts(outputRoot: string, resultArtifacts: ImportArtifact[]
   const merged = [
     { label: "Output root", path: outputRoot },
     { label: "Imports root", path: path.join(outputRoot, "imports") },
-    { label: "Source archive root", path: path.join(outputRoot, "source_archive") },
     { label: "DB root", path: path.join(outputRoot, "db") },
     ...resultArtifacts
   ];
@@ -501,13 +525,108 @@ function buildRunArtifacts(outputRoot: string, resultArtifacts: ImportArtifact[]
   return dedupeArtifacts(merged);
 }
 
-function collectConversationArtifacts(outputRoot: string): ImportArtifact[] {
-  return [
+async function collectConversationArtifacts(
+  outputRoot: string,
+  diagnostics: Awaited<ReturnType<typeof runConversationPipeline>>
+): Promise<ImportArtifact[]> {
+  const datasetsRoot = path.join(outputRoot, "datasets");
+  const dbRoot = path.join(outputRoot, "db");
+  const datasetPaths = buildDatasetPaths(outputRoot, diagnostics.dataset_version);
+
+  const artifacts: ImportArtifact[] = [
     { label: "Output root", path: outputRoot },
+    { label: "Latest archive notification", path: path.join(outputRoot, "notifications", "latest-archive-event.json") },
     { label: "Notifications", path: path.join(outputRoot, "notifications") },
-    { label: "DB root", path: path.join(outputRoot, "db") },
-    { label: "Diagnostics", path: path.join(outputRoot, "diagnostics") }
+    { label: "Diagnostics root", path: path.join(outputRoot, "diagnostics") },
+    { label: "Latest diagnostics", path: path.join(outputRoot, "diagnostics", "latest-run.json") },
+    { label: "Diagnostics history file", path: path.join(outputRoot, "diagnostics", "history", diagnostics.run_id + ".json") },
+    { label: "DB root", path: dbRoot },
+    { label: "Raw conversations", path: path.join(dbRoot, "tier0_raw", "conversations.jsonl") },
+    { label: "Processed topic segments", path: path.join(dbRoot, "tier1_processed", "topic_segments.jsonl") },
+    { label: "Prompt/response pairs", path: path.join(dbRoot, "tier1_processed", "prompt_response_pairs.jsonl") },
+    { label: "Micro segments", path: path.join(dbRoot, "tier1_processed", "micro_segments.jsonl") },
+    { label: "Latest dataset manifest", path: path.join(dbRoot, "manifests", "latest-dataset-run.json") },
+    { label: "Latest raw ingest manifest", path: path.join(dbRoot, "manifests", "latest-raw-ingest.json") },
+    { label: "Datasets root", path: datasetsRoot },
+    { label: "Current topic segments dataset", path: datasetPaths.currentTopicSegmentsFile },
+    { label: "Current prompt/response dataset", path: datasetPaths.currentPromptResponsePairsFile },
+    { label: "Current micro segments dataset", path: datasetPaths.currentMicroSegmentsFile }
   ];
+
+  const grokAttachmentManifest = path.join(dbRoot, "manifests", "latest-grok-attachment-archive.json");
+  const grokAttachmentSummary = await readGrokAttachmentManifestSummary(grokAttachmentManifest);
+  if (grokAttachmentSummary) {
+    artifacts.push(
+      {
+        label:
+          "Grok attachment manifest (" +
+          grokAttachmentSummary.attachments_archived +
+          " archived / " +
+          grokAttachmentSummary.attachments_missing +
+          " missing)",
+        path: grokAttachmentManifest
+      },
+      {
+        label:
+          "Grok attachments archive (" +
+          grokAttachmentSummary.attachments_archived +
+          " of " +
+          grokAttachmentSummary.attachments_referenced +
+          ")",
+        path: path.join(outputRoot, "source_archive", "grok_attachments")
+      }
+    );
+  }
+
+  const latestArchiveOutput = await readLatestArchiveOutputFile(outputRoot);
+  if (latestArchiveOutput) {
+    artifacts.push({ label: "Latest archived markdown", path: latestArchiveOutput });
+  }
+
+  return dedupeArtifacts(artifacts);
+}
+
+async function readGrokAttachmentManifestSummary(
+  manifestPath: string
+): Promise<GrokAttachmentManifestSummary | null> {
+  if (!(await fileExists(manifestPath))) {
+    return null;
+  }
+
+  try {
+    const raw = await fs.readFile(manifestPath, "utf-8");
+    const parsed = JSON.parse(raw) as Partial<GrokAttachmentManifestSummary>;
+    if (
+      typeof parsed.attachments_referenced === "number" &&
+      typeof parsed.attachments_archived === "number" &&
+      typeof parsed.attachments_missing === "number"
+    ) {
+      return {
+        attachments_referenced: parsed.attachments_referenced,
+        attachments_archived: parsed.attachments_archived,
+        attachments_missing: parsed.attachments_missing
+      };
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+async function readLatestArchiveOutputFile(outputRoot: string): Promise<string | null> {
+  const latestNotificationPath = path.join(outputRoot, "notifications", "latest-archive-event.json");
+  if (!(await fileExists(latestNotificationPath))) {
+    return null;
+  }
+
+  try {
+    const raw = await fs.readFile(latestNotificationPath, "utf-8");
+    const parsed = JSON.parse(raw) as { output_file?: string };
+    return typeof parsed.output_file === "string" ? parsed.output_file : null;
+  } catch {
+    return null;
+  }
 }
 
 function dedupeArtifacts(items: ImportArtifact[]): ImportArtifact[] {
@@ -591,14 +710,25 @@ async function classifyImportFile(filePath: string): Promise<ImportSourceEntry> 
     try {
       const raw = await fs.readFile(filePath, "utf-8");
       const parsed = JSON.parse(raw);
-      const conversations = parseChatGPTExport(parsed).conversations;
+      const detected = detectAndParseConversationExport(parsed);
 
-      if (conversations.length > 0) {
+      if (detected.kind === "chatgpt_export") {
         return {
           path: filePath,
           kind: "chatgpt_export",
           supported: true,
           reason: "ChatGPT export detected."
+        };
+      }
+
+      if (detected.kind === "grok_export" || detected.kind === "generic_conversation") {
+        return {
+          path: filePath,
+          kind: "conversation_json",
+          supported: true,
+          reason: detected.kind === "grok_export"
+            ? "Grok export detected."
+            : "Generic conversation-shaped JSON detected."
         };
       }
 

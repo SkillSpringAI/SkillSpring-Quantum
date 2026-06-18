@@ -3,6 +3,7 @@ import Topbar from "../components/Topbar";
 import DetailPane from "../components/DetailPane";
 import DashboardScreen from "../screens/DashboardScreen";
 import ImportsScreen from "../screens/ImportsScreen";
+import RetrievalScreen from "../screens/RetrievalScreen";
 import DiagnosticsScreen from "../screens/DiagnosticsScreen";
 import ReviewQueueScreen from "../screens/ReviewQueueScreen";
 import DbBrowserScreen from "../screens/DbBrowserScreen";
@@ -20,6 +21,8 @@ function ScreenRouter() {
       return <DashboardScreen />;
     case "imports":
       return <ImportsScreen />;
+    case "retrieval":
+      return <RetrievalScreen />;
     case "organized-output":
       return <OrganizedOutputScreen />;
     case "datasets":

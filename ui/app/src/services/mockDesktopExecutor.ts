@@ -17,6 +17,11 @@ import type {
   MarkdownArchivePayload,
   InspectImportSourcePayload,
   ImportHistoryPayload,
+  QueryImportHistoryPayload,
+  ImportRetrievalIndexPayload,
+  RetrievalSavedViewsPayload,
+  SaveRetrievalViewPayload,
+  DeleteRetrievalViewPayload,
   OpenPathPayload,
   DatasetLatestRunPayload
 } from "../types/bridge";
@@ -72,9 +77,41 @@ export async function executeMockDesktopCommand(
         const p = payload as ImportHistoryPayload;
         return fromBridge(await bridge.imports.readHistory(p.outputRoot, p.limit));
       }
+      case "imports.historyQuery": {
+        const p = payload as QueryImportHistoryPayload;
+        return fromBridge(await bridge.imports.queryHistory(p.outputRoot, p));
+      }
+      case "imports.retrievalIndex": {
+        const p = payload as ImportRetrievalIndexPayload;
+        return fromBridge(await bridge.imports.readRetrievalIndex(p.outputRoot));
+      }
+      case "retrieval.savedViews.read": {
+        const p = payload as RetrievalSavedViewsPayload;
+        return fromBridge(await bridge.retrieval.readSavedViews(p.outputRoot));
+      }
+      case "retrieval.savedViews.save": {
+        const p = payload as SaveRetrievalViewPayload;
+        return fromBridge(
+          await bridge.retrieval.saveSavedView(
+            p.outputRoot,
+            p.name,
+            p.filters,
+            p.selectedRecord,
+            p.selectedSegment
+          )
+        );
+      }
+      case "retrieval.savedViews.delete": {
+        const p = payload as DeleteRetrievalViewPayload;
+        return fromBridge(await bridge.retrieval.deleteSavedView(p.outputRoot, p.id));
+      }
       case "datasets.latestRun": {
         const p = payload as DatasetLatestRunPayload;
         return fromBridge(await bridge.datasets.readLatestRun(p.outputRoot));
+      }
+      case "datasets.segmentRetrievalIndex": {
+        const p = payload as DatasetLatestRunPayload;
+        return fromBridge(await bridge.datasets.readSegmentRetrievalIndex(p.outputRoot));
       }
       case "governance.listRules":
         return fromBridge(await bridge.governance.listRules());
@@ -189,7 +226,9 @@ export async function executeMockDesktopCommand(
         genericDocumentsProcessed: 0,
         pdfFilesArchived: 0,
         unsupportedFilesSkipped: 0,
-        results: []
+        artifacts: [],
+        results: [],
+        retrievalSummary: null
       }, "Mock import run accepted.");
     }
 
@@ -205,6 +244,84 @@ export async function executeMockDesktopCommand(
       }, "Mock import history returned.");
     }
 
+    case "imports.historyQuery": {
+      const p = payload as QueryImportHistoryPayload;
+      return ok(command, {
+        outputRoot: p.outputRoot,
+        importsRoot: p.outputRoot + "/imports",
+        historyDir: p.outputRoot + "/imports/history",
+        filters: {
+          vendor: p.vendor ?? "",
+          topic: p.topic ?? "",
+          text: p.text ?? "",
+          from: p.from ?? "",
+          to: p.to ?? "",
+          status: p.status ?? "all"
+        },
+        runs: []
+      }, "Mock import history query returned.");
+    }
+
+    case "imports.retrievalIndex": {
+      const p = payload as ImportRetrievalIndexPayload;
+      return ok(command, {
+        outputRoot: p.outputRoot,
+        importsRoot: p.outputRoot + "/imports",
+        latestFile: p.outputRoot + "/imports/latest-retrieval-index.json",
+        latest: null
+      }, "Mock import retrieval index returned.");
+    }
+
+    case "retrieval.savedViews.read": {
+      const p = payload as RetrievalSavedViewsPayload;
+      return ok(command, {
+        outputRoot: p.outputRoot,
+        retrievalRoot: p.outputRoot + "/retrieval",
+        latestFile: p.outputRoot + "/retrieval/saved-views.json",
+        latest: null
+      }, "Mock retrieval saved views returned.");
+    }
+
+    case "retrieval.savedViews.save": {
+      const p = payload as SaveRetrievalViewPayload;
+      return ok(command, {
+        outputRoot: p.outputRoot,
+        retrievalRoot: p.outputRoot + "/retrieval",
+        latestFile: p.outputRoot + "/retrieval/saved-views.json",
+        latest: {
+          schemaVersion: "retrieval_saved_views.v1",
+          updatedAt: new Date().toISOString(),
+          outputRoot: p.outputRoot,
+          views: [
+            {
+              id: "mock-view",
+              name: p.name,
+              filters: p.filters,
+              selectedRecord: p.selectedRecord,
+              selectedSegment: p.selectedSegment,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            }
+          ]
+        }
+      }, "Mock retrieval saved view stored.");
+    }
+
+    case "retrieval.savedViews.delete": {
+      const p = payload as DeleteRetrievalViewPayload;
+      return ok(command, {
+        outputRoot: p.outputRoot,
+        retrievalRoot: p.outputRoot + "/retrieval",
+        latestFile: p.outputRoot + "/retrieval/saved-views.json",
+        latest: {
+          schemaVersion: "retrieval_saved_views.v1",
+          updatedAt: new Date().toISOString(),
+          outputRoot: p.outputRoot,
+          views: []
+        }
+      }, "Mock retrieval saved view deleted.");
+    }
+
     case "datasets.latestRun": {
       const p = payload as DatasetLatestRunPayload;
       return ok(command, {
@@ -213,6 +330,16 @@ export async function executeMockDesktopCommand(
         manifestPath: p.outputRoot + "/db/manifests/latest-dataset-run.json",
         latest: null
       }, "Mock dataset summary returned.");
+    }
+
+    case "datasets.segmentRetrievalIndex": {
+      const p = payload as DatasetLatestRunPayload;
+      return ok(command, {
+        outputRoot: p.outputRoot,
+        retrievalRoot: p.outputRoot + "/retrieval",
+        latestFile: p.outputRoot + "/retrieval/latest-segment-index.json",
+        latest: null
+      }, "Mock segment retrieval index returned.");
     }
 
     case "governance.listRules": {

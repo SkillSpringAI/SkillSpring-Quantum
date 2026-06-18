@@ -10,6 +10,16 @@ import { writeTierRecords, writeDbManifest } from "../db/tieredStore.js";
 import { resolveOutputRoot } from "../utils/paths.js";
 import { extractPdfText } from "./pdfText.js";
 import { buildDatasetPaths } from "../pipeline/datasetVersioning.js";
+import {
+  buildImportRunRetrievalSummary,
+  formatVendorSourceList,
+  readConversationImportMetadata,
+  type ConversationImportMetadata,
+  type DocumentImportMetadata,
+  type ImportFileMetadata,
+  type ImportRunRetrievalSummary
+} from "./importMetadata.js";
+import { writeImportRetrievalIndex } from "./importRetrievalIndex.js";
 
 const TEXT_EXTENSIONS = new Set([
   ".txt",
@@ -51,6 +61,7 @@ export interface ImportRunFileResult {
   status: "imported" | "skipped" | "failed";
   message: string;
   artifacts?: ImportArtifact[];
+  metadata?: ImportFileMetadata;
 }
 
 export interface ImportArtifact {
@@ -78,6 +89,7 @@ export interface ImportRunSummary {
   unsupportedFilesSkipped: number;
   artifacts: ImportArtifact[];
   results: ImportRunFileResult[];
+  retrievalSummary: ImportRunRetrievalSummary | null;
 }
 
 interface SourceDocumentRecord {
@@ -154,23 +166,23 @@ export async function inspectImportSource(inputPath: string): Promise<ImportSour
   }
 
   if (countsByKind.pdf_document > 0) {
-    notes.push("PDF files are archived intact and Quantum will attempt local text extraction when possible.");
+    notes.push("PDF files can be archived intact, with local text extraction attempted when available.");
   }
 
   if (countsByKind.unsupported > 0) {
-    notes.push("Unsupported file types will be skipped during import.");
+    notes.push("Unsupported file types will be skipped so the import stays focused on formats Quantum recognizes.");
   }
 
   if (countsByKind.chatgpt_export > 0) {
-    notes.push("ChatGPT export JSON files will run through the conversation pipeline.");
+    notes.push("Recognized ChatGPT exports will be imported as conversations and turned into archives plus dataset records.");
   }
 
   if (countsByKind.conversation_json > 0) {
-    notes.push("Generic conversation-shaped JSON files will run through the conversation pipeline.");
+    notes.push("Vendor or recovered conversation JSON files will be imported as conversations when their thread structure can be recognized.");
   }
 
   if (countsByKind.text_document > 0 || countsByKind.json_document > 0) {
-    notes.push("Text and generic JSON files will be archived and added to anonymized source document datasets.");
+    notes.push("Text and JSON documents can be archived and added to anonymized source-document datasets.");
   }
 
   const supportedFiles = entries.filter((entry) => entry.supported).length;
@@ -228,6 +240,7 @@ export async function runImportSource(
 
     try {
       if (entry.kind === "chatgpt_export" || entry.kind === "conversation_json") {
+        const metadata = await readConversationImportMetadata(filePath);
         const diagnostics = await runConversationPipeline(filePath, outputRoot);
         if (diagnostics.status !== "success") {
           filesFailed += 1;
@@ -235,7 +248,8 @@ export async function runImportSource(
             path: filePath,
             kind: entry.kind,
             status: "failed",
-            message: "Conversation pipeline failed."
+            message: "Conversation pipeline failed.",
+            metadata: metadata ?? undefined
           });
           continue;
         }
@@ -248,15 +262,9 @@ export async function runImportSource(
           path: filePath,
           kind: entry.kind,
           status: "imported",
-          message:
-            (entry.kind === "chatgpt_export" ? "ChatGPT conversation import processed: " : "Conversation JSON import processed: ") +
-            diagnostics.conversations_found +
-            " conversation(s), " +
-            diagnostics.dataset_topic_segments +
-            " topic segment(s), " +
-            diagnostics.dataset_prompt_response_pairs +
-            " prompt/response pair(s).",
-          artifacts: conversationArtifacts
+          message: buildConversationImportResultMessage(metadata, diagnostics),
+          artifacts: conversationArtifacts,
+          metadata: metadata ?? undefined
         });
         continue;
       }
@@ -279,11 +287,9 @@ export async function runImportSource(
         path: filePath,
         kind: entry.kind,
         status: "imported",
-        message:
-          entry.kind === "pdf_document"
-            ? "PDF archived with metadata."
-            : "Generic document archived and dataset record written.",
-        artifacts: imported.artifacts
+        message: buildDocumentImportResultMessage(imported.metadata),
+        artifacts: imported.artifacts,
+        metadata: imported.metadata
       });
     } catch (error) {
       filesFailed += 1;
@@ -295,6 +301,8 @@ export async function runImportSource(
       });
     }
   }
+
+  const retrievalSummary = buildImportRunRetrievalSummary(results);
 
   const historyPath = await writeImportRunHistory(outputRoot, runAt, {
     runAt,
@@ -308,7 +316,8 @@ export async function runImportSource(
     pdfFilesArchived,
     unsupportedFilesSkipped,
     artifacts: buildRunArtifacts(outputRoot, artifacts),
-    results
+    results,
+    retrievalSummary
   });
 
   const result: ImportRunSummary = {
@@ -324,13 +333,88 @@ export async function runImportSource(
     pdfFilesArchived,
     unsupportedFilesSkipped,
     artifacts: buildRunArtifacts(outputRoot, artifacts),
-    results
+    results,
+    retrievalSummary
   };
 
   const dbRoot = path.join(outputRoot, "db");
   await writeDbManifest(dbRoot, "latest-source-import.json", result);
+  await writeImportRetrievalIndex(outputRoot, result);
 
   return result;
+}
+
+export function buildConversationImportResultMessage(
+  metadata: ConversationImportMetadata | null,
+  diagnostics: Awaited<ReturnType<typeof runConversationPipeline>>
+): string {
+  const label = metadata?.detectedLabel ?? "Conversation import";
+  const details = [
+    diagnostics.conversations_found + " conversation(s)",
+    diagnostics.dataset_topic_segments + " topic segment(s)",
+    diagnostics.dataset_prompt_response_pairs + " prompt/response pair(s)"
+  ];
+
+  if (metadata?.attachmentCount) {
+    if (metadata.detectedKind === "grok_export" && diagnostics.attachments_referenced > 0) {
+      details.push(
+        diagnostics.attachments_archived +
+          " attachment blob(s) preserved"
+      );
+      if (diagnostics.attachments_missing > 0) {
+        details.push(
+          diagnostics.attachments_missing +
+            " referenced blob(s) missing"
+        );
+      }
+    } else {
+      details.push(
+        metadata.attachmentCount + " attachment reference(s) detected"
+      );
+    }
+  }
+
+  return label + " processed: " + details.join(", ") + ".";
+}
+
+export function buildDocumentImportResultMessage(
+  metadata: DocumentImportMetadata
+): string {
+  const documentLabel = formatDocumentKindLabel(metadata.sourceKind);
+
+  if (metadata.sourceKind === "pdf_document") {
+    if (metadata.parseStatus === "text_extracted") {
+      return (
+        documentLabel +
+        " archived with extracted text and source-document dataset record written."
+      );
+    }
+
+    return (
+      documentLabel +
+      " archived intact without extracted text; source-document dataset record still written."
+    );
+  }
+
+  return (
+    documentLabel +
+    " archived and source-document dataset record written."
+  );
+}
+
+function formatDocumentKindLabel(
+  sourceKind: DocumentImportMetadata["sourceKind"]
+): string {
+  switch (sourceKind) {
+    case "json_document":
+      return "JSON document";
+    case "text_document":
+      return "Text document";
+    case "pdf_document":
+      return "PDF document";
+    default:
+      return "Document";
+  }
 }
 
 async function importGenericFile(
@@ -338,7 +422,7 @@ async function importGenericFile(
   outputRoot: string,
   kind: Exclude<ImportSourceKind, "chatgpt_export" | "unsupported">,
   importedAt: string
-): Promise<{ artifacts: ImportArtifact[] }> {
+): Promise<{ artifacts: ImportArtifact[]; metadata: DocumentImportMetadata }> {
   const stat = await fs.stat(filePath);
   const ext = path.extname(filePath).toLowerCase();
   const sourceId = sha256(filePath + "|" + stat.size + "|" + stat.mtimeMs);
@@ -420,7 +504,15 @@ async function importGenericFile(
         { label: "PDF archive", path: archivePath },
         { label: "PDF preview markdown", path: summaryPath },
         { label: "Source documents collection", path: path.join(dbRoot, "tier1_processed", "source_documents.jsonl") }
-      ]
+      ],
+      metadata: {
+        sourceCategory: "document",
+        sourceKind: kind,
+        fileExtension: ext,
+        sizeBytes: stat.size,
+        parseStatus: extraction.ok ? "text_extracted" : "binary_archived_only",
+        textLength: extraction.ok ? extraction.text.length : 0
+      }
     };
   }
 
@@ -476,7 +568,15 @@ async function importGenericFile(
     artifacts: [
       { label: "Archived markdown", path: archivePath },
       { label: "Source documents collection", path: path.join(dbRoot, "tier1_processed", "source_documents.jsonl") }
-    ]
+    ],
+    metadata: {
+      sourceCategory: "document",
+      sourceKind: kind,
+      fileExtension: ext,
+      sizeBytes: stat.size,
+      parseStatus: "text_extracted",
+      textLength: rawText.length
+    }
   };
 }
 
@@ -693,7 +793,7 @@ async function classifyImportFile(filePath: string): Promise<ImportSourceEntry> 
       path: filePath,
       kind: "pdf_document",
       supported: true,
-      reason: "PDF will be archived intact with metadata."
+      reason: "Archive the PDF and attempt local text extraction when available."
     };
   }
 
@@ -702,7 +802,7 @@ async function classifyImportFile(filePath: string): Promise<ImportSourceEntry> 
       path: filePath,
       kind: "text_document",
       supported: true,
-      reason: "Text document can be archived and anonymized."
+      reason: "Archive the text file and add a source-document dataset record."
     };
   }
 
@@ -717,7 +817,7 @@ async function classifyImportFile(filePath: string): Promise<ImportSourceEntry> 
           path: filePath,
           kind: "chatgpt_export",
           supported: true,
-          reason: "ChatGPT export detected."
+          reason: "Recognized as a ChatGPT export and will be imported as conversations."
         };
       }
 
@@ -727,8 +827,8 @@ async function classifyImportFile(filePath: string): Promise<ImportSourceEntry> 
           kind: "conversation_json",
           supported: true,
           reason: detected.kind === "grok_export"
-            ? "Grok export detected."
-            : "Generic conversation-shaped JSON detected."
+            ? "Recognized as a Grok export and will be imported as conversations."
+            : "Recognized as conversation JSON and will be imported as conversations."
         };
       }
 
@@ -736,14 +836,14 @@ async function classifyImportFile(filePath: string): Promise<ImportSourceEntry> 
         path: filePath,
         kind: "json_document",
         supported: true,
-        reason: "Generic JSON document can be archived and anonymized."
+        reason: "Archive the JSON file and add a source-document dataset record."
       };
     } catch {
       return {
         path: filePath,
         kind: "text_document",
         supported: true,
-        reason: "Invalid JSON will be treated as raw text."
+        reason: "Treat as raw text, archive it, and add a source-document dataset record."
       };
     }
   }
@@ -752,7 +852,7 @@ async function classifyImportFile(filePath: string): Promise<ImportSourceEntry> 
     path: filePath,
     kind: "unsupported",
     supported: false,
-    reason: "File type is not supported yet."
+    reason: "Skip this file because it is outside the current recognized import set."
   };
 }
 

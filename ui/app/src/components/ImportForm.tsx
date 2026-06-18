@@ -45,7 +45,7 @@ export default function ImportForm(props: ImportFormProps) {
               className="text-input"
               value={props.value.inputFile}
               onChange={(e) => update("inputFile", e.target.value)}
-              placeholder="C:\Users\Laptop\Desktop\ChatGPT Exports\conversations-000.json"
+              placeholder="C:\Users\Laptop\Desktop\AI Exports\claude\conversation.json"
               disabled={props.disabled}
             />
             <button className="primary-btn" onClick={props.onBrowseSource} disabled={props.disabled}>
@@ -61,7 +61,7 @@ export default function ImportForm(props: ImportFormProps) {
               className="text-input"
               value={props.value.inputFolder}
               onChange={(e) => update("inputFolder", e.target.value)}
-              placeholder="C:\Users\Laptop\Desktop\ChatGPT Exports"
+              placeholder="C:\Users\Laptop\Desktop\AI Exports"
               disabled={props.disabled}
             />
             <button className="primary-btn" onClick={props.onBrowseSource} disabled={props.disabled}>

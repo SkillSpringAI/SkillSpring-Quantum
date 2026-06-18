@@ -122,11 +122,66 @@ function registerIpc() {
     return result.ok ? ok(result, "Import history loaded.") : fail(result, "Failed to load import history.");
   });
 
+  ipcMain.handle("imports:history:query", async (_event, payload = {}) => {
+    const args = [payload.outputRoot || "organized_output"];
+    const filters = payload.filters || {};
+
+    if (filters.vendor) args.push("--vendor", filters.vendor);
+    if (filters.topic) args.push("--topic", filters.topic);
+    if (filters.text) args.push("--text", filters.text);
+    if (filters.from) args.push("--from", filters.from);
+    if (filters.to) args.push("--to", filters.to);
+    if (filters.status && filters.status !== "all") args.push("--status", filters.status);
+
+    const result = await runTsx("core/imports/queryImportHistory.ts", args);
+    return result.ok ? ok(result, "Import history query loaded.") : fail(result, "Failed to query import history.");
+  });
+
+  ipcMain.handle("imports:retrievalIndex", async (_event, payload = {}) => {
+    const result = await runTsx("core/imports/readImportRetrievalIndex.ts", [
+      payload.outputRoot || "organized_output"
+    ]);
+    return result.ok ? ok(result, "Import retrieval index loaded.") : fail(result, "Failed to load import retrieval index.");
+  });
+
+  ipcMain.handle("retrieval:savedViews:read", async (_event, payload = {}) => {
+    const result = await runTsx("core/retrieval/readSavedViews.ts", [
+      payload.outputRoot || "organized_output"
+    ]);
+    return result.ok ? ok(result, "Saved retrieval views loaded.") : fail(result, "Failed to load saved retrieval views.");
+  });
+
+  ipcMain.handle("retrieval:savedViews:save", async (_event, payload = {}) => {
+    const result = await runTsx("core/retrieval/saveSavedView.ts", [
+      payload.outputRoot || "organized_output",
+      payload.name || "",
+      JSON.stringify(payload.filters || {}),
+      JSON.stringify(payload.selectedRecord || null),
+      JSON.stringify(payload.selectedSegment || null)
+    ]);
+    return result.ok ? ok(result, "Saved retrieval view stored.") : fail(result, "Failed to store saved retrieval view.");
+  });
+
+  ipcMain.handle("retrieval:savedViews:delete", async (_event, payload = {}) => {
+    const result = await runTsx("core/retrieval/deleteSavedView.ts", [
+      payload.outputRoot || "organized_output",
+      payload.id || ""
+    ]);
+    return result.ok ? ok(result, "Saved retrieval view deleted.") : fail(result, "Failed to delete saved retrieval view.");
+  });
+
   ipcMain.handle("datasets:latestRun", async (_event, payload = {}) => {
     const result = await runTsx("core/pipeline/readLatestDatasetRun.ts", [
       payload.outputRoot || "organized_output"
     ]);
     return result.ok ? ok(result, "Dataset summary loaded.") : fail(result, "Failed to load dataset summary.");
+  });
+
+  ipcMain.handle("datasets:segmentRetrievalIndex", async (_event, payload = {}) => {
+    const result = await runTsx("core/pipeline/readSegmentRetrievalIndex.ts", [
+      payload.outputRoot || "organized_output"
+    ]);
+    return result.ok ? ok(result, "Segment retrieval index loaded.") : fail(result, "Failed to load segment retrieval index.");
   });
 
   ipcMain.handle("governance:listRules", async () => {

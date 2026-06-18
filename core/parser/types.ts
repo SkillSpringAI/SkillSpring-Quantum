@@ -18,7 +18,7 @@ export interface ConversationMessage {
 
 export interface Conversation {
   id: string;
-  source: "chatgpt" | "claude" | "gemini" | "grok" | "generic";
+  source: "chatgpt" | "claude" | "gemini" | "grok" | "copilot" | "generic";
   title?: string;
   createdAt?: string;
   participants: string[];

@@ -2,7 +2,13 @@ export type DesktopCommandName =
   | "imports.run"
   | "imports.inspect"
   | "imports.history"
+  | "imports.historyQuery"
+  | "imports.retrievalIndex"
+  | "retrieval.savedViews.read"
+  | "retrieval.savedViews.save"
+  | "retrieval.savedViews.delete"
   | "datasets.latestRun"
+  | "datasets.segmentRetrievalIndex"
   | "shell.openPath"
   | "dialog.pickFile"
   | "dialog.pickFolder"
@@ -131,6 +137,52 @@ export interface InspectImportSourcePayload {
 export interface ImportHistoryPayload {
   outputRoot: string;
   limit: number;
+}
+
+export interface QueryImportHistoryPayload {
+  outputRoot: string;
+  vendor?: string;
+  topic?: string;
+  text?: string;
+  from?: string;
+  to?: string;
+  status?: "all" | "imported" | "skipped" | "failed";
+}
+
+export interface ImportRetrievalIndexPayload {
+  outputRoot: string;
+}
+
+export interface RetrievalSavedViewsPayload {
+  outputRoot: string;
+}
+
+export interface SaveRetrievalViewPayload {
+  outputRoot: string;
+  name: string;
+  filters: {
+    text: string;
+    vendor: string;
+    topic: string;
+    status: "all" | "imported" | "skipped" | "failed";
+    from: string;
+    to: string;
+  };
+  selectedRecord?: {
+    runAt: string;
+    filePath: string;
+  };
+  selectedSegment?: {
+    runId: string;
+    conversationId: string;
+    startIndex: number;
+    endIndex: number;
+  };
+}
+
+export interface DeleteRetrievalViewPayload {
+  outputRoot: string;
+  id: string;
 }
 
 export interface OpenPathPayload {

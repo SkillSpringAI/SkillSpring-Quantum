@@ -3,6 +3,7 @@ import type { Conversation, ConversationMessage, ParseResult, Role } from "./typ
 
 interface GenericMessageLike {
   id?: string;
+  uuid?: string;
   role?: string;
   author?: string;
   speaker?: string;
@@ -28,6 +29,7 @@ interface GenericMessageLike {
 
 interface GenericConversationLike {
   id?: string;
+  uuid?: string;
   conversation_id?: string;
   title?: string;
   name?: string;
@@ -44,6 +46,8 @@ interface GenericConversationLike {
     turns?: unknown;
   };
 }
+
+type InferredConversationSource = Conversation["source"];
 
 function mapRole(role?: string): Role {
   switch ((role || "").toLowerCase()) {
@@ -148,7 +152,7 @@ function toMessage(value: GenericMessageLike, index: number): ConversationMessag
   if (!text) return null;
 
   return {
-    id: value.id || "message-" + index,
+    id: value.id ?? value.uuid ?? "message-" + index,
     role: mapRole(value.role ?? value.author ?? value.speaker ?? value.sender ?? value.source ?? value.type),
     text: normalizeWhitespace(text),
     timestamp: normalizeTimestamp(
@@ -189,8 +193,8 @@ function parseSingleConversation(raw: GenericConversationLike, index: number): C
   const createdAt = normalizeTimestamp(raw.created_at ?? raw.createdAt) ?? messages.find((message) => message.timestamp)?.timestamp;
 
   return {
-    id: raw.conversation_id ?? raw.id ?? randomUUID(),
-    source: "generic",
+    id: raw.conversation_id ?? raw.id ?? raw.uuid ?? randomUUID(),
+    source: inferConversationSource(raw, messages),
     title: raw.title ?? raw.name ?? raw.subject ?? "Imported Conversation " + (index + 1),
     createdAt,
     participants: ["user", "assistant"],
@@ -258,4 +262,26 @@ function normalizeWhitespace(value: string): string {
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+function inferConversationSource(
+  raw: GenericConversationLike,
+  messages: ConversationMessage[]
+): InferredConversationSource {
+  const candidates = [
+    raw.title,
+    raw.name,
+    raw.subject,
+    ...messages.slice(0, 4).map((message) => message.text.slice(0, 160))
+  ]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .join(" ")
+    .toLowerCase();
+
+  if (candidates.includes("claude")) return "claude";
+  if (candidates.includes("gemini")) return "gemini";
+  if (candidates.includes("grok")) return "grok";
+  if (candidates.includes("copilot")) return "copilot";
+
+  return "generic";
 }

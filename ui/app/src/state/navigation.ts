@@ -1,6 +1,7 @@
 export type ScreenId =
   | "dashboard"
   | "imports"
+  | "retrieval"
   | "organized-output"
   | "datasets"
   | "tiered-db"
@@ -17,6 +18,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { id: "dashboard", label: "Dashboard" },
   { id: "imports", label: "Imports" },
+  { id: "retrieval", label: "Retrieval" },
   { id: "organized-output", label: "Organized Output" },
   { id: "datasets", label: "Datasets" },
   { id: "tiered-db", label: "Tiered DB" },

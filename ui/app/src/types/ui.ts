@@ -23,9 +23,39 @@ declare global {
         inspectSource: (inputPath: string) => Promise<unknown>;
         runSource: (inputPath: string, outputRoot: string) => Promise<unknown>;
         readHistory: (outputRoot: string, limit: number) => Promise<unknown>;
+        queryHistory: (outputRoot: string, filters: {
+          vendor?: string;
+          topic?: string;
+          text?: string;
+          from?: string;
+          to?: string;
+          status?: "all" | "imported" | "skipped" | "failed";
+        }) => Promise<unknown>;
+        readRetrievalIndex: (outputRoot: string) => Promise<unknown>;
+      };
+      retrieval: {
+        readSavedViews: (outputRoot: string) => Promise<unknown>;
+        saveSavedView: (outputRoot: string, name: string, filters: {
+          text: string;
+          vendor: string;
+          topic: string;
+          status: "all" | "imported" | "skipped" | "failed";
+          from: string;
+          to: string;
+        }, selectedRecord?: {
+          runAt: string;
+          filePath: string;
+        }, selectedSegment?: {
+          runId: string;
+          conversationId: string;
+          startIndex: number;
+          endIndex: number;
+        }) => Promise<unknown>;
+        deleteSavedView: (outputRoot: string, id: string) => Promise<unknown>;
       };
       datasets: {
         readLatestRun: (outputRoot: string) => Promise<unknown>;
+        readSegmentRetrievalIndex: (outputRoot: string) => Promise<unknown>;
       };
       governance: {
         listRules: () => Promise<unknown>;

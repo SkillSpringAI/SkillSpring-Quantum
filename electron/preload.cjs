@@ -15,11 +15,22 @@ contextBridge.exposeInMainWorld("skillspringDesktop", {
   imports: {
     inspectSource: (inputPath) => ipcRenderer.invoke("imports:inspect", { inputPath }),
     runSource: (inputPath, outputRoot) => ipcRenderer.invoke("imports:run", { inputPath, outputRoot }),
-    readHistory: (outputRoot, limit) => ipcRenderer.invoke("imports:history", { outputRoot, limit })
+    readHistory: (outputRoot, limit) => ipcRenderer.invoke("imports:history", { outputRoot, limit }),
+    queryHistory: (outputRoot, filters) => ipcRenderer.invoke("imports:history:query", { outputRoot, filters }),
+    readRetrievalIndex: (outputRoot) => ipcRenderer.invoke("imports:retrievalIndex", { outputRoot })
+  },
+
+  retrieval: {
+    readSavedViews: (outputRoot) => ipcRenderer.invoke("retrieval:savedViews:read", { outputRoot }),
+    saveSavedView: (outputRoot, name, filters, selectedRecord, selectedSegment) =>
+      ipcRenderer.invoke("retrieval:savedViews:save", { outputRoot, name, filters, selectedRecord, selectedSegment }),
+    deleteSavedView: (outputRoot, id) =>
+      ipcRenderer.invoke("retrieval:savedViews:delete", { outputRoot, id })
   },
 
   datasets: {
-    readLatestRun: (outputRoot) => ipcRenderer.invoke("datasets:latestRun", { outputRoot })
+    readLatestRun: (outputRoot) => ipcRenderer.invoke("datasets:latestRun", { outputRoot }),
+    readSegmentRetrievalIndex: (outputRoot) => ipcRenderer.invoke("datasets:segmentRetrievalIndex", { outputRoot })
   },
 
   governance: {

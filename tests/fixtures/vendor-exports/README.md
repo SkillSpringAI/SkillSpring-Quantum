@@ -1,6 +1,17 @@
-# Vendor Export Fixtures
+# Vendor Export Staging
 
-Place small raw export samples from each vendor here using the following folder structure:
+This folder is for local parser exploration only.
+
+## Repo Rule
+
+- do not commit full raw vendor exports here
+- keep this folder ignored by git except for this README
+- promote only trimmed, minimal, intentionally reviewed fixtures into `tests/fixtures/`
+- if a parser needs a vendor-specific example, extract the smallest representative sample and remove unrelated conversations, attachments, and personal data first
+
+## Local-Only Workflow
+
+You can temporarily place local raw exports here using vendor subfolders such as:
 
 - `tests/fixtures/vendor-exports/claude/`
 - `tests/fixtures/vendor-exports/gemini/`
@@ -9,32 +20,29 @@ Place small raw export samples from each vendor here using the following folder 
 - `tests/fixtures/vendor-exports/deepseek/`
 - `tests/fixtures/vendor-exports/kimi/`
 
-## Guidance
+Keep the raw export structure exactly as the vendor provides it while inspecting locally. Do not normalize inner files before parser work.
 
-- keep the raw export structure exactly as the vendor provides it
-- do not manually normalize inner files before parser work
-- prefer small samples first rather than full history exports
-- if the vendor export includes root manifest JSON plus UUID or blob folders, keep both together
-- include a mix of:
-  - short single-turn conversations
-  - longer multi-turn conversations
-  - code-heavy conversations
-  - conversations with citations, attachments, or tool output if present
+## What Belongs In Git
 
-## Useful inspection command
+Tracked fixtures should live in `tests/fixtures/` and should be:
 
-Use this before implementing a new parser:
+- small
+- anonymized where needed
+- representative of one parser shape or edge case
+- easy to reason about in tests
+
+The current curated examples already follow that model:
+
+- `sample-chatgpt-conversation.json`
+- `sample-claude-conversation.json`
+- `sample-gemini-conversation.json`
+- `sample-grok-export.json`
+- generic conversation shape samples
+
+## Useful Inspection Command
 
 ```powershell
-node .\node_modules\tsx\dist\cli.mjs core\imports\inspectConversationFixture.ts "tests\fixtures\vendor-exports\claude\sample.json"
+node .\node_modules\tsx\dist\cli.mjs core\imports\inspectConversationFixture.ts "tests\fixtures\sample-generic-conversation.json"
 ```
 
-For Grok exports, point the inspector at `prod-grok-backend.json` or `prod-grok-backend 1.json`, not the individual blob folders.
-
-This prints:
-
-- detected parser family
-- top-level keys
-- candidate conversation container paths
-- candidate message field keys
-- sample parsed roles and messages
+If you need to inspect a local raw vendor export, point the command at the untracked file inside this folder.

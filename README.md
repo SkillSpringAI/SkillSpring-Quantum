@@ -1,8 +1,29 @@
 # SkillSpring Quantum
 
-SkillSpring Quantum is a local-first desktop application and processing engine for turning AI exports and general documents into structured, auditable knowledge assets.
+SkillSpring Quantum is a local-first desktop application and processing engine for turning AI conversation exports into structured, auditable knowledge assets.
 
-It is designed to import local files and folders, preserve readable archived versions, and produce anonymized dataset artifacts from the same workflow.
+It is designed to import local exports, preserve readable archived versions, and produce anonymized dataset artifacts from the same workflow.
+
+## First user-facing MVP scope
+
+The first real user-facing iteration of SkillSpring Quantum is focused on major AI conversation exports only:
+
+- ChatGPT / OpenAI
+- Claude
+- Gemini
+- Microsoft Copilot
+- Grok
+
+The user-facing workflow should stay simple:
+
+1. Choose an export file or export folder.
+2. Inspect what Quantum found.
+3. Run the import locally.
+4. Review readable archives and structured dataset output.
+
+Other intake types such as Kimi, DeepSeek, Perplexity, generic JSON, PDFs, mixed local documents, and enterprise conversation systems remain useful expansion paths, but they are not the first user-facing MVP promise.
+
+For MVP discipline, broader document intake such as PDFs, CSVs, Excel files, and Word documents should stay out of the first public/user-facing scope unless actual user demand proves they are a higher priority than the major AI export workflow.
 
 ## Current purpose
 
@@ -11,7 +32,6 @@ The system converts raw exported conversation data into:
 - human-readable archived markdown
 - topic-organized conversation output
 - anonymized dataset-ready JSONL records
-- source document dataset records for generic local files
 - diagnostics, manifests, and audit artifacts
 - tiered local data storage for raw, processed, curated, and private-review records
 - import history and file-level import result visibility
@@ -19,7 +39,17 @@ The system converts raw exported conversation data into:
 
 ## Current intake support
 
-SkillSpring Quantum currently supports:
+There is a difference between the user-facing MVP scope and current internal support.
+
+### User-facing MVP intake
+
+- ChatGPT export JSON files
+- Claude export JSON files or extracted conversation JSON
+- Gemini export JSON or extracted conversation JSON where conversational structure is recoverable
+- Microsoft Copilot conversation export JSON when available
+- Grok export manifest JSON files with referenced attachment blob preservation when the blob folders are present
+
+### Internal and experimental intake already present
 
 - ChatGPT export JSON files
 - Grok export manifest JSON files with referenced attachment blob preservation when the blob folders are present
@@ -36,8 +66,12 @@ A user can currently:
 1. Browse to a file or folder from the desktop app, or enter a path directly.
 2. Inspect what Quantum found before import.
 3. Run the import locally.
-4. Review import history and per-file results.
-5. Open created archive, import, dataset, and DB locations from the UI.
+4. Review recent import history and per-file results.
+5. Run a full-history investigation search across prior imports by vendor, topic, text, date, and status.
+6. Jump directly from an import-history investigation into Retrieval with the current filters and selected conversation file carried over.
+7. Narrow retrieval results across indexed import records and linked dataset segments.
+8. Save named retrieval investigations and reopen them later.
+9. Open created archive, import, dataset, and DB locations from the UI.
 
 ## Core pipeline
 
@@ -75,6 +109,10 @@ node .\node_modules\tsx\dist\cli.mjs core\imports\inspectImportSource.ts "C:\pat
 node .\node_modules\tsx\dist\cli.mjs core\imports\inspectConversationFixture.ts "tests\fixtures\sample-generic-conversation.json"
 ```
 
+Tracked fixture examples should stay small and curated under `tests/fixtures/`.
+
+Local raw vendor exports belong in `tests/fixtures/vendor-exports/`, which is intentionally git-ignored except for its README.
+
 For Grok vendor exports, inspect the root manifest JSON such as `prod-grok-backend.json` rather than a UUID blob folder.
 
 ### Run the general import flow
@@ -85,6 +123,11 @@ node .\node_modules\tsx\dist\cli.mjs core\imports\runImportSource.ts "C:\path\to
 ### Read import history
 ```powershell
 node .\node_modules\tsx\dist\cli.mjs core\imports\readImportHistory.ts "organized_output" 8
+```
+
+### Query full import history for an investigation
+```powershell
+npm run imports:history:query -- --vendor claude --topic crypto --from 2026-02-01 --to 2026-05-31
 ```
 
 ### Read the latest dataset summary
@@ -121,4 +164,5 @@ npm run purge:restore -- "organized_output\purge\some_folder\some_file.md" "orga
 
 - working product direction: [docs/SKILLSPRING_QUANTUM_MVP_DIRECTION.md](docs/SKILLSPRING_QUANTUM_MVP_DIRECTION.md)
 - implementation/status reference: [docs/SKILLSPRING_QUANTUM_REFERENCE.md](docs/SKILLSPRING_QUANTUM_REFERENCE.md)
+- anti-drift scope lock: [docs/SKILLSPRING_MVP_SCOPE_LOCK.md](docs/SKILLSPRING_MVP_SCOPE_LOCK.md)
 

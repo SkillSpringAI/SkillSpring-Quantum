@@ -16,6 +16,11 @@ import type {
   GovernanceWriteRulePayload,
   InspectImportSourcePayload,
   ImportHistoryPayload,
+  QueryImportHistoryPayload,
+  ImportRetrievalIndexPayload,
+  RetrievalSavedViewsPayload,
+  SaveRetrievalViewPayload,
+  DeleteRetrievalViewPayload,
   OpenPathPayload,
   DatasetLatestRunPayload
 } from "../types/bridge";
@@ -83,11 +88,65 @@ export async function readImportHistory(
   });
 }
 
+export async function queryImportHistory(
+  payload: QueryImportHistoryPayload
+): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<QueryImportHistoryPayload, Record<string, unknown>>({
+    command: "imports.historyQuery",
+    payload
+  });
+}
+
+export async function readImportRetrievalIndex(
+  payload: ImportRetrievalIndexPayload
+): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<ImportRetrievalIndexPayload, Record<string, unknown>>({
+    command: "imports.retrievalIndex",
+    payload
+  });
+}
+
+export async function readRetrievalSavedViews(
+  payload: RetrievalSavedViewsPayload
+): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<RetrievalSavedViewsPayload, Record<string, unknown>>({
+    command: "retrieval.savedViews.read",
+    payload
+  });
+}
+
+export async function saveRetrievalSavedView(
+  payload: SaveRetrievalViewPayload
+): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<SaveRetrievalViewPayload, Record<string, unknown>>({
+    command: "retrieval.savedViews.save",
+    payload
+  });
+}
+
+export async function deleteRetrievalSavedView(
+  payload: DeleteRetrievalViewPayload
+): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<DeleteRetrievalViewPayload, Record<string, unknown>>({
+    command: "retrieval.savedViews.delete",
+    payload
+  });
+}
+
 export async function readLatestDatasetRun(
   payload: DatasetLatestRunPayload
 ): Promise<DesktopCommandResponse> {
   return invokeDesktopCommand<DatasetLatestRunPayload, Record<string, unknown>>({
     command: "datasets.latestRun",
+    payload
+  });
+}
+
+export async function readSegmentRetrievalIndex(
+  payload: DatasetLatestRunPayload
+): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<DatasetLatestRunPayload, Record<string, unknown>>({
+    command: "datasets.segmentRetrievalIndex",
     payload
   });
 }

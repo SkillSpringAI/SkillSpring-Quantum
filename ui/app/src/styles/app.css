@@ -184,6 +184,15 @@ code {
   padding: 12px;
 }
 
+.accent-card {
+  background: rgba(110, 168, 254, 0.14);
+  border-color: rgba(110, 168, 254, 0.45);
+}
+
+.subdued-card {
+  opacity: 0.82;
+}
+
 .label {
   display: block;
   color: var(--muted);
@@ -215,9 +224,38 @@ code {
   background: rgba(110, 168, 254, 0.12);
 }
 
+.source-summary-row.priority-row {
+  background: rgba(110, 168, 254, 0.08);
+}
+
+.source-summary-row.expansion-row {
+  opacity: 0.88;
+}
+
+.source-note-list {
+  margin: 16px 0;
+  padding-left: 18px;
+}
+
+.source-note {
+  margin-bottom: 8px;
+}
+
+.source-note.priority-note {
+  color: var(--text);
+}
+
+.source-note.secondary-note {
+  color: var(--muted);
+}
+
 .form-label {
   display: block;
   margin: 16px 0;
+}
+
+.form-label.tight {
+  margin: 0;
 }
 
 .checkbox-row {
@@ -255,6 +293,79 @@ select {
   gap: 10px;
   margin-top: 8px;
   flex-wrap: wrap;
+}
+
+.retrieval-filter-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 12px;
+}
+
+.history-query-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+}
+
+.chip-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+}
+
+.chip-btn {
+  border: 1px solid var(--border);
+  background: rgba(110, 168, 254, 0.08);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.chip-btn.active {
+  background: var(--accent);
+  color: #081120;
+  border-color: var(--accent);
+}
+
+.signal-badge-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 8px 0 6px;
+}
+
+.signal-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  background: rgba(110, 168, 254, 0.08);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.signal-badge.success {
+  background: rgba(73, 209, 125, 0.14);
+  border-color: rgba(73, 209, 125, 0.45);
+  color: var(--success);
+}
+
+.signal-badge.warning {
+  background: rgba(243, 179, 61, 0.14);
+  border-color: rgba(243, 179, 61, 0.45);
+  color: var(--warning);
+}
+
+.dashboard-badge-row {
+  margin-top: 14px;
 }
 
 .input-with-action {
@@ -383,6 +494,13 @@ select {
   grid-template-columns: minmax(260px, 340px) 1fr;
   gap: 16px;
   align-items: start;
+}
+
+.history-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
 }
 
 .markdown-topic-list {

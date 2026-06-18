@@ -1,6 +1,18 @@
 # SkillSpring Quantum Reference
 
-SkillSpring Quantum is a local-first Electron + Vite + React desktop application and TypeScript processing engine for turning mixed AI conversation exports and general local documents into structured, auditable knowledge assets and datasets.
+SkillSpring Quantum is a local-first Electron + Vite + React desktop application and TypeScript processing engine for turning AI conversation exports into structured, auditable knowledge assets and datasets.
+
+## First User-Facing MVP Boundary
+
+The first user-facing MVP should be framed around major AI conversation exports:
+
+- ChatGPT / OpenAI
+- Claude
+- Gemini
+- Microsoft Copilot
+- Grok
+
+This is narrower than the full internal parser and document-ingestion surface already present in the codebase. The distinction matters. Current internal coverage helps development, fixture work, and future expansion, but the product promise for early users should stay centered on a clear export-to-archive-to-dataset workflow for recognizable vendors.
 
 ## Implemented Spine
 
@@ -19,9 +31,13 @@ SkillSpring Quantum is a local-first Electron + Vite + React desktop application
 - archive notification artifacts for human-readable markdown output events
 - source archive output for generic imported documents
 - import history manifests and latest import summaries
+- import history query utility for vendor/topic/text/date/status investigations
+- import retrieval index manifests for search-ready file-level records
+- segment retrieval index manifests for linked dataset segment lookup
 - latest dataset summary reader
 - desktop archive notification panel on Imports and Organized Output screens
-- desktop import history panel with per-file output links
+- desktop import history panel with recent-run browsing, full-history investigation search, direct retrieval handoff, and per-file output links
+- desktop retrieval screen with vendor/topic/date narrowing, linked segment inspection, and saved investigations
 - desktop markdown archive browser grouped by inferred topic folder
 - governance rule loading, validation, editing, and write reports
 - tiered database storage for raw, processed, curated, and private-review records
@@ -41,10 +57,13 @@ SkillSpring Quantum is a local-first Electron + Vite + React desktop application
 - governance-first design with machine-readable rules
 - UI controls mapped to real backend workflows, not placeholder lifecycle actions
 - user-visible capability growth should stay ahead of governance/documentation drag
+- user-facing scope should stay narrower than experimental internal parser coverage
 - MVP direction and anti-drift reference: see `docs/SKILLSPRING_QUANTUM_MVP_DIRECTION.md`
 
 ## Current Gaps / Next Build Targets
 
+- harden the first user-facing major vendor set so the app promise and real behavior match
+- improve vendor-package labeling and per-file result clarity for recognized AI exports
 - enrich preserved attachment metadata with better preview and file labeling
 - surface preserved conversation attachments more clearly in desktop history and archive browsing
 - connect import summaries, archive browsing, and dataset browsing more tightly across screens
@@ -52,6 +71,16 @@ SkillSpring Quantum is a local-first Electron + Vite + React desktop application
 - add richer markdown archive filtering/search and file-open actions
 - add direct UI controls for curated promotion, purge restore, and folder merge flows
 - explain redaction and dataset outputs more clearly in the app
+
+## Internal Coverage Beyond MVP
+
+Quantum already contains internal or experimental coverage that is broader than the first user-facing promise, including:
+
+- generic conversation export detection beyond vendor-specific packages
+- extracted conversation JSON coverage for DeepSeek, Kimi, and Perplexity-style shapes
+- generic JSON, text-like document, and PDF intake
+
+Those paths should be treated as expansion assets, not as the main story for the first general-user release.
 
 ## Adjacent Project Signals
 

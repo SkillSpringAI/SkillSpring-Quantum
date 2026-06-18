@@ -1,28 +1,51 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
 import type { ScreenId } from "./navigation";
 import { NAV_ITEMS } from "./navigation";
+import type { RetrievalSavedRecordSelection, RetrievalSavedViewFilters } from "../types/retrievalSavedViews";
+
+export interface RetrievalInvestigationIntent {
+  filters: RetrievalSavedViewFilters;
+  selectedRecord?: RetrievalSavedRecordSelection;
+  suggestedName?: string;
+}
 
 interface NavigationContextValue {
   activeScreen: ScreenId;
   setActiveScreen: (screen: ScreenId) => void;
   activeLabel: string;
+  retrievalIntent: RetrievalInvestigationIntent | null;
+  openRetrievalInvestigation: (intent: RetrievalInvestigationIntent) => void;
+  clearRetrievalIntent: () => void;
 }
 
 const NavigationContext = createContext<NavigationContextValue | null>(null);
 
 export function NavigationProvider(props: { children: React.ReactNode }) {
   const [activeScreen, setActiveScreen] = useState<ScreenId>("dashboard");
+  const [retrievalIntent, setRetrievalIntent] = useState<RetrievalInvestigationIntent | null>(null);
 
   const activeLabel = useMemo(() => {
     return NAV_ITEMS.find((item) => item.id === activeScreen)?.label ?? "Dashboard";
   }, [activeScreen]);
+
+  function openRetrievalInvestigation(intent: RetrievalInvestigationIntent) {
+    setRetrievalIntent(intent);
+    setActiveScreen("retrieval");
+  }
+
+  function clearRetrievalIntent() {
+    setRetrievalIntent(null);
+  }
 
   return (
     <NavigationContext.Provider
       value={{
         activeScreen,
         setActiveScreen,
-        activeLabel
+        activeLabel,
+        retrievalIntent,
+        openRetrievalInvestigation,
+        clearRetrievalIntent
       }}
     >
       {props.children}

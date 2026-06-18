@@ -8,6 +8,7 @@ import { buildDatasetPaths } from "./datasetVersioning.js";
 import { shouldIncludeTopic } from "./topicFilter.js";
 import { writeTierRecords, writeDbManifest } from "../db/tieredStore.js";
 import { formatRelativeTimestamp } from "../utils/time.js";
+import { writeSegmentRetrievalIndex, type SegmentRetrievalIndexEntry } from "./segmentRetrievalIndex.js";
 
 interface TopicSegmentRecord {
   schema_version: "topic_segment.v1";
@@ -141,6 +142,7 @@ export async function exportDatasets(
   const processedTopicRecords: TopicSegmentRecord[] = [];
   const processedPairRecords: PromptResponsePairRecord[] = [];
   const processedMicroRecords: MicroSegmentRecord[] = [];
+  const segmentRetrievalEntries: SegmentRetrievalIndexEntry[] = [];
 
   const privateReviewTopicRecords: TopicSegmentRecord[] = [];
   const curatedTopicRecords: TopicSegmentRecord[] = [];
@@ -205,6 +207,33 @@ export async function exportDatasets(
 
     topicSegmentLines.push(toJsonlLine(topicRecord));
     processedTopicRecords.push(topicRecord);
+    segmentRetrievalEntries.push({
+      runId: paths.runId,
+      conversationId: segment.conversationId,
+      source: segment.source,
+      title: segment.title,
+      topic: segment.topic,
+      rawTopic: segment.rawTopic,
+      createdAt: segment.createdAt,
+      startIndex: segment.startIndex,
+      endIndex: segment.endIndex,
+      messageCount: redacted.messages.length,
+      signalTier: assessment.tier,
+      signalScore: assessment.score,
+      redactionCount: redacted.redactionCount,
+      textPreview: topicRecord.text.slice(0, 280),
+      text: topicRecord.text,
+      artifactPaths: [],
+      searchText: [
+        segment.source,
+        segment.title ?? "",
+        segment.topic,
+        segment.rawTopic,
+        topicRecord.text
+      ]
+        .join(" ")
+        .toLowerCase()
+    });
 
     summary.topic_segments += 1;
     summary.topics[segment.topic] = (summary.topics[segment.topic] ?? 0) + 1;
@@ -309,6 +338,7 @@ export async function exportDatasets(
 
   await ensureDir(paths.manifestsDir);
   await writeTextFile(paths.manifestFile, JSON.stringify(summary, null, 2));
+  await writeSegmentRetrievalIndex(rootOutputDir, paths.runId, segmentRetrievalEntries);
 
   return summary;
 }

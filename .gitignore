@@ -19,6 +19,10 @@ governance/logs/writes/
 .electron-temp-rule.json
 temp-*.json
 
+# Local raw vendor exports used for parser exploration
+tests/fixtures/vendor-exports/**
+!tests/fixtures/vendor-exports/README.md
+
 # Local OS/editor noise
 .DS_Store
 Thumbs.db

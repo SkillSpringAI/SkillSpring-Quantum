@@ -8,6 +8,18 @@ interface ImportRunFileResult {
   kind: string;
   status: "imported" | "skipped" | "failed";
   message: string;
+  metadata?: unknown;
+}
+
+interface ImportRunRetrievalSummary {
+  vendorSources: string[];
+  topicHints: string[];
+  startedAt?: string;
+  endedAt?: string;
+  conversationFiles: number;
+  conversationCount: number;
+  messageCount: number;
+  attachmentCount: number;
 }
 
 interface ImportRunSummary {
@@ -23,6 +35,7 @@ interface ImportRunSummary {
   pdfFilesArchived: number;
   unsupportedFilesSkipped: number;
   results: ImportRunFileResult[];
+  retrievalSummary: ImportRunRetrievalSummary | null;
 }
 
 interface ImportHistoryResult {

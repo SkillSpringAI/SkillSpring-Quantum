@@ -44,7 +44,7 @@ function formatEntryKindLabel(kind: string): string {
     case "pdf_document":
       return "PDF document";
     default:
-      return "Indexed record";
+      return "Imported file";
   }
 }
 
@@ -512,7 +512,7 @@ export default function RetrievalScreen() {
               type="button"
               onClick={() => revealDesktopPath(savedViewsResult.latestFile)}
             >
-              Open File
+              Open Saved Searches File
             </button>
           ) : null}
         </div>
@@ -646,7 +646,7 @@ export default function RetrievalScreen() {
                           type="button"
                           onClick={() => revealDesktopPath(artifactPath)}
                         >
-                          Open Artifact
+                          Open Output File
                         </button>
                       ))}
                     </div>
@@ -666,11 +666,11 @@ export default function RetrievalScreen() {
                           <td>{new Date(detailEntry.runAt).toLocaleString()}</td>
                         </tr>
                         <tr>
-                          <td>Kind</td>
+                          <td>Import type</td>
                           <td>{formatEntryKindLabel(detailEntry.kind)}</td>
                         </tr>
                         <tr>
-                          <td>Source category</td>
+                          <td>Content type</td>
                           <td>{detailEntry.sourceCategory ?? "unknown"}</td>
                         </tr>
                         <tr>
@@ -682,7 +682,7 @@ export default function RetrievalScreen() {
                           <td>{linkedSegments.length}</td>
                         </tr>
                         <tr>
-                          <td>Artifacts</td>
+                          <td>Output files</td>
                           <td>{detailEntry.artifactPaths.length}</td>
                         </tr>
                       </tbody>
@@ -702,7 +702,7 @@ export default function RetrievalScreen() {
           <h2>{linkedSegments.length > 0 ? "Related Conversation Segments" : "Matching Conversation Segments"}</h2>
           {segmentIndexResult?.latest ? (
             <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(segmentIndexResult.latestFile)}>
-              Open Segment File
+              Open Segment Data File
             </button>
           ) : null}
         </div>

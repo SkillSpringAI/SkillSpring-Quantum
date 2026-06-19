@@ -92,14 +92,14 @@ export default function DatasetsScreen() {
         <h2>Dataset Notes</h2>
         {datasetRun?.latest ? (
           <>
-            <p className="muted">Run ID: {datasetRun.latest.run_id}</p>
-            <p className="muted">Dataset version: {datasetRun.latest.dataset_version}</p>
-            <p className="muted">Filtered out: {datasetRun.latest.filtered_out_segments}</p>
+            <p className="muted">Latest dataset build: {datasetRun.latest.run_id}</p>
+            <p className="muted">Format version: {datasetRun.latest.dataset_version}</p>
+            <p className="muted">Filtered out during cleanup: {datasetRun.latest.filtered_out_segments}</p>
             <p className="muted">
-              High-signal segments: {datasetRun.latest.tiers.high_signal ?? 0} | Low-signal segments: {datasetRun.latest.tiers.low_signal ?? 0}
+              High-signal sections: {datasetRun.latest.tiers.high_signal ?? 0} | Low-signal sections: {datasetRun.latest.tiers.low_signal ?? 0}
             </p>
             <p className="muted">
-              Private-review segments are separated so you can inspect them before treating them as normal reusable data.
+              Private-review sections are separated so you can inspect them before treating them as normal reusable data.
             </p>
             <div className="action-bar">
               <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(artifactPaths.currentPrivateReview)}>

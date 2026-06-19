@@ -56,7 +56,7 @@ export async function readConversationImportMetadata(
   filePath: string
 ): Promise<ConversationImportMetadata | null> {
   const rawText = await fs.readFile(filePath, "utf-8");
-  const raw = filePath.toLowerCase().endsWith(".html")
+  const raw = filePath.toLowerCase().endsWith(".html") || filePath.toLowerCase().endsWith(".csv")
     ? rawText
     : JSON.parse(rawText) as unknown;
   return summarizeDetectedConversationImport(detectAndParseConversationExport(raw));
@@ -219,6 +219,10 @@ function buildConversationImportDisplayLabel(
 
   if (kind === "gemini_activity_html") {
     return "Gemini My Activity export";
+  }
+
+  if (kind === "copilot_activity_csv") {
+    return "Microsoft Copilot activity export";
   }
 
   const namedSources = vendorSources.filter((source) => source !== "generic");

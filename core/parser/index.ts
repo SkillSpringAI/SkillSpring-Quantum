@@ -1,4 +1,5 @@
 export { parseChatGPTExport } from "./chatgpt.js";
+export { parseCopilotActivityCsv } from "./copilotActivityCsv.js";
 export { detectAndParseConversationExport, inspectConversationExportShape } from "./detectConversationExport.js";
 export { parseGeminiActivityHtml } from "./geminiActivityHtml.js";
 export { parseGenericConversationExport } from "./genericConversation.js";

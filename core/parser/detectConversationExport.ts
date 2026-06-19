@@ -1,5 +1,6 @@
 import type { ParseResult } from "./types.js";
 import { parseChatGPTExport } from "./chatgpt.js";
+import { parseCopilotActivityCsv } from "./copilotActivityCsv.js";
 import { parseGeminiActivityHtml } from "./geminiActivityHtml.js";
 import { parseGenericConversationExport } from "./genericConversation.js";
 import { parseGrokExport } from "./grok.js";
@@ -7,6 +8,7 @@ import { parseGrokExport } from "./grok.js";
 export type ConversationParserKind =
   | "chatgpt_export"
   | "grok_export"
+  | "copilot_activity_csv"
   | "gemini_activity_html"
   | "generic_conversation"
   | "unknown";
@@ -37,6 +39,19 @@ export function detectAndParseConversationExport(raw: unknown): DetectedConversa
       diagnostics: {
         ...diagnostics,
         matchedPath: diagnostics.matchedPath ?? "html.activity_cards"
+      }
+    };
+  }
+
+  const copilotCsv = parseCopilotActivityCsv(raw);
+  if (copilotCsv.conversations.length > 0) {
+    return {
+      kind: "copilot_activity_csv",
+      label: "Microsoft Copilot activity export",
+      parsed: copilotCsv,
+      diagnostics: {
+        ...diagnostics,
+        matchedPath: diagnostics.matchedPath ?? "csv.rows"
       }
     };
   }
@@ -87,11 +102,24 @@ export function detectAndParseConversationExport(raw: unknown): DetectedConversa
 
 export function inspectConversationExportShape(raw: unknown): ConversationDetectionDiagnostics {
   if (typeof raw === "string") {
+    const normalized = raw.slice(0, 256).toLowerCase();
     return {
       topLevelKeys: [],
-      matchedPath: raw.includes("Gemini Apps Activity") ? "html.activity_cards" : null,
-      candidateContainers: raw.includes("outer-cell") ? ["html.outer-cell"] : [],
-      candidateMessageKeys: raw.includes("Prompted") ? ["prompted", "html"] : []
+      matchedPath: raw.includes("Gemini Apps Activity")
+        ? "html.activity_cards"
+        : normalized.startsWith("conversation,time,author,message")
+          ? "csv.rows"
+          : null,
+      candidateContainers: raw.includes("outer-cell")
+        ? ["html.outer-cell"]
+        : normalized.startsWith("conversation,time,author,message")
+          ? ["csv.rows"]
+          : [],
+      candidateMessageKeys: raw.includes("Prompted")
+        ? ["prompted", "html"]
+        : normalized.startsWith("conversation,time,author,message")
+          ? ["author", "conversation", "message", "time"]
+          : []
     };
   }
 

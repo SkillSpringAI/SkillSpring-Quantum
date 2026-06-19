@@ -32,8 +32,8 @@ export async function runPipelinePreflight(
       }
 
       const extension = path.extname(resolvedInput).toLowerCase();
-      if (extension !== ".json" && extension !== ".html") {
-        warnings.push("Input file does not end in a recognized conversation extension (.json or .html): " + resolvedInput);
+      if (extension !== ".json" && extension !== ".html" && extension !== ".csv") {
+        warnings.push("Input file does not end in a recognized conversation extension (.json, .html, or .csv): " + resolvedInput);
       }
     } catch {
       errors.push("Input file not found: " + resolvedInput);

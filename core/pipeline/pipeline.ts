@@ -355,7 +355,7 @@ async function main(): Promise<void> {
 
 async function readConversationImportSource(filePath: string): Promise<unknown> {
   const rawText = await fs.readFile(filePath, "utf-8");
-  return path.extname(filePath).toLowerCase() === ".html"
+  return [".html", ".csv"].includes(path.extname(filePath).toLowerCase())
     ? rawText
     : JSON.parse(rawText) as unknown;
 }

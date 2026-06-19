@@ -15,6 +15,7 @@ You can temporarily place local raw exports here using vendor subfolders such as
 
 - `tests/fixtures/vendor-exports/claude/`
 - `tests/fixtures/vendor-exports/gemini/`
+- `tests/fixtures/vendor-exports/copilot/`
 - `tests/fixtures/vendor-exports/perplexity/`
 - `tests/fixtures/vendor-exports/grok/`
 - `tests/fixtures/vendor-exports/deepseek/`

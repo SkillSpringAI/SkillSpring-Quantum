@@ -848,6 +848,26 @@ async function classifyImportFile(filePath: string): Promise<ImportSourceEntry> 
   }
 
   if (TEXT_EXTENSIONS.has(ext)) {
+    if (ext === ".csv") {
+      try {
+        const raw = await fs.readFile(filePath, "utf-8");
+        const detected = detectAndParseConversationExport(raw);
+        if (detected.kind === "copilot_activity_csv") {
+          const vendorSources = uniqueConversationSources(detected);
+          const supportTier = classifyConversationSupportTier(detected.kind, vendorSources);
+          return {
+            path: filePath,
+            kind: "conversation_json",
+            supported: true,
+            supportTier,
+            reason: "Recognized as a Microsoft Copilot activity export and will be recovered through compatibility fallback parsing."
+          };
+        }
+      } catch {
+        // Fall back to generic text-document handling below.
+      }
+    }
+
     return {
       path: filePath,
       kind: "text_document",

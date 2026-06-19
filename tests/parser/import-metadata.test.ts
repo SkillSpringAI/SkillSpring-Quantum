@@ -38,6 +38,15 @@ assert.equal(geminiHtmlMetadata?.detectedLabel, "Gemini My Activity export");
 assert.equal(geminiHtmlMetadata?.supportTier, "mvp_compatibility_fallback");
 assert.deepEqual(geminiHtmlMetadata?.vendorSources, ["gemini"]);
 
+const copilotCsvFixture = await readFile(new URL("../fixtures/sample-copilot-activity.csv", import.meta.url), "utf-8");
+const copilotCsvDetected = detectAndParseConversationExport(copilotCsvFixture);
+const copilotCsvMetadata = summarizeDetectedConversationImport(copilotCsvDetected);
+assert.ok(copilotCsvMetadata, "Expected Copilot CSV fixture to produce conversation metadata");
+assert.equal(copilotCsvMetadata?.detectedLabel, "Microsoft Copilot activity export");
+assert.equal(copilotCsvMetadata?.supportTier, "mvp_compatibility_fallback");
+assert.deepEqual(copilotCsvMetadata?.vendorSources, ["copilot"]);
+assert.equal(copilotCsvMetadata?.conversationCount, 2);
+
 const runSummary = buildImportRunRetrievalSummary([
   {
     path: "claude.json",

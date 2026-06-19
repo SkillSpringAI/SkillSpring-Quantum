@@ -12,8 +12,11 @@ import { extractPdfText } from "./pdfText.js";
 import { buildDatasetPaths } from "../pipeline/datasetVersioning.js";
 import {
   buildImportRunRetrievalSummary,
+  classifyConversationSupportTier,
   formatVendorSourceList,
+  formatSupportTierLabel,
   readConversationImportMetadata,
+  type ImportSupportTier,
   type ConversationImportMetadata,
   type DocumentImportMetadata,
   type ImportFileMetadata,
@@ -32,6 +35,7 @@ const TEXT_EXTENSIONS = new Set([
 export type ImportSourceKind =
   | "chatgpt_export"
   | "conversation_json"
+  | "gemini_activity_html"
   | "json_document"
   | "text_document"
   | "pdf_document"
@@ -41,6 +45,7 @@ export interface ImportSourceEntry {
   path: string;
   kind: ImportSourceKind;
   supported: boolean;
+  supportTier: ImportSupportTier;
   reason: string;
 }
 
@@ -69,7 +74,7 @@ export interface ImportArtifact {
   path: string;
 }
 
-interface GrokAttachmentManifestSummary {
+interface AttachmentManifestSummary {
   attachments_referenced: number;
   attachments_archived: number;
   attachments_missing: number;
@@ -129,6 +134,7 @@ export async function inspectImportSource(inputPath: string): Promise<ImportSour
   const countsByKind: Record<ImportSourceKind, number> = {
     chatgpt_export: 0,
     conversation_json: 0,
+    gemini_activity_html: 0,
     json_document: 0,
     text_document: 0,
     pdf_document: 0,
@@ -178,11 +184,15 @@ export async function inspectImportSource(inputPath: string): Promise<ImportSour
   }
 
   if (countsByKind.conversation_json > 0) {
-    notes.push("Vendor or recovered conversation JSON files will be imported as conversations when their thread structure can be recognized.");
+    notes.push("Recovered conversation JSON can be imported when its thread structure is recognizable, but this does not always mean first-class vendor support.");
+  }
+
+  if (countsByKind.gemini_activity_html > 0) {
+    notes.push("Gemini My Activity HTML can be recovered into conversations through a compatibility fallback path when the export structure is intact.");
   }
 
   if (countsByKind.text_document > 0 || countsByKind.json_document > 0) {
-    notes.push("Text and JSON documents can be archived and added to anonymized source-document datasets.");
+    notes.push("Text and JSON documents can be archived and added to privacy-aware source-document datasets.");
   }
 
   const supportedFiles = entries.filter((entry) => entry.supported).length;
@@ -239,7 +249,7 @@ export async function runImportSource(
     }
 
     try {
-      if (entry.kind === "chatgpt_export" || entry.kind === "conversation_json") {
+      if (entry.kind === "chatgpt_export" || entry.kind === "conversation_json" || entry.kind === "gemini_activity_html") {
         const metadata = await readConversationImportMetadata(filePath);
         const diagnostics = await runConversationPipeline(filePath, outputRoot);
         if (diagnostics.status !== "success") {
@@ -349,6 +359,7 @@ export function buildConversationImportResultMessage(
   diagnostics: Awaited<ReturnType<typeof runConversationPipeline>>
 ): string {
   const label = metadata?.detectedLabel ?? "Conversation import";
+  const tierLabel = metadata ? formatSupportTierLabel(metadata.supportTier) : null;
   const details = [
     diagnostics.conversations_found + " conversation(s)",
     diagnostics.dataset_topic_segments + " topic segment(s)",
@@ -367,6 +378,17 @@ export function buildConversationImportResultMessage(
             " referenced blob(s) missing"
         );
       }
+    } else if (metadata.detectedKind === "gemini_activity_html" && diagnostics.attachments_referenced > 0) {
+      details.push(
+        diagnostics.attachments_archived +
+          " linked file(s) preserved"
+      );
+      if (diagnostics.attachments_missing > 0) {
+        details.push(
+          diagnostics.attachments_missing +
+            " linked file(s) missing from export folder"
+        );
+      }
     } else {
       details.push(
         metadata.attachmentCount + " attachment reference(s) detected"
@@ -374,7 +396,7 @@ export function buildConversationImportResultMessage(
     }
   }
 
-  return label + " processed: " + details.join(", ") + ".";
+  return (tierLabel ? label + " (" + tierLabel + ")" : label) + " processed: " + details.join(", ") + ".";
 }
 
 export function buildDocumentImportResultMessage(
@@ -420,7 +442,7 @@ function formatDocumentKindLabel(
 async function importGenericFile(
   filePath: string,
   outputRoot: string,
-  kind: Exclude<ImportSourceKind, "chatgpt_export" | "unsupported">,
+  kind: Exclude<ImportSourceKind, "chatgpt_export" | "conversation_json" | "gemini_activity_html" | "unsupported">,
   importedAt: string
 ): Promise<{ artifacts: ImportArtifact[]; metadata: DocumentImportMetadata }> {
   const stat = await fs.stat(filePath);
@@ -508,6 +530,7 @@ async function importGenericFile(
       metadata: {
         sourceCategory: "document",
         sourceKind: kind,
+        supportTier: "experimental_expansion",
         fileExtension: ext,
         sizeBytes: stat.size,
         parseStatus: extraction.ok ? "text_extracted" : "binary_archived_only",
@@ -569,12 +592,13 @@ async function importGenericFile(
       { label: "Archived markdown", path: archivePath },
       { label: "Source documents collection", path: path.join(dbRoot, "tier1_processed", "source_documents.jsonl") }
     ],
-    metadata: {
-      sourceCategory: "document",
-      sourceKind: kind,
-      fileExtension: ext,
-      sizeBytes: stat.size,
-      parseStatus: "text_extracted",
+      metadata: {
+        sourceCategory: "document",
+        sourceKind: kind,
+        supportTier: "experimental_expansion",
+        fileExtension: ext,
+        sizeBytes: stat.size,
+        parseStatus: "text_extracted",
       textLength: rawText.length
     }
   };
@@ -654,7 +678,7 @@ async function collectConversationArtifacts(
   ];
 
   const grokAttachmentManifest = path.join(dbRoot, "manifests", "latest-grok-attachment-archive.json");
-  const grokAttachmentSummary = await readGrokAttachmentManifestSummary(grokAttachmentManifest);
+  const grokAttachmentSummary = await readAttachmentManifestSummary(grokAttachmentManifest);
   if (grokAttachmentSummary) {
     artifacts.push(
       {
@@ -678,6 +702,31 @@ async function collectConversationArtifacts(
     );
   }
 
+  const geminiAttachmentManifest = path.join(dbRoot, "manifests", "latest-gemini-attachment-archive.json");
+  const geminiAttachmentSummary = await readAttachmentManifestSummary(geminiAttachmentManifest);
+  if (geminiAttachmentSummary) {
+    artifacts.push(
+      {
+        label:
+          "Gemini attachment manifest (" +
+          geminiAttachmentSummary.attachments_archived +
+          " archived / " +
+          geminiAttachmentSummary.attachments_missing +
+          " missing)",
+        path: geminiAttachmentManifest
+      },
+      {
+        label:
+          "Gemini attachments archive (" +
+          geminiAttachmentSummary.attachments_archived +
+          " of " +
+          geminiAttachmentSummary.attachments_referenced +
+          ")",
+        path: path.join(outputRoot, "source_archive", "gemini_attachments")
+      }
+    );
+  }
+
   const latestArchiveOutput = await readLatestArchiveOutputFile(outputRoot);
   if (latestArchiveOutput) {
     artifacts.push({ label: "Latest archived markdown", path: latestArchiveOutput });
@@ -686,16 +735,16 @@ async function collectConversationArtifacts(
   return dedupeArtifacts(artifacts);
 }
 
-async function readGrokAttachmentManifestSummary(
+async function readAttachmentManifestSummary(
   manifestPath: string
-): Promise<GrokAttachmentManifestSummary | null> {
+): Promise<AttachmentManifestSummary | null> {
   if (!(await fileExists(manifestPath))) {
     return null;
   }
 
   try {
     const raw = await fs.readFile(manifestPath, "utf-8");
-    const parsed = JSON.parse(raw) as Partial<GrokAttachmentManifestSummary>;
+    const parsed = JSON.parse(raw) as Partial<AttachmentManifestSummary>;
     if (
       typeof parsed.attachments_referenced === "number" &&
       typeof parsed.attachments_archived === "number" &&
@@ -793,6 +842,7 @@ async function classifyImportFile(filePath: string): Promise<ImportSourceEntry> 
       path: filePath,
       kind: "pdf_document",
       supported: true,
+      supportTier: "experimental_expansion",
       reason: "Archive the PDF and attempt local text extraction when available."
     };
   }
@@ -802,6 +852,7 @@ async function classifyImportFile(filePath: string): Promise<ImportSourceEntry> 
       path: filePath,
       kind: "text_document",
       supported: true,
+      supportTier: "experimental_expansion",
       reason: "Archive the text file and add a source-document dataset record."
     };
   }
@@ -817,18 +868,22 @@ async function classifyImportFile(filePath: string): Promise<ImportSourceEntry> 
           path: filePath,
           kind: "chatgpt_export",
           supported: true,
+          supportTier: "mvp_first_class",
           reason: "Recognized as a ChatGPT export and will be imported as conversations."
         };
       }
 
       if (detected.kind === "grok_export" || detected.kind === "generic_conversation") {
+        const vendorSources = uniqueConversationSources(detected);
+        const supportTier = classifyConversationSupportTier(detected.kind, vendorSources);
         return {
           path: filePath,
           kind: "conversation_json",
           supported: true,
+          supportTier,
           reason: detected.kind === "grok_export"
             ? "Recognized as a Grok export and will be imported as conversations."
-            : "Recognized as conversation JSON and will be imported as conversations."
+            : buildConversationJsonReason(vendorSources, supportTier)
         };
       }
 
@@ -836,6 +891,7 @@ async function classifyImportFile(filePath: string): Promise<ImportSourceEntry> 
         path: filePath,
         kind: "json_document",
         supported: true,
+        supportTier: "experimental_expansion",
         reason: "Archive the JSON file and add a source-document dataset record."
       };
     } catch {
@@ -843,8 +899,27 @@ async function classifyImportFile(filePath: string): Promise<ImportSourceEntry> 
         path: filePath,
         kind: "text_document",
         supported: true,
+        supportTier: "experimental_expansion",
         reason: "Treat as raw text, archive it, and add a source-document dataset record."
       };
+    }
+  }
+
+  if (ext === ".html") {
+    try {
+      const raw = await fs.readFile(filePath, "utf-8");
+      const detected = detectAndParseConversationExport(raw);
+      if (detected.kind === "gemini_activity_html") {
+        return {
+          path: filePath,
+          kind: "gemini_activity_html",
+          supported: true,
+          supportTier: "mvp_compatibility_fallback",
+          reason: "Recognized as Gemini My Activity HTML and will be recovered through compatibility fallback parsing."
+        };
+      }
+    } catch {
+      // Fall through to unsupported if the file cannot be read.
     }
   }
 
@@ -852,8 +927,32 @@ async function classifyImportFile(filePath: string): Promise<ImportSourceEntry> 
     path: filePath,
     kind: "unsupported",
     supported: false,
+    supportTier: "unsupported",
     reason: "Skip this file because it is outside the current recognized import set."
   };
+}
+
+function uniqueConversationSources(
+  detected: Awaited<ReturnType<typeof detectAndParseConversationExport>>
+): ConversationImportMetadata["vendorSources"] {
+  return [...new Set(detected.parsed.conversations.map((conversation) => conversation.source))].sort();
+}
+
+function buildConversationJsonReason(
+  vendorSources: ConversationImportMetadata["vendorSources"],
+  supportTier: ImportSupportTier
+): string {
+  const vendorLabel = vendorSources.length > 0 ? formatVendorSourceList(vendorSources) : "Recovered";
+
+  if (supportTier === "mvp_compatibility_fallback") {
+    return vendorLabel + " conversation JSON recovered through compatibility fallback parsing.";
+  }
+
+  if (supportTier === "experimental_expansion") {
+    return vendorLabel + " conversation JSON recovered through an experimental expansion path.";
+  }
+
+  return vendorLabel + " conversation JSON will be imported as conversations.";
 }
 
 async function listFilesRecursive(root: string): Promise<string[]> {

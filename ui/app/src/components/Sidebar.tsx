@@ -1,4 +1,4 @@
-import { NAV_ITEMS } from "../state/navigation";
+import { PRIMARY_NAV_ITEMS } from "../state/navigation";
 import { useNavigation } from "../state/navigationContext";
 
 export default function Sidebar() {
@@ -8,7 +8,7 @@ export default function Sidebar() {
     <aside className="sidebar">
       <div className="brand">SkillSpring Quantum</div>
       <nav className="nav">
-        {NAV_ITEMS.map((item) => (
+        {PRIMARY_NAV_ITEMS.map((item) => (
           <button
             key={item.id}
             className={activeScreen === item.id ? "nav-btn active" : "nav-btn"}

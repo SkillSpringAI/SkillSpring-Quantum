@@ -9,7 +9,7 @@ Use it to keep implementation focused on the smallest version of Quantum that ge
 Before adding meaningful new work, ask:
 
 - Does this make Quantum more usable for a general local user?
-- Does this strengthen the core value of "import once, get both readable archives and anonymized datasets"?
+- Does this strengthen the core value of "import once, get both readable archives and privacy-aware datasets"?
 - Does this help Quantum stand apart from a generic file organizer, note app, or standalone parser?
 - Is this more important than finishing the intake, trust, archive, and dataset flows already promised?
 
@@ -23,7 +23,7 @@ SkillSpring Quantum should be:
 - privacy-aware
 - focused first on major AI conversation exports
 - able to produce intact human-readable archives
-- able to produce anonymized dataset artifacts from the same import flow
+- able to produce privacy-aware dataset artifacts from the same import flow
 - traceable through manifests, diagnostics, and import results
 
 Quantum should not try to compete first as a generic note-taking app, a general-purpose document manager, or a broad local ingestion engine before the core export-to-archive-to-dataset loop is complete.
@@ -37,7 +37,7 @@ A general user should be able to:
 3. Run the import locally.
 4. See what succeeded, failed, or was archived-only.
 5. Browse readable archived outputs.
-6. Browse anonymized dataset outputs.
+6. Browse privacy-aware dataset outputs.
 7. Trust that privacy-sensitive details were handled in a deterministic, inspectable way.
 
 If any of those steps are weak or confusing, that is usually higher priority than adding adjacent features.
@@ -52,7 +52,9 @@ Quantum must reliably handle the major AI export sources it claims to support an
 
 Priority items:
 
-- stable import handling for ChatGPT, Claude, Gemini, Copilot, and Grok export packages
+- stable first-class import handling for ChatGPT and Grok export packages
+- honest compatibility fallback handling for Claude and Gemini-shaped conversation JSON
+- Copilot treated as unproven until fixture and test coverage exist
 - vendor detection and routing that is easy to understand in the app
 - attachment preservation where vendor exports include uploaded files or blob references
 - source-level manifests for imported, skipped, archived-only, and failed files
@@ -85,7 +87,8 @@ Quantum becomes more defensible when it handles the most recognizable AI vendors
 Priority items:
 
 - official export adapters where vendor packages meaningfully differ
-- generic threaded JSON recovery where that improves Claude, Gemini, or Copilot intake
+- generic threaded JSON recovery where that improves Claude or Gemini fallback intake
+- Copilot support only after a proven export fixture and targeted tests exist
 - preserve referenced attachments and uploaded files when vendor exports include them
 - stronger vendor package inspection and result labeling
 
@@ -108,7 +111,7 @@ Why this matters:
 
 If the archive is genuinely useful, Quantum starts behaving like a durable knowledge tool rather than just a converter.
 
-### 5. Tighten the anonymized dataset workflow
+### 5. Tighten the privacy-aware dataset workflow
 
 This is one of Quantum's strongest differentiators.
 
@@ -147,7 +150,7 @@ Use this as the practical sequence unless a clear blocking dependency changes it
 
 1. Import inspection, import history, and import result visibility for major AI exports
 2. Full-history investigation search and retrieval-ready visibility across imported runs
-3. Vendor-package hardening for ChatGPT, Claude, Gemini, Copilot, and Grok
+3. Support-tier labeling and vendor-package hardening for ChatGPT, Grok, and current fallback vendors
 4. Attachment preservation and preview usability for vendor exports
 5. Archive search and open actions
 6. Defer generic document and broader ingestion work until the AI export loop is clearly strong
@@ -170,7 +173,7 @@ Quantum is moving in the right direction when:
 - the app clearly explains what it found and what it produced
 - archives are readable and easy to inspect
 - preserved attachments and uploaded files remain traceable when the source export includes them
-- anonymized datasets are visible and understandable
+- privacy-aware datasets are visible and understandable
 - failed and partial imports are explainable without reading code or raw logs
 
 ## Current implementation implication

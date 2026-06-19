@@ -1,17 +1,19 @@
 import { useNavigation } from "../state/navigationContext";
 
 export default function Topbar() {
-  const { activeLabel } = useNavigation();
+  const { activeLabel, setActiveScreen } = useNavigation();
 
   return (
     <header className="topbar">
       <div>
         <h1>{activeLabel}</h1>
-        <p className="muted">Desktop-first control plane</p>
+        <p className="muted">Inspect, import, read, review.</p>
       </div>
       <div className="topbar-actions">
         <span className="status-pill">Ready</span>
-        <button className="primary-btn">Import Exports</button>
+        <button className="primary-btn" type="button" onClick={() => setActiveScreen("imports")}>
+          Go To Imports
+        </button>
       </div>
     </header>
   );

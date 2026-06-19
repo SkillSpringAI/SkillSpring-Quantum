@@ -5,10 +5,17 @@ import type { Conversation } from "../parser/types.js";
 import { segmentConversation } from "../pipeline/segmenter.js";
 import type { ImportSourceKind, ImportRunFileResult } from "./sourceIntake.js";
 
+export type ImportSupportTier =
+  | "mvp_first_class"
+  | "mvp_compatibility_fallback"
+  | "experimental_expansion"
+  | "unsupported";
+
 export interface ConversationImportMetadata {
   sourceCategory: "conversation";
   detectedKind: ConversationParserKind;
   detectedLabel: string;
+  supportTier: ImportSupportTier;
   conversationIds: string[];
   vendorSources: Conversation["source"][];
   conversationCount: number;
@@ -23,7 +30,8 @@ export interface ConversationImportMetadata {
 
 export interface DocumentImportMetadata {
   sourceCategory: "document";
-  sourceKind: Exclude<ImportSourceKind, "chatgpt_export" | "conversation_json" | "unsupported">;
+  sourceKind: Exclude<ImportSourceKind, "chatgpt_export" | "conversation_json" | "gemini_activity_html" | "unsupported">;
+  supportTier: ImportSupportTier;
   fileExtension: string;
   sizeBytes: number;
   parseStatus: "text_extracted" | "binary_archived_only";
@@ -33,6 +41,7 @@ export interface DocumentImportMetadata {
 export type ImportFileMetadata = ConversationImportMetadata | DocumentImportMetadata;
 
 export interface ImportRunRetrievalSummary {
+  supportTiers: ImportSupportTier[];
   vendorSources: Conversation["source"][];
   topicHints: string[];
   startedAt?: string;
@@ -46,7 +55,10 @@ export interface ImportRunRetrievalSummary {
 export async function readConversationImportMetadata(
   filePath: string
 ): Promise<ConversationImportMetadata | null> {
-  const raw = JSON.parse(await fs.readFile(filePath, "utf-8")) as unknown;
+  const rawText = await fs.readFile(filePath, "utf-8");
+  const raw = filePath.toLowerCase().endsWith(".html")
+    ? rawText
+    : JSON.parse(rawText) as unknown;
   return summarizeDetectedConversationImport(detectAndParseConversationExport(raw));
 }
 
@@ -96,11 +108,13 @@ export function summarizeDetectedConversationImport(
     .slice(0, 6)
     .map(([topic]) => topic);
   const detectedLabel = buildConversationImportDisplayLabel(detected.kind, vendorSources);
+  const supportTier = classifyConversationSupportTier(detected.kind, vendorSources);
 
   return {
     sourceCategory: "conversation",
     detectedKind: detected.kind,
     detectedLabel,
+    supportTier,
     conversationIds: conversations.map((conversation) => conversation.id),
     vendorSources,
     conversationCount: conversations.length,
@@ -139,6 +153,58 @@ export function formatVendorSourceList(
     .join(", ");
 }
 
+export function formatSupportTierLabel(tier: ImportSupportTier): string {
+  switch (tier) {
+    case "mvp_first_class":
+      return "MVP first-class";
+    case "mvp_compatibility_fallback":
+      return "Compatibility fallback";
+    case "experimental_expansion":
+      return "Experimental expansion";
+    default:
+      return "Unsupported";
+  }
+}
+
+export function sortSupportTiers(tiers: ImportSupportTier[]): ImportSupportTier[] {
+  const order: Record<ImportSupportTier, number> = {
+    mvp_first_class: 0,
+    mvp_compatibility_fallback: 1,
+    experimental_expansion: 2,
+    unsupported: 3
+  };
+
+  return [...tiers].sort((a, b) => order[a] - order[b]);
+}
+
+export function classifyConversationSupportTier(
+  kind: ConversationParserKind,
+  vendorSources: Conversation["source"][]
+): ImportSupportTier {
+  if (kind === "chatgpt_export" || kind === "grok_export") {
+    return "mvp_first_class";
+  }
+
+  if (kind === "gemini_activity_html") {
+    return "mvp_compatibility_fallback";
+  }
+
+  const namedSources = uniqueValues(vendorSources.filter((source) => source !== "generic"));
+  if (namedSources.length === 0) {
+    return "experimental_expansion";
+  }
+
+  const fallbackOnlySources = namedSources.filter((source) =>
+    source === "claude" || source === "gemini" || source === "copilot"
+  );
+
+  if (fallbackOnlySources.length === namedSources.length) {
+    return "mvp_compatibility_fallback";
+  }
+
+  return "experimental_expansion";
+}
+
 function buildConversationImportDisplayLabel(
   kind: ConversationParserKind,
   vendorSources: Conversation["source"][]
@@ -149,6 +215,10 @@ function buildConversationImportDisplayLabel(
 
   if (kind === "grok_export") {
     return "Grok export";
+  }
+
+  if (kind === "gemini_activity_html") {
+    return "Gemini My Activity export";
   }
 
   const namedSources = vendorSources.filter((source) => source !== "generic");
@@ -173,6 +243,9 @@ export function buildImportRunRetrievalSummary(
   const vendorSources = uniqueValues(
     conversationMetadata.flatMap((metadata) => metadata.vendorSources)
   ).sort();
+  const supportTiers = sortSupportTiers(
+    uniqueValues(conversationMetadata.map((metadata) => metadata.supportTier))
+  );
 
   const topicCounts = new Map<string, number>();
   const timestamps = conversationMetadata
@@ -200,6 +273,7 @@ export function buildImportRunRetrievalSummary(
     .map(([topic]) => topic);
 
   return {
+    supportTiers,
     vendorSources,
     topicHints,
     startedAt: timestamps[0],

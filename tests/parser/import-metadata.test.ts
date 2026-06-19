@@ -1,4 +1,5 @@
 import assert from "node:assert";
+import { readFile } from "node:fs/promises";
 import claudeFixture from "../fixtures/sample-claude-conversation.json" with { type: "json" };
 import grokFixture from "../fixtures/sample-grok-export.json" with { type: "json" };
 import { detectAndParseConversationExport } from "../../core/parser/index.js";
@@ -12,6 +13,7 @@ const claudeMetadata = summarizeDetectedConversationImport(claudeDetected);
 assert.ok(claudeMetadata, "Expected Claude-shaped fixture to produce conversation metadata");
 assert.equal(claudeMetadata?.sourceCategory, "conversation");
 assert.equal(claudeMetadata?.detectedLabel, "Claude conversation JSON");
+assert.equal(claudeMetadata?.supportTier, "mvp_compatibility_fallback");
 assert.deepEqual(claudeMetadata?.conversationIds, ["claude-conversation-1"]);
 assert.deepEqual(claudeMetadata?.vendorSources, ["claude"]);
 assert.equal(claudeMetadata?.conversationCount, 1);
@@ -24,8 +26,17 @@ const grokDetected = detectAndParseConversationExport(grokFixture);
 const grokMetadata = summarizeDetectedConversationImport(grokDetected);
 assert.ok(grokMetadata, "Expected Grok fixture to produce conversation metadata");
 assert.equal(grokMetadata?.detectedLabel, "Grok export");
+assert.equal(grokMetadata?.supportTier, "mvp_first_class");
 assert.deepEqual(grokMetadata?.vendorSources, ["grok"]);
 assert.ok((grokMetadata?.attachmentCount ?? 0) > 0, "Expected Grok metadata to count attachment references");
+
+const geminiHtmlFixture = await readFile(new URL("../fixtures/sample-gemini-activity.html", import.meta.url), "utf-8");
+const geminiHtmlDetected = detectAndParseConversationExport(geminiHtmlFixture);
+const geminiHtmlMetadata = summarizeDetectedConversationImport(geminiHtmlDetected);
+assert.ok(geminiHtmlMetadata, "Expected Gemini HTML fixture to produce conversation metadata");
+assert.equal(geminiHtmlMetadata?.detectedLabel, "Gemini My Activity export");
+assert.equal(geminiHtmlMetadata?.supportTier, "mvp_compatibility_fallback");
+assert.deepEqual(geminiHtmlMetadata?.vendorSources, ["gemini"]);
 
 const runSummary = buildImportRunRetrievalSummary([
   {
@@ -45,6 +56,7 @@ const runSummary = buildImportRunRetrievalSummary([
 ]);
 
 assert.ok(runSummary, "Expected run summary across conversation imports");
+assert.deepEqual(runSummary?.supportTiers, ["mvp_first_class", "mvp_compatibility_fallback"]);
 assert.deepEqual(runSummary?.vendorSources, ["claude", "grok"]);
 assert.equal(runSummary?.conversationFiles, 2);
 assert.ok((runSummary?.conversationCount ?? 0) >= 2, "Expected aggregated conversation count");

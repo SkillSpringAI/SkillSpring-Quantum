@@ -22,7 +22,10 @@ export default function ImportForm(props: ImportFormProps) {
 
   return (
     <div className="panel">
-      <h2>Import Controls</h2>
+      <h2>Start Here</h2>
+      <p className="muted">
+        Choose a file or folder, inspect what Quantum recognizes, then run the import when the path looks right.
+      </p>
 
       <label className="form-label">
         Mode
@@ -93,7 +96,7 @@ export default function ImportForm(props: ImportFormProps) {
           onClick={props.onInspectSource}
           disabled={props.disabled}
         >
-          Inspect Source
+          Inspect First
         </button>
         <button
           className="primary-btn"

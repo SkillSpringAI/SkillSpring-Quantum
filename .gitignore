@@ -6,6 +6,7 @@ ui/app/dist/
 
 # Local processing output and exports
 organized_output/
+organized_output_*/
 /data/
 /db/
 Exports/
@@ -22,6 +23,10 @@ temp-*.json
 # Local raw vendor exports used for parser exploration
 tests/fixtures/vendor-exports/**
 !tests/fixtures/vendor-exports/README.md
+tests/fixtures/vendor exports/**
+!tests/fixtures/vendor exports/README.md
+tests/fixtures/vendor_exports/**
+!tests/fixtures/vendor_exports/README.md
 
 # Local OS/editor noise
 .DS_Store

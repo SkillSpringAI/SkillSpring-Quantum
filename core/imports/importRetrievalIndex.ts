@@ -4,6 +4,7 @@ import type {
   ImportRunFileResult,
   ImportRunSummary
 } from "./sourceIntake.js";
+import { sortSupportTiers, type ImportSupportTier } from "./importMetadata.js";
 
 export interface ImportRetrievalIndexEntry {
   runAt: string;
@@ -13,6 +14,7 @@ export interface ImportRetrievalIndexEntry {
   status: ImportRunFileResult["status"];
   message: string;
   sourceCategory?: "conversation" | "document";
+  supportTier?: ImportSupportTier;
   conversationIds: string[];
   vendorSources: string[];
   titleHints: string[];
@@ -32,6 +34,7 @@ export interface ImportRetrievalIndexManifest {
   outputRoot: string;
   runCount: number;
   entryCount: number;
+  supportTiers: ImportSupportTier[];
   vendorSources: string[];
   topicHints: string[];
   startedAt?: string;
@@ -84,6 +87,13 @@ function mergeIndex(
   const entries = [...runEntries, ...otherEntries].sort((a, b) => b.runAt.localeCompare(a.runAt));
 
   const vendorSources = uniqueValues(entries.flatMap((entry) => entry.vendorSources)).sort();
+  const supportTiers = sortSupportTiers(
+    uniqueValues(
+      entries
+        .map((entry) => entry.supportTier)
+        .filter((value): value is ImportSupportTier => Boolean(value))
+    )
+  );
   const topicHints = uniqueValues(entries.flatMap((entry) => entry.topicHints)).sort();
   const timestamps = entries
     .flatMap((entry) => [entry.startedAt, entry.endedAt])
@@ -96,6 +106,7 @@ function mergeIndex(
     outputRoot,
     runCount: runs.length,
     entryCount: entries.length,
+    supportTiers,
     vendorSources,
     topicHints,
     startedAt: timestamps[0],
@@ -120,6 +131,7 @@ function toIndexEntry(
       status: result.status,
       message: result.message,
       sourceCategory: "conversation",
+      supportTier: metadata.supportTier,
       conversationIds: metadata.conversationIds,
       vendorSources: metadata.vendorSources,
       titleHints: metadata.sampleTitles,
@@ -149,6 +161,7 @@ function toIndexEntry(
     status: result.status,
     message: result.message,
     sourceCategory: metadata?.sourceCategory,
+    supportTier: metadata?.supportTier,
     conversationIds: [],
     vendorSources: [],
     titleHints: [],

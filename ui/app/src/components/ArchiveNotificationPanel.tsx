@@ -15,7 +15,7 @@ export default function ArchiveNotificationPanel({
   return (
     <div className="panel">
       <div className="panel-heading-row">
-        <h2>Human Archive</h2>
+        <h2>Readable Archive Updates</h2>
         {onRefresh ? (
           <button className="secondary-btn" type="button" onClick={onRefresh}>
             Refresh
@@ -27,10 +27,12 @@ export default function ArchiveNotificationPanel({
         <div className="detail-box">
           <strong>{latest.message}</strong>
           <p className="muted">{describeArchiveNotification(latest)}</p>
-          <code>{latest.output_file}</code>
+          <p className="muted">
+            Latest file written: {latest.title || latest.topic || "archive output"}
+          </p>
         </div>
       ) : (
-        <p className="muted">No archive notifications found for this output root yet.</p>
+        <p className="muted">No readable archive updates found yet for this output folder.</p>
       )}
 
       {events.length > 0 ? (
@@ -42,7 +44,9 @@ export default function ArchiveNotificationPanel({
             </li>
           ))}
         </ul>
-      ) : null}
+      ) : (
+        <p className="muted">Recent archive updates will appear here after an import writes conversation output.</p>
+      )}
     </div>
   );
 }

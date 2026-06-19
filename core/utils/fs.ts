@@ -15,6 +15,11 @@ export async function writeTextFile(filePath: string, content: string): Promise<
   await fs.writeFile(filePath, content, "utf-8");
 }
 
+export async function appendTextFile(filePath: string, content: string): Promise<void> {
+  await ensureDir(path.dirname(filePath));
+  await fs.appendFile(filePath, content, "utf-8");
+}
+
 export async function moveFile(sourcePath: string, destinationPath: string): Promise<void> {
   await ensureDir(path.dirname(destinationPath));
   await fs.rename(sourcePath, destinationPath);

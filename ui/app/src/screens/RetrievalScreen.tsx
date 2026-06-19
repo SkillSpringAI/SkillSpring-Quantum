@@ -35,6 +35,8 @@ function formatEntryKindLabel(kind: string): string {
       return "ChatGPT export";
     case "conversation_json":
       return "Conversation JSON";
+    case "gemini_activity_html":
+      return "Gemini My Activity export";
     case "json_document":
       return "JSON document";
     case "text_document":
@@ -47,7 +49,7 @@ function formatEntryKindLabel(kind: string): string {
 }
 
 export default function RetrievalScreen() {
-  const { retrievalIntent, clearRetrievalIntent } = useNavigation();
+  const { retrievalIntent, clearRetrievalIntent, setActiveScreen } = useNavigation();
   const [indexResult, setIndexResult] = useState<ImportRetrievalIndexResult | null>(null);
   const [segmentIndexResult, setSegmentIndexResult] = useState<SegmentRetrievalIndexResult | null>(null);
   const [savedViewsResult, setSavedViewsResult] = useState<RetrievalSavedViewsResult | null>(null);
@@ -222,9 +224,6 @@ export default function RetrievalScreen() {
     topic: filters.topic
   });
   const visibleEntries = rankedEntries.map((item) => item.entry);
-  const rankingMap = new Map(
-    rankedEntries.map((item) => [item.entry.runAt + "|" + item.entry.filePath, item])
-  );
 
   const detailEntry = visibleEntries.find((entry) =>
     entry.filePath === selectedEntry?.filePath &&
@@ -268,12 +267,6 @@ export default function RetrievalScreen() {
     topic: filters.topic
   });
   const visibleSegments = rankedSegments.map((item) => item.entry);
-  const segmentRankingMap = new Map(
-    rankedSegments.map((item) => [
-      item.entry.runId + "|" + item.entry.conversationId + "|" + item.entry.startIndex + "|" + item.entry.endIndex,
-      item
-    ])
-  );
 
   const linkedSegments = detailEntry
     ? visibleSegments.filter((entry) => detailEntry.conversationIds.includes(entry.conversationId))
@@ -340,18 +333,28 @@ export default function RetrievalScreen() {
     <section className="screen-grid retrieval-layout">
       <div className="panel large">
         <div className="panel-heading-row">
-          <h2>Retrieval</h2>
+          <h2>Find Imports</h2>
           <button className="secondary-btn" type="button" onClick={refreshIndex}>
             Refresh
           </button>
         </div>
 
         {!indexResult?.latest ? (
-          <p className="muted">
-            No retrieval index found yet. Run an import first so Quantum can build a compact search-ready view.
-          </p>
+          <>
+            <p className="muted">
+              No searchable imports are available yet. Start in Imports, run an import, then come back here to find past files by vendor, topic, or date.
+            </p>
+            <div className="action-bar">
+              <button className="primary-btn" type="button" onClick={() => setActiveScreen("imports")}>
+                Go To Imports
+              </button>
+            </div>
+          </>
         ) : (
           <>
+            <p className="muted">
+              Search across imported files, narrow by vendor, topic, status, or date, then open the original file or the generated archive output.
+            </p>
             <div className="history-filter-grid">
               <label className="form-label tight">
                 Search
@@ -472,11 +475,11 @@ export default function RetrievalScreen() {
 
             <div className="stats-grid two-col">
               <div className="stat-card">
-                <span className="label">Matched Records</span>
+                <span className="label">Matched Imports</span>
                 <strong>{visibleEntries.length}</strong>
               </div>
               <div className="stat-card">
-                <span className="label">Conversation Records</span>
+                <span className="label">Conversation Imports</span>
                 <strong>{conversationEntries.length}</strong>
               </div>
               <div className="stat-card">
@@ -488,11 +491,11 @@ export default function RetrievalScreen() {
                 <strong>{totalMessages}</strong>
               </div>
               <div className="stat-card">
-                <span className="label">Matched Segments</span>
+                <span className="label">Related Segments</span>
                 <strong>{visibleSegments.length}</strong>
               </div>
               <div className="stat-card">
-                <span className="label">Linked Segments</span>
+                <span className="label">Selected Import Segments</span>
                 <strong>{linkedSegments.length}</strong>
               </div>
             </div>
@@ -502,7 +505,7 @@ export default function RetrievalScreen() {
 
       <div className="panel">
         <div className="panel-heading-row">
-          <h2>Saved Views</h2>
+          <h2>Saved Searches</h2>
           {savedViewsResult?.latest ? (
             <button
               className="secondary-btn"
@@ -514,22 +517,25 @@ export default function RetrievalScreen() {
           ) : null}
         </div>
         <label className="form-label tight">
-          View name
+          Search name
           <input
             className="text-input"
             type="text"
             value={savedViewName}
             onChange={(event) => setSavedViewName(event.target.value)}
-            placeholder="Crypto Feb-May 2026"
+            placeholder="Gemini support imports"
           />
         </label>
+        <p className="muted">
+          Optional. Save a useful filter set if you expect to revisit the same group of imports.
+        </p>
         <div className="action-bar">
           <button className="primary-btn" type="button" onClick={handleSaveCurrentView} disabled={!savedViewName.trim()}>
-            Save Current Investigation
+            Save Current Search
           </button>
         </div>
         {!savedViewsResult?.latest?.views.length ? (
-          <p className="muted">No saved views yet. Save a named search once the filters look useful.</p>
+          <p className="muted">No saved searches yet.</p>
         ) : (
           <ul className="list collection-list retrieval-list">
             {savedViewsResult.latest.views.map((view) => (
@@ -539,9 +545,6 @@ export default function RetrievalScreen() {
                   {view.filters.vendor || "all vendors"} | {view.filters.topic || "all topics"} | {view.filters.status}
                 </div>
                 <div className="muted">{view.filters.from || "any time"} to {view.filters.to || "now"}</div>
-                <div className="muted">
-                  {view.selectedRecord ? "Pinned record saved" : "No pinned record"} | {view.selectedSegment ? "Pinned segment saved" : "No pinned segment"}
-                </div>
                 <div className="action-bar">
                   <button
                     className="secondary-btn"
@@ -561,39 +564,28 @@ export default function RetrievalScreen() {
       </div>
 
       <div className="panel">
-        <h2>Filter Signals</h2>
+        <h2>Search Tips</h2>
         {!indexResult?.latest ? (
-          <p className="muted">Filter suggestions appear once the retrieval index exists.</p>
+          <p className="muted">Suggestions appear once imports have been indexed.</p>
         ) : (
           <>
             <p className="muted">Vendors: {vendorsVisible.join(", ") || "none visible"}</p>
             <p className="muted">Topics: {topicsVisible.slice(0, 8).join(", ") || "none visible"}</p>
             <p className="muted">Quick tip: click a vendor or topic chip above to narrow instantly.</p>
-            <p className="muted">Index generated: {new Date(indexResult.latest.generatedAt).toLocaleString()}</p>
+            <p className="muted">Search index updated: {new Date(indexResult.latest.generatedAt).toLocaleString()}</p>
           </>
         )}
       </div>
 
-      <div className="panel">
-        <h2>What This Enables</h2>
-        <ul className="list">
-          <li>Quick narrowing by vendor and date before deeper semantic retrieval exists.</li>
-          <li>Traceable links back to original import files and generated artifacts.</li>
-          <li>A compact index artifact that future search can query directly.</li>
-          <li>Deterministic linking from a matched file result to its related conversation segments.</li>
-        </ul>
-      </div>
-
       <div className="panel large">
         {!indexResult?.latest ? null : visibleEntries.length === 0 ? (
-          <p className="muted">No indexed records match the current retrieval filters.</p>
+          <p className="muted">No imports match the current filters.</p>
         ) : (
           <div className="import-history-grid">
             <div>
               <ul className="list collection-list retrieval-list">
                 {visibleEntries.map((entry) => {
                   const selected = detailEntry?.filePath === entry.filePath && detailEntry?.runAt === entry.runAt;
-                  const ranked = rankingMap.get(entry.runAt + "|" + entry.filePath);
                   return (
                     <li
                       key={entry.runAt + "|" + entry.filePath}
@@ -601,8 +593,8 @@ export default function RetrievalScreen() {
                       onClick={() => setSelectedEntry(entry)}
                     >
                       <div><strong>{entry.vendorSources.join(", ") || formatEntryKindLabel(entry.kind)}</strong></div>
-                      <div className="muted">Score: {ranked?.score ?? 0}</div>
-                      <div className="muted">{entry.topicHints.slice(0, 3).join(", ") || entry.status}</div>
+                      <div className="muted">{formatEntryKindLabel(entry.kind)} | {entry.status}</div>
+                      <div className="muted">{entry.topicHints.slice(0, 3).join(", ") || "No topic hints"}</div>
                       <div className="muted">{formatDateRange(entry.startedAt, entry.endedAt) || new Date(entry.runAt).toLocaleDateString()}</div>
                     </li>
                   );
@@ -614,18 +606,11 @@ export default function RetrievalScreen() {
               {detailEntry ? (
                 <>
                   <div className="detail-box">
-                    <strong>Indexed Record</strong>
-                    <p className="muted">
-                      Relevance score: {rankingMap.get(detailEntry.runAt + "|" + detailEntry.filePath)?.score ?? 0}
-                    </p>
-                    {rankingMap.get(detailEntry.runAt + "|" + detailEntry.filePath)?.reasons.length ? (
-                      <p className="muted">
-                        Ranked for: {rankingMap.get(detailEntry.runAt + "|" + detailEntry.filePath)?.reasons.join(", ")}
-                      </p>
-                    ) : null}
+                    <strong>Selected Import</strong>
                     <p className="muted">File: {detailEntry.filePath}</p>
                     <p className="muted">Imported from: {detailEntry.inputPath}</p>
                     <p className="muted">Status: {detailEntry.status}</p>
+                    <p className="muted">Type: {formatEntryKindLabel(detailEntry.kind)}</p>
                     <p className="muted">Vendor: {detailEntry.vendorSources.join(", ") || "document/generic"}</p>
                     {detailEntry.titleHints.length > 0 ? (
                       <p className="muted">Titles: {detailEntry.titleHints.join(", ")}</p>
@@ -647,9 +632,9 @@ export default function RetrievalScreen() {
                       <button
                         className="secondary-btn"
                         type="button"
-                        onClick={() => setSavedViewName(detailEntry.titleHints[0] || detailEntry.topicHints[0] || "Saved investigation")}
+                        onClick={() => setSavedViewName(detailEntry.titleHints[0] || detailEntry.topicHints[0] || "Saved search")}
                       >
-                        Use For Saved View Name
+                        Use As Search Name
                       </button>
                       <button className="primary-btn" type="button" onClick={() => revealDesktopPath(detailEntry.filePath)}>
                         Open Source File
@@ -693,7 +678,7 @@ export default function RetrievalScreen() {
                           <td>{detailEntry.topicHints.join(", ") || "none"}</td>
                         </tr>
                         <tr>
-                          <td>Linked segments</td>
+                          <td>Related segments</td>
                           <td>{linkedSegments.length}</td>
                         </tr>
                         <tr>
@@ -705,7 +690,7 @@ export default function RetrievalScreen() {
                   </div>
                 </>
               ) : (
-                <p className="muted">Select an indexed record to inspect it.</p>
+                <p className="muted">Select an import to inspect it.</p>
               )}
             </div>
           </div>
@@ -714,19 +699,19 @@ export default function RetrievalScreen() {
 
       <div className="panel large">
         <div className="panel-heading-row">
-          <h2>{linkedSegments.length > 0 ? "Related Segments For Selected Record" : "Matching Segments"}</h2>
+          <h2>{linkedSegments.length > 0 ? "Related Conversation Segments" : "Matching Conversation Segments"}</h2>
           {segmentIndexResult?.latest ? (
             <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(segmentIndexResult.latestFile)}>
-              Open Segment Index
+              Open Segment File
             </button>
           ) : null}
         </div>
         {!segmentIndexResult?.latest ? (
           <p className="muted">
-            No segment retrieval index found yet. Run an import that produces dataset segments first.
+            Conversation segments will appear here after an import produces dataset output.
           </p>
         ) : visibleSegments.length === 0 ? (
-          <p className="muted">No segment-level matches for the current retrieval filters.</p>
+          <p className="muted">No conversation segments match the current filters.</p>
         ) : (
           <div className="import-history-grid">
             <div>
@@ -737,7 +722,6 @@ export default function RetrievalScreen() {
                     detailSegment?.conversationId === entry.conversationId &&
                     detailSegment?.startIndex === entry.startIndex &&
                     detailSegment?.endIndex === entry.endIndex;
-                  const ranked = segmentRankingMap.get(segmentKey(entry));
                   return (
                     <li
                       key={segmentKey(entry)}
@@ -745,7 +729,7 @@ export default function RetrievalScreen() {
                       onClick={() => setSelectedSegment(entry)}
                     >
                       <div><strong>{entry.topic}</strong></div>
-                      <div className="muted">Score: {ranked?.score ?? 0} | {entry.source}</div>
+                      <div className="muted">{entry.source}</div>
                       <div className="muted">{entry.textPreview.slice(0, 120)}</div>
                     </li>
                   );
@@ -757,15 +741,7 @@ export default function RetrievalScreen() {
               {detailSegment ? (
                 <>
                   <div className="detail-box">
-                    <strong>Segment Match</strong>
-                    <p className="muted">
-                      Relevance score: {segmentRankingMap.get(segmentKey(detailSegment))?.score ?? 0}
-                    </p>
-                    {segmentRankingMap.get(segmentKey(detailSegment))?.reasons.length ? (
-                      <p className="muted">
-                        Ranked for: {segmentRankingMap.get(segmentKey(detailSegment))?.reasons.join(", ")}
-                      </p>
-                    ) : null}
+                    <strong>Conversation Segment</strong>
                     <p className="muted">Topic: {detailSegment.topic}</p>
                     <p className="muted">Source: {detailSegment.source}</p>
                     <p className="muted">Conversation ID: {detailSegment.conversationId}</p>
@@ -774,7 +750,7 @@ export default function RetrievalScreen() {
                       Span: {detailSegment.startIndex} to {detailSegment.endIndex} | Messages: {detailSegment.messageCount}
                     </p>
                     <p className="muted">
-                      Signal: {detailSegment.signalTier} ({detailSegment.signalScore}) | Redactions: {detailSegment.redactionCount}
+                      Signal tier: {detailSegment.signalTier} | Redactions: {detailSegment.redactionCount}
                     </p>
                     {detailSegment.createdAt ? (
                       <p className="muted">Created: {new Date(detailSegment.createdAt).toLocaleString()}</p>
@@ -784,7 +760,7 @@ export default function RetrievalScreen() {
                   <div className="record-block">{detailSegment.text}</div>
                 </>
               ) : (
-                <p className="muted">Select a segment match to inspect it.</p>
+                <p className="muted">Select a segment to inspect it.</p>
               )}
             </div>
           </div>

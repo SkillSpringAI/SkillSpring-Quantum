@@ -1,5 +1,5 @@
 import path from "node:path";
-import { ensureDir, fileExists, writeTextFile } from "../utils/fs.js";
+import { appendTextFile, writeTextFile } from "../utils/fs.js";
 import type { ExportResult } from "./exporter.js";
 import type { ConversationSegment } from "./segmenter.js";
 
@@ -19,23 +19,8 @@ export interface ArchiveNotification {
 
 async function appendJsonl(filePath: string, records: ArchiveNotification[]): Promise<void> {
   if (records.length === 0) return;
-
-  await ensureDir(path.dirname(filePath));
-
-  let existing = "";
-  if (await fileExists(filePath)) {
-    const fs = await import("node:fs/promises");
-    existing = await fs.readFile(filePath, "utf-8");
-  }
-
-  const lines = records.map(record => JSON.stringify(record)).join("\n");
-  const content =
-    existing +
-    (existing && !existing.endsWith("\n") ? "\n" : "") +
-    lines +
-    "\n";
-
-  await writeTextFile(filePath, content);
+  const content = records.map((record) => JSON.stringify(record)).join("\n") + "\n";
+  await appendTextFile(filePath, content);
 }
 
 export async function writeArchiveNotification(

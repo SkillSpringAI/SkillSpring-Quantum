@@ -1,3 +1,9 @@
+export type ImportSupportTier =
+  | "mvp_first_class"
+  | "mvp_compatibility_fallback"
+  | "experimental_expansion"
+  | "unsupported";
+
 export interface ImportRetrievalIndexEntry {
   runAt: string;
   inputPath: string;
@@ -6,6 +12,7 @@ export interface ImportRetrievalIndexEntry {
   status: "imported" | "skipped" | "failed";
   message: string;
   sourceCategory?: "conversation" | "document";
+  supportTier?: ImportSupportTier;
   conversationIds: string[];
   vendorSources: string[];
   titleHints: string[];
@@ -25,6 +32,7 @@ export interface ImportRetrievalIndexManifest {
   outputRoot: string;
   runCount: number;
   entryCount: number;
+  supportTiers: ImportSupportTier[];
   vendorSources: string[];
   topicHints: string[];
   startedAt?: string;
@@ -33,6 +41,7 @@ export interface ImportRetrievalIndexManifest {
     runAt: string;
     inputPath: string;
     retrievalSummary: {
+      supportTiers: ImportSupportTier[];
       vendorSources: string[];
       topicHints: string[];
       startedAt?: string;

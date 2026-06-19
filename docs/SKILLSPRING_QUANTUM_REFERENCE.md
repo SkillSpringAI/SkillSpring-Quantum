@@ -4,13 +4,12 @@ SkillSpring Quantum is a local-first Electron + Vite + React desktop application
 
 ## First User-Facing MVP Boundary
 
-The first user-facing MVP should be framed around major AI conversation exports:
+The first user-facing MVP should be framed around a narrow AI-export workflow:
 
 - ChatGPT / OpenAI
-- Claude
-- Gemini
-- Microsoft Copilot
 - Grok
+
+Compatibility fallback can still recover some Claude- and Gemini-shaped conversation JSON, but that should not be described as the same thing as first-class vendor support. Copilot should remain unproven until a real fixture and test set exists.
 
 This is narrower than the full internal parser and document-ingestion surface already present in the codebase. The distinction matters. Current internal coverage helps development, fixture work, and future expansion, but the product promise for early users should stay centered on a clear export-to-archive-to-dataset workflow for recognizable vendors.
 
@@ -41,7 +40,7 @@ This is narrower than the full internal parser and document-ingestion surface al
 - desktop markdown archive browser grouped by inferred topic folder
 - governance rule loading, validation, editing, and write reports
 - tiered database storage for raw, processed, curated, and private-review records
-- anonymized versioned dataset records derived from segmented conversation content
+- privacy-aware versioned dataset records derived from segmented conversation content
 - review queue build and manual approve/reject decision scripts
 - curated promotion scripts with manifest snapshots
 - batch run, batch diagnostics, and batch delta scripts

@@ -1,11 +1,13 @@
 import type { ParseResult } from "./types.js";
 import { parseChatGPTExport } from "./chatgpt.js";
+import { parseGeminiActivityHtml } from "./geminiActivityHtml.js";
 import { parseGenericConversationExport } from "./genericConversation.js";
 import { parseGrokExport } from "./grok.js";
 
 export type ConversationParserKind =
   | "chatgpt_export"
   | "grok_export"
+  | "gemini_activity_html"
   | "generic_conversation"
   | "unknown";
 
@@ -25,6 +27,20 @@ export interface ConversationDetectionDiagnostics {
 
 export function detectAndParseConversationExport(raw: unknown): DetectedConversationParse {
   const diagnostics = inspectConversationExportShape(raw);
+
+  const geminiActivity = parseGeminiActivityHtml(raw);
+  if (geminiActivity.conversations.length > 0) {
+    return {
+      kind: "gemini_activity_html",
+      label: "Gemini My Activity export",
+      parsed: geminiActivity,
+      diagnostics: {
+        ...diagnostics,
+        matchedPath: diagnostics.matchedPath ?? "html.activity_cards"
+      }
+    };
+  }
+
   const chatgpt = parseChatGPTExport(raw);
   if (chatgpt.conversations.length > 0) {
     return {
@@ -70,6 +86,15 @@ export function detectAndParseConversationExport(raw: unknown): DetectedConversa
 }
 
 export function inspectConversationExportShape(raw: unknown): ConversationDetectionDiagnostics {
+  if (typeof raw === "string") {
+    return {
+      topLevelKeys: [],
+      matchedPath: raw.includes("Gemini Apps Activity") ? "html.activity_cards" : null,
+      candidateContainers: raw.includes("outer-cell") ? ["html.outer-cell"] : [],
+      candidateMessageKeys: raw.includes("Prompted") ? ["prompted", "html"] : []
+    };
+  }
+
   const topLevelKeys = raw && typeof raw === "object" && !Array.isArray(raw)
     ? Object.keys(raw as Record<string, unknown>).slice(0, 24)
     : [];

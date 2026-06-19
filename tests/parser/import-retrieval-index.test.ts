@@ -26,6 +26,7 @@ try {
     unsupportedFilesSkipped: 0,
     artifacts: [],
     retrievalSummary: {
+      supportTiers: ["mvp_compatibility_fallback"],
       vendorSources: ["claude"],
       topicHints: ["crypto markets"],
       startedAt: "2026-03-10T12:00:00.000Z",
@@ -45,6 +46,7 @@ try {
           sourceCategory: "conversation",
           detectedKind: "generic_conversation",
           detectedLabel: "Claude conversation JSON",
+          supportTier: "mvp_compatibility_fallback",
           conversationIds: ["claude-conversation-1"],
           vendorSources: ["claude"],
           conversationCount: 2,
@@ -66,6 +68,7 @@ try {
     inputPath: "C:\\Exports\\grok",
     historyPath: path.join(tempRoot, "imports", "history", "run2.json"),
     retrievalSummary: {
+      supportTiers: ["mvp_first_class"],
       vendorSources: ["grok"],
       topicHints: ["sports updates"],
       startedAt: "2026-05-02T09:00:00.000Z",
@@ -85,6 +88,7 @@ try {
           sourceCategory: "conversation",
           detectedKind: "grok_export",
           detectedLabel: "Grok export",
+          supportTier: "mvp_first_class",
           conversationIds: ["grok-conversation-1"],
           vendorSources: ["grok"],
           conversationCount: 1,
@@ -104,12 +108,14 @@ try {
   let manifest = await readJsonFile<ImportRetrievalIndexManifest>(firstWrite.latestPath);
   assert.equal(manifest.runCount, 1, "Expected first write to create one run");
   assert.equal(manifest.entryCount, 1, "Expected first write to create one entry");
+  assert.deepEqual(manifest.supportTiers, ["mvp_compatibility_fallback"]);
   assert.deepEqual(manifest.vendorSources, ["claude"]);
 
   await writeImportRetrievalIndex(tempRoot, runTwo);
   manifest = await readJsonFile<ImportRetrievalIndexManifest>(firstWrite.latestPath);
   assert.equal(manifest.runCount, 2, "Expected second write to append another run");
   assert.equal(manifest.entryCount, 2, "Expected second write to append another entry");
+  assert.deepEqual(manifest.supportTiers, ["mvp_first_class", "mvp_compatibility_fallback"]);
   assert.deepEqual(manifest.vendorSources, ["claude", "grok"]);
   assert.ok(manifest.topicHints.includes("crypto markets"), "Expected merged topics to include first run");
   assert.ok(manifest.topicHints.includes("sports updates"), "Expected merged topics to include second run");

@@ -6,29 +6,53 @@ This note exists to stop scope drift during implementation.
 
 SkillSpring Quantum should first be explained as:
 
-> Import your major AI conversation exports, turn them into readable archives and structured local datasets.
+> Import major AI conversation exports, turn them into readable local archives, and produce inspectable privacy-aware dataset artifacts.
 
-## MVP vendor set
-
-The first user-facing MVP is centered on:
-
-- ChatGPT / OpenAI
-- Claude
-- Gemini
-- Microsoft Copilot
-- Grok
+The MVP is not a generic document-ingestion platform. It is not a browser-extension-first product. It is not a governance editor. It is not a parser zoo.
 
 ## Workflow to prove
 
 The MVP only needs to prove one clear loop:
 
 1. Choose export
-2. Inspect
-3. Import
-4. Read archive
+2. Inspect what Quantum found
+3. Import locally
+4. Read archive output
 5. Review dataset output
+6. Understand failures or partial imports without reading code
 
-If a feature does not make that loop clearer, more trustworthy, or more complete, it is probably not the next MVP task.
+If a feature does not make that loop clearer, more trustworthy, or more complete, it should not block MVP.
+
+## Current support tiers
+
+### MVP first-class now
+
+- ChatGPT / OpenAI
+- Grok
+
+### MVP compatibility fallback now
+
+- Claude via generic conversation parser
+- Gemini via generic conversation parser
+- Microsoft Copilot only where fixture and test coverage prove the recoverable shape
+
+### Explicit coming soon
+
+- Claude adapter
+- Gemini adapter
+- Copilot adapter
+
+## Public readiness rule
+
+A vendor should not be called first-class supported unless it has:
+
+- named parser or named adapter path
+- fixture
+- parser test
+- detection test
+- import result label
+- archive output
+- dataset output
 
 ## Explicitly deferred from the first user-facing MVP
 
@@ -45,17 +69,38 @@ Keep these as roadmap items, not as the core release promise:
 - Meta, Messenger, support platforms, and enterprise systems
 - third-party browser exporters
 
+## Wording correction
+
+Prefer:
+
+- privacy-aware dataset artifacts
+- redacted dataset artifacts
+- deterministic redaction for common sensitive patterns
+
+Avoid:
+
+- fully anonymized datasets
+- complete privacy removal
+- guaranteed de-identification
+
 ## Stage model
 
 ### Stage 1: AI Export MVP
 
 - ChatGPT
-- Claude
-- Gemini
-- Copilot
 - Grok
 
+with fallback recovery for Claude and Gemini until named adapters exist
+
 Goal: prove the workflow.
+
+### Stage 1.5: First-class vendor completion
+
+- Claude adapter
+- Gemini adapter
+- Copilot adapter
+
+Goal: expand from a polished two-vendor MVP into a true five-vendor first-class promise.
 
 ### Stage 2: AI Export Expansion
 

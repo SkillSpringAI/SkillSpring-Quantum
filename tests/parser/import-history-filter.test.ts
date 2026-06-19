@@ -17,6 +17,7 @@ const runs: ImportRunSummary[] = [
     unsupportedFilesSkipped: 0,
     artifacts: [],
     retrievalSummary: {
+      supportTiers: ["mvp_compatibility_fallback"],
       vendorSources: ["claude"],
       topicHints: ["crypto markets", "portfolio review"],
       startedAt: "2026-03-10T12:00:00.000Z",
@@ -36,6 +37,7 @@ const runs: ImportRunSummary[] = [
           sourceCategory: "conversation",
           detectedKind: "generic_conversation",
           detectedLabel: "Claude conversation JSON",
+          supportTier: "mvp_compatibility_fallback",
           vendorSources: ["claude"],
           conversationCount: 2,
           messageCount: 8,
@@ -63,6 +65,7 @@ const runs: ImportRunSummary[] = [
     unsupportedFilesSkipped: 0,
     artifacts: [],
     retrievalSummary: {
+      supportTiers: ["mvp_first_class"],
       vendorSources: ["grok"],
       topicHints: ["sports updates"],
       startedAt: "2026-05-02T09:00:00.000Z",
@@ -82,6 +85,7 @@ const runs: ImportRunSummary[] = [
           sourceCategory: "conversation",
           detectedKind: "grok_export",
           detectedLabel: "Grok export",
+          supportTier: "mvp_first_class",
           vendorSources: ["grok"],
           conversationCount: 1,
           messageCount: 4,

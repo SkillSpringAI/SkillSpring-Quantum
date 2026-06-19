@@ -33,13 +33,26 @@ try {
   };
 
   const notification = await writeArchiveNotification(outputRoot, segment, exported);
+  await writeArchiveNotification(outputRoot, {
+    ...segment,
+    conversationId: "archive-test-002",
+    startIndex: 2,
+    endIndex: 3
+  }, {
+    ...exported,
+    outputFile: path.join(outputRoot, "2025-01_docker_ports", "segment-2.md"),
+    hash: "def456"
+  });
   const latestRaw = await readFile(path.join(outputRoot, "notifications", "latest-archive-event.json"), "utf-8");
   const eventsRaw = await readFile(path.join(outputRoot, "notifications", "archive-events.jsonl"), "utf-8");
+  const eventLines = eventsRaw.trim().split("\n");
 
   assert.equal(notification.topic, "docker_ports");
   assert.match(notification.message, /Human-readable markdown/);
-  assert.match(latestRaw, /archive-test-001/);
+  assert.match(latestRaw, /archive-test-002/);
   assert.match(eventsRaw, /archive-test-001/);
+  assert.match(eventsRaw, /archive-test-002/);
+  assert.equal(eventLines.length, 2);
 
   console.log("archive-notifications.test.ts passed");
 } finally {

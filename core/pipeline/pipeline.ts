@@ -1,6 +1,6 @@
 import path from "node:path";
+import { promises as fs } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { readJsonFile } from "../utils/fs.js";
 import { detectAndParseConversationExport } from "../parser/index.js";
 import { segmentConversation } from "./segmenter.js";
 import { exportPurgedSegmentMarkdown, exportSegmentMarkdown } from "./exporter.js";
@@ -15,6 +15,7 @@ import { ingestRawConversations } from "../db/rawIngest.js";
 import { runPipelinePreflight } from "../diagnostics/preflight.js";
 import { writeArchiveNotification } from "./archiveNotifier.js";
 import { archiveGrokConversationAttachments } from "./grokAttachmentArchive.js";
+import { archiveGeminiConversationAttachments } from "./geminiAttachmentArchive.js";
 import programManifest from "../../config/programManifest.json" with { type: "json" };
 
 const PIPELINE_VERSION = programManifest.pipeline_version;
@@ -116,7 +117,7 @@ export async function runConversationPipeline(
 
     diagnostics.files_processed = 1;
 
-    const raw = await readJsonFile(filePath);
+    const raw = await readConversationImportSource(filePath);
     const detected = detectAndParseConversationExport(raw);
     const parsed = detected.parsed;
     const index = await loadIndex(outputRoot);
@@ -154,6 +155,25 @@ export async function runConversationPipeline(
           code: "GROK_ATTACHMENTS_MISSING",
           message:
             "Some Grok attachment blobs were referenced but not found: " +
+            attachmentSummary.attachments_missing
+        });
+      }
+    } else if (detected.kind === "gemini_activity_html") {
+      const attachmentSummary = await archiveGeminiConversationAttachments(
+        parsed.conversations,
+        filePath,
+        outputRoot
+      );
+
+      diagnostics.attachments_referenced = attachmentSummary.attachments_referenced;
+      diagnostics.attachments_archived = attachmentSummary.attachments_archived;
+      diagnostics.attachments_missing = attachmentSummary.attachments_missing;
+
+      if (attachmentSummary.attachments_missing > 0) {
+        diagnostics.warnings.push({
+          code: "GEMINI_ATTACHMENTS_MISSING",
+          message:
+            "Some Gemini linked files were referenced but not found beside the My Activity HTML: " +
             attachmentSummary.attachments_missing
         });
       }
@@ -331,6 +351,13 @@ async function main(): Promise<void> {
   const diagnostics = await runConversationPipeline(parsedArgs.filePath, parsedArgs.outputRoot);
 
   process.exit(diagnostics.status === "success" ? 0 : 1);
+}
+
+async function readConversationImportSource(filePath: string): Promise<unknown> {
+  const rawText = await fs.readFile(filePath, "utf-8");
+  return path.extname(filePath).toLowerCase() === ".html"
+    ? rawText
+    : JSON.parse(rawText) as unknown;
 }
 
 const isDirectRun =

@@ -31,8 +31,9 @@ export async function runPipelinePreflight(
         errors.push("Input path exists but is not a file: " + resolvedInput);
       }
 
-      if (path.extname(resolvedInput).toLowerCase() !== ".json") {
-        warnings.push("Input file does not end in .json: " + resolvedInput);
+      const extension = path.extname(resolvedInput).toLowerCase();
+      if (extension !== ".json" && extension !== ".html") {
+        warnings.push("Input file does not end in a recognized conversation extension (.json or .html): " + resolvedInput);
       }
     } catch {
       errors.push("Input file not found: " + resolvedInput);

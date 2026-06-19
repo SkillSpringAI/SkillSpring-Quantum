@@ -1,3 +1,9 @@
+export type ImportSupportTier =
+  | "mvp_first_class"
+  | "mvp_compatibility_fallback"
+  | "experimental_expansion"
+  | "unsupported";
+
 export interface ImportArtifact {
   label: string;
   path: string;
@@ -7,6 +13,7 @@ export interface ConversationImportMetadata {
   sourceCategory: "conversation";
   detectedKind: string;
   detectedLabel: string;
+  supportTier: ImportSupportTier;
   vendorSources: string[];
   conversationCount: number;
   messageCount: number;
@@ -21,6 +28,7 @@ export interface ConversationImportMetadata {
 export interface DocumentImportMetadata {
   sourceCategory: "document";
   sourceKind: string;
+  supportTier: ImportSupportTier;
   fileExtension: string;
   sizeBytes: number;
   parseStatus: "text_extracted" | "binary_archived_only";
@@ -39,6 +47,7 @@ export interface ImportRunFileResult {
 }
 
 export interface ImportRunRetrievalSummary {
+  supportTiers: ImportSupportTier[];
   vendorSources: string[];
   topicHints: string[];
   startedAt?: string;

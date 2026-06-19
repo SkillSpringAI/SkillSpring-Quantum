@@ -3,7 +3,8 @@ import type {
   ImportFileMetadata,
   ImportHistoryFilters,
   ImportHistoryResult,
-  ImportRunSummary
+  ImportRunSummary,
+  ImportSupportTier
 } from "../types/importHistory";
 import { revealDesktopPath } from "../services/pathBridge";
 
@@ -47,6 +48,8 @@ export default function ImportHistoryPanel({
         return "ChatGPT export";
       case "conversation_json":
         return "Conversation JSON";
+      case "gemini_activity_html":
+        return "Gemini My Activity export";
       case "json_document":
         return "JSON document";
       case "text_document":
@@ -57,6 +60,19 @@ export default function ImportHistoryPanel({
         return "Unsupported file";
       default:
         return "Imported item";
+    }
+  }
+
+  function formatSupportTierLabel(tier: ImportSupportTier): string {
+    switch (tier) {
+      case "mvp_first_class":
+        return "Ready now";
+      case "mvp_compatibility_fallback":
+        return "Recovery path";
+      case "experimental_expansion":
+        return "Advanced import";
+      default:
+        return "Not supported";
     }
   }
 
@@ -194,11 +210,11 @@ export default function ImportHistoryPanel({
         }
 
         if (badge.label.includes("blob-preserved")) {
-          return { label: "blobs preserved", tone: badge.tone } as const;
+          return { label: "files preserved", tone: badge.tone } as const;
         }
 
         if (badge.label.includes("blob-missing")) {
-          return { label: "package missing blobs", tone: badge.tone } as const;
+          return { label: "missing files", tone: badge.tone } as const;
         }
 
         if (badge.label.includes("file(s) with attachments")) {
@@ -259,6 +275,7 @@ export default function ImportHistoryPanel({
           <div>
             {metadata.detectedLabel} | {metadata.conversationCount} conversation(s) | {metadata.messageCount} message(s)
           </div>
+          <div>Support: {formatSupportTierLabel(metadata.supportTier)}</div>
           <div>Vendors: {metadata.vendorSources.join(", ")}</div>
           {range ? <div>Date range: {range}</div> : null}
           {metadata.topicHints.length > 0 ? <div>Topics: {metadata.topicHints.join(", ")}</div> : null}
@@ -271,6 +288,7 @@ export default function ImportHistoryPanel({
         <div>
           {formatResultKindLabel(metadata.sourceKind)} | {metadata.fileExtension || "no extension"} | {Math.round(metadata.sizeBytes / 1024)} KB
         </div>
+        <div>Support: {formatSupportTierLabel(metadata.supportTier)}</div>
         <div>
           {metadata.parseStatus === "text_extracted" ? "Text extracted" : "Archived without extracted text"} | {metadata.textLength} chars
         </div>
@@ -404,7 +422,7 @@ export default function ImportHistoryPanel({
             type="text"
             value={filters.text}
             onChange={(event) => setFilters((current) => ({ ...current, text: event.target.value }))}
-            placeholder="Path, topic, message"
+            placeholder="Path, topic, result"
           />
         </label>
         <label className="form-label tight">
@@ -461,8 +479,8 @@ export default function ImportHistoryPanel({
       <div className="history-query-toolbar">
         <span className="muted">
           {searchMode === "query"
-            ? "Showing full-history investigation results from the desktop query engine."
-            : "Showing recent runs with in-panel filtering."}
+            ? "Showing matching results from your full import history."
+            : "Showing recent runs with quick filtering."}
         </span>
         <div className="action-bar">
           {onSearch ? (
@@ -479,7 +497,7 @@ export default function ImportHistoryPanel({
       </div>
 
       {!history || history.runs.length === 0 ? (
-        <p className="muted">No import history found for this output root yet.</p>
+        <p className="muted">No import history has been recorded for this output folder yet.</p>
       ) : filteredRuns.length === 0 ? (
         <p className="muted">No import runs match the current filters.</p>
       ) : (
@@ -511,19 +529,22 @@ export default function ImportHistoryPanel({
               <>
                 <div className="detail-box">
                   <strong>Run Summary</strong>
-                  <p className="muted">Source: {runForDetail.inputPath}</p>
-                  <p className="muted">Output: {runForDetail.outputRoot}</p>
+                  <p className="muted">Imported from: {runForDetail.inputPath}</p>
+                  <p className="muted">Saved to: {runForDetail.outputRoot}</p>
                   <p className="muted">
                     Imported {runForDetail.filesImported} of {runForDetail.filesDiscovered} file(s)
                   </p>
                   {renderSignalBadges(summarizeRunSignals(runForDetail))}
                   <p className="muted">
-                    Conversations: {runForDetail.conversationFilesProcessed} | Documents: {runForDetail.genericDocumentsProcessed} | PDF: {runForDetail.pdfFilesArchived}
+                    Conversation imports: {runForDetail.conversationFilesProcessed} | Document imports: {runForDetail.genericDocumentsProcessed} | PDF imports: {runForDetail.pdfFilesArchived}
                   </p>
                   {runForDetail.retrievalSummary ? (
                     <>
                       <p className="muted">
-                        Vendors: {runForDetail.retrievalSummary.vendorSources.join(", ")} | {runForDetail.retrievalSummary.conversationCount} conversation(s) | {runForDetail.retrievalSummary.messageCount} message(s)
+                        Sources: {runForDetail.retrievalSummary.vendorSources.join(", ")} | {runForDetail.retrievalSummary.conversationCount} conversation(s) | {runForDetail.retrievalSummary.messageCount} message(s)
+                      </p>
+                      <p className="muted">
+                        Readiness: {runForDetail.retrievalSummary.supportTiers.map(formatSupportTierLabel).join(", ")}
                       </p>
                       {formatDateRange(runForDetail.retrievalSummary.startedAt, runForDetail.retrievalSummary.endedAt) ? (
                         <p className="muted">
@@ -544,7 +565,7 @@ export default function ImportHistoryPanel({
                         type="button"
                         onClick={() => onOpenRunInRetrieval(runForDetail, filters)}
                       >
-                        Continue In Retrieval
+                        Open In Search
                       </button>
                     ) : null}
                     {runForDetail.artifacts.length > 0 ? (
@@ -600,7 +621,7 @@ export default function ImportHistoryPanel({
                                     type="button"
                                     onClick={() => onOpenResultInRetrieval(runForDetail, result.path, filters)}
                                   >
-                                    Retrieval
+                                    Search
                                   </button>
                                 ) : null}
                                 {(result.artifacts ?? []).map((artifact) => (

@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { loadImportHistory } from "../services/importHistoryBridge";
 import { loadImportRetrievalIndex } from "../services/importRetrievalIndexBridge";
-import { revealDesktopPath } from "../services/pathBridge";
 import type { ImportRunFileResult, ImportRunSummary } from "../types/importHistory";
 import type { ImportRetrievalIndexResult } from "../types/importRetrievalIndex";
+import { useNavigation } from "../state/navigationContext";
 
 export default function DashboardScreen() {
+  const { setActiveScreen } = useNavigation();
   const [latestRun, setLatestRun] = useState<ImportRunSummary | null>(null);
   const [retrievalIndex, setRetrievalIndex] = useState<ImportRetrievalIndexResult | null>(null);
 
@@ -17,11 +18,23 @@ export default function DashboardScreen() {
   }, []);
 
   const latestTrustBadges = summarizeLatestRunSignals(latestRun);
+  const runNeedsDiagnostics =
+    !!latestRun &&
+    (
+      latestRun.filesFailed > 0 ||
+      latestRun.unsupportedFilesSkipped > 0 ||
+      latestRun.results.some((result) => result.status !== "imported")
+    );
+  const hasConversationOutputs = (latestRun?.conversationFilesProcessed ?? 0) > 0;
+  const hasDatasetOutputs = !!latestRun?.retrievalSummary;
 
   return (
     <section className="screen-grid">
       <div className="panel large">
-        <h2>System Snapshot</h2>
+        <h2>Quick Status</h2>
+        <p className="muted">
+          Imports is the main starting point. Use this screen for a quick check, then jump back into the next step of the workflow.
+        </p>
         <div className="stats-grid">
           <div className="stat-card">
             <span className="label">Latest Import</span>
@@ -58,28 +71,48 @@ export default function DashboardScreen() {
             ))}
           </div>
         ) : null}
+        <div className="action-bar">
+          <button className="primary-btn" type="button" onClick={() => setActiveScreen("imports")}>
+            Go To Imports
+          </button>
+          {hasConversationOutputs ? (
+            <button className="secondary-btn" type="button" onClick={() => setActiveScreen("organized-output")}>
+              Open Readable Archive
+            </button>
+          ) : null}
+          {hasDatasetOutputs ? (
+            <button className="secondary-btn" type="button" onClick={() => setActiveScreen("datasets")}>
+              Open Datasets
+            </button>
+          ) : null}
+          {runNeedsDiagnostics ? (
+            <button className="secondary-btn" type="button" onClick={() => setActiveScreen("diagnostics")}>
+              Check Diagnostics
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="panel">
-        <h2>Retrieval Index</h2>
+        <h2>Find Imports</h2>
         {!retrievalIndex?.latest ? (
           <p className="muted">
-            No compact import retrieval index has been written yet. Run an import to generate one.
+            No search file has been written yet. Run an import first, then use Find Imports to locate past files quickly.
           </p>
         ) : (
           <>
             <p className="muted">
-              {retrievalIndex.latest.entryCount} indexed file records across {retrievalIndex.latest.runCount} import run(s)
+              {retrievalIndex.latest.entryCount} files are available across {retrievalIndex.latest.runCount} import run(s).
             </p>
             <p className="muted">
-              Recognized vendors: {retrievalIndex.latest.vendorSources.length > 0 ? retrievalIndex.latest.vendorSources.join(", ") : "none yet"}
+              Vendors: {retrievalIndex.latest.vendorSources.length > 0 ? retrievalIndex.latest.vendorSources.join(", ") : "none yet"}
             </p>
             <p className="muted">
               Topics: {retrievalIndex.latest.topicHints.slice(0, 4).join(", ") || "none yet"}
             </p>
             <div className="action-bar">
-              <button className="primary-btn" type="button" onClick={() => revealDesktopPath(retrievalIndex.latestFile)}>
-                Open Retrieval Index
+              <button className="primary-btn" type="button" onClick={() => setActiveScreen("retrieval")}>
+                Open Find Imports
               </button>
             </div>
           </>
@@ -95,6 +128,13 @@ export default function DashboardScreen() {
             <p className="muted">
               Imported {latestRun.filesImported} of {latestRun.filesDiscovered} file(s), skipped {latestRun.unsupportedFilesSkipped}.
             </p>
+            <p className="muted">
+              {runNeedsDiagnostics
+                ? "This run needs a quick follow-up check."
+                : hasConversationOutputs
+                  ? "This run is ready to review in the readable archive."
+                  : "This run completed and is ready for output review."}
+            </p>
             {latestTrustBadges.length > 0 ? (
               <p className="muted">
                 {latestTrustBadges.map((badge) => badge.label).join(" | ")}
@@ -102,15 +142,13 @@ export default function DashboardScreen() {
             ) : null}
           </>
         ) : (
-          <p className="muted">No import runs recorded yet.</p>
+          <p className="muted">No import runs recorded yet. Start in Imports to inspect a file or folder and run your first local import.</p>
         )}
       </div>
 
       <div className="panel">
-        <h2>Purpose</h2>
-        <p className="muted">
-          SkillSpring Quantum is becoming a local archive and dataset engine for major AI exports, with retrieval-ready metadata layered in as imports are processed.
-        </p>
+        <h2>Main Flow</h2>
+        <p className="muted">Inspect export -> import locally -> read archive -> review datasets -> check diagnostics only when needed.</p>
       </div>
     </section>
   );

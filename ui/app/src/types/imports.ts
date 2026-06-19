@@ -2,6 +2,12 @@ export type ImportMode = "single_file" | "batch";
 
 export type RunState = "idle" | "running" | "success" | "failed";
 
+export type ImportSupportTier =
+  | "mvp_first_class"
+  | "mvp_compatibility_fallback"
+  | "experimental_expansion"
+  | "unsupported";
+
 export interface ImportJobForm {
   mode: ImportMode;
   inputFile: string;
@@ -11,8 +17,9 @@ export interface ImportJobForm {
 
 export interface ImportSourceEntry {
   path: string;
-  kind: "chatgpt_export" | "conversation_json" | "json_document" | "text_document" | "pdf_document" | "unsupported";
+  kind: "chatgpt_export" | "conversation_json" | "gemini_activity_html" | "json_document" | "text_document" | "pdf_document" | "unsupported";
   supported: boolean;
+  supportTier: ImportSupportTier;
   reason: string;
 }
 

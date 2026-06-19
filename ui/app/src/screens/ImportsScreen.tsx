@@ -8,7 +8,8 @@ import type {
   ImportJobForm,
   ImportSourceSummary,
   RunLogEntry,
-  RunState
+  RunState,
+  ImportSupportTier
 } from "../types/imports";
 import type { ArchiveNotification } from "../types/notifications";
 import {
@@ -41,7 +42,9 @@ function formatSourceEntryKindLabel(kind: ImportSourceSummary["sampleFiles"][num
     case "chatgpt_export":
       return "ChatGPT export";
     case "conversation_json":
-      return "Vendor conversation JSON";
+      return "Recovered conversation JSON";
+    case "gemini_activity_html":
+      return "Gemini My Activity export";
     case "json_document":
       return "JSON document";
     case "text_document":
@@ -53,8 +56,21 @@ function formatSourceEntryKindLabel(kind: ImportSourceSummary["sampleFiles"][num
   }
 }
 
+function formatSupportTierLabel(tier: ImportSupportTier): string {
+  switch (tier) {
+    case "mvp_first_class":
+      return "Ready now";
+    case "mvp_compatibility_fallback":
+      return "Recovery path";
+    case "experimental_expansion":
+      return "Advanced import";
+    default:
+      return "Not supported";
+  }
+}
+
 function sourceEntryRowClassName(kind: ImportSourceSummary["sampleFiles"][number]["kind"]): string {
-  if (kind === "chatgpt_export" || kind === "conversation_json") {
+  if (kind === "chatgpt_export" || kind === "conversation_json" || kind === "gemini_activity_html") {
     return "source-summary-row priority-row";
   }
 
@@ -93,7 +109,7 @@ function notePriority(note: string): number {
 }
 
 export default function ImportsScreen() {
-  const { openRetrievalInvestigation } = useNavigation();
+  const { openRetrievalInvestigation, setActiveScreen } = useNavigation();
   const [form, setForm] = useState<ImportJobForm>({
     mode: "single_file",
     inputFile: "C:\\Users\\Laptop\\Desktop\\AI Exports\\claude\\conversation.json",
@@ -102,7 +118,7 @@ export default function ImportsScreen() {
   });
 
   const [runState, setRunState] = useState<RunState>("idle");
-  const [statusMessage, setStatusMessage] = useState("Ready to import.");
+  const [statusMessage, setStatusMessage] = useState("Ready to inspect or import.");
   const [logEntries, setLogEntries] = useState<RunLogEntry[]>([]);
   const [latestArchive, setLatestArchive] = useState<ArchiveNotification | null>(null);
   const [archiveEvents, setArchiveEvents] = useState<ArchiveNotification[]>([]);
@@ -131,14 +147,14 @@ export default function ImportsScreen() {
 
   async function runHistorySearch(filters: ImportHistoryFilters) {
     setHistorySearchBusy(true);
-    setStatusMessage("Searching import history...");
+    setStatusMessage("Searching past imports...");
     try {
       const result = await searchImportHistory(form.outputRoot, filters);
       setImportHistory(result);
       setHistoryMode("query");
       setSelectedRun(result.latest);
       setLogEntries((prev) => [
-        makeLogEntry("info", "History investigation search completed: " + result.runs.length + " matching run(s)."),
+        makeLogEntry("info", "History search completed: " + result.runs.length + " matching run(s)."),
         ...prev
       ]);
     } finally {
@@ -147,7 +163,7 @@ export default function ImportsScreen() {
   }
 
   async function resetHistorySearch() {
-    setStatusMessage("Ready to import.");
+    setStatusMessage("Ready to inspect or import.");
     await refreshImportHistory();
   }
 
@@ -165,7 +181,7 @@ export default function ImportsScreen() {
         filters.topic ||
         run.retrievalSummary?.topicHints[0] ||
         run.retrievalSummary?.vendorSources[0] ||
-        "Saved investigation"
+        "Saved search"
     });
   }
 
@@ -187,7 +203,7 @@ export default function ImportsScreen() {
         filters.topic ||
         run.retrievalSummary?.topicHints[0] ||
         run.retrievalSummary?.vendorSources[0] ||
-        "Saved investigation"
+        "Saved search"
     });
   }
 
@@ -233,7 +249,7 @@ export default function ImportsScreen() {
 
   async function handleSubmit() {
     setRunState("running");
-    setStatusMessage("Submitting import job...");
+    setStatusMessage("Running import...");
     setLogEntries((prev) => [
       makeLogEntry("info", "Import job submitted from UI scaffold."),
       ...prev
@@ -267,6 +283,33 @@ export default function ImportsScreen() {
     refreshArchiveNotifications();
   }, [form.outputRoot]);
 
+  const latestRunForNextSteps = importHistory?.latest;
+  const hasConversationOutputs = (latestRunForNextSteps?.conversationFilesProcessed ?? 0) > 0;
+  const hasDatasetOutputs = !!latestRunForNextSteps?.retrievalSummary;
+  const runNeedsDiagnostics =
+    !!latestRunForNextSteps &&
+    (
+      latestRunForNextSteps.filesFailed > 0 ||
+      latestRunForNextSteps.unsupportedFilesSkipped > 0 ||
+      latestRunForNextSteps.results.some((result) => result.status !== "imported")
+    );
+
+  function nextStepSummary(run: ImportRunSummary): string {
+    if (run.filesImported === 0) {
+      return "This run did not produce imported files. Check the source summary and diagnostics before trying again.";
+    }
+
+    if (runNeedsDiagnostics) {
+      return "The import finished, but there were skipped or failed files. Read the archive or datasets if they were produced, then check diagnostics for anything that needs attention.";
+    }
+
+    if (hasConversationOutputs) {
+      return "The import finished cleanly. Open the readable archive first for the easiest review, then open datasets if you want structured output.";
+    }
+
+    return "The import finished. Open the imported outputs to review what Quantum produced from this run.";
+  }
+
   return (
     <section className="screen-grid imports-layout">
       <ImportForm
@@ -293,18 +336,79 @@ export default function ImportsScreen() {
       <div className="panel">
         <h2>Import Notes</h2>
         <p className="muted">
-          First-user MVP focus: major AI conversation exports from globally common vendors.
+          MVP focus: inspect recognizable AI exports, import them locally, open a readable archive, and review the dataset output without leaving the app.
         </p>
         <ul>
-          <li>Major AI export files from ChatGPT, Claude, Gemini, Copilot, and Grok are the main first-user workflow.</li>
-          <li>Quantum inspects a file or folder first, then reports what it can import, archive, or skip before you run anything.</li>
-          <li>Conversation exports become readable archives plus anonymized dataset records in the same local run.</li>
-          <li>Grok packages can preserve referenced attachment blobs when those folders are included in the source package.</li>
-          <li>Keep one stable output root for related imports so history, retrieval, and datasets stay connected.</li>
+          <li>ChatGPT and Grok are the clearest ready-now conversation import paths.</li>
+          <li>Claude-style JSON and Gemini My Activity HTML can still import through recovery paths when their structure is intact.</li>
+          <li>Quantum inspects a file or folder first, then tells you what it can import, archive, or skip before the run starts.</li>
+          <li>Conversation imports produce both a readable archive and privacy-aware dataset records in the same local run.</li>
+          <li>Keep one stable output folder for related imports so history, search, and datasets stay connected.</li>
         </ul>
         <p className="muted">
-          Internal or experimental support remains available for generic JSON, text files, and PDFs, but those are expansion paths rather than the main public MVP promise.
+          Generic documents and PDFs can still be processed, but they are supporting paths rather than the main MVP promise.
         </p>
+      </div>
+
+      <div className="panel">
+        <h2>Next Step</h2>
+        {!latestRunForNextSteps ? (
+          <>
+            <p className="muted">
+              Start by inspecting a file or folder. After your first import, Quantum will point you to the best next screen.
+            </p>
+            <div className="action-bar">
+              <button className="primary-btn" type="button" onClick={refreshSourceSummary}>
+                Inspect Current Path
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="muted">{nextStepSummary(latestRunForNextSteps)}</p>
+            <p className="muted">
+              Latest run: {new Date(latestRunForNextSteps.runAt).toLocaleString()} | Imported {latestRunForNextSteps.filesImported} of {latestRunForNextSteps.filesDiscovered} file(s)
+            </p>
+            <div className="action-bar">
+              {hasConversationOutputs ? (
+                <button className="primary-btn" type="button" onClick={() => setActiveScreen("organized-output")}>
+                  Open Readable Archive
+                </button>
+              ) : null}
+              {hasDatasetOutputs ? (
+                <button className="primary-btn" type="button" onClick={() => setActiveScreen("datasets")}>
+                  Open Datasets
+                </button>
+              ) : null}
+              {runNeedsDiagnostics ? (
+                <button className="secondary-btn" type="button" onClick={() => setActiveScreen("diagnostics")}>
+                  Check Diagnostics
+                </button>
+              ) : null}
+              {latestRunForNextSteps.retrievalSummary ? (
+                <button
+                  className="secondary-btn"
+                  type="button"
+                  onClick={() =>
+                    openRetrievalInvestigation({
+                      filters: {
+                        text: "",
+                        vendor: "",
+                        topic: "",
+                        status: "all",
+                        from: "",
+                        to: ""
+                      },
+                      suggestedName: latestRunForNextSteps.retrievalSummary?.topicHints[0] || "Latest import"
+                    })
+                  }
+                >
+                  Find Imported Files
+                </button>
+              ) : null}
+            </div>
+          </>
+        )}
       </div>
 
       <ImportHistoryPanel
@@ -323,38 +427,39 @@ export default function ImportsScreen() {
       <div className="panel large">
         <h2>Source Summary</h2>
         {!sourceSummary ? (
-          <p className="muted">Inspect a file or folder to see what SkillSpring Quantum can process from it.</p>
+          <p className="muted">Inspect a file or folder to see what Quantum can import, recover, or skip before you run anything.</p>
         ) : (
           <>
             <p className="muted">
-              {sourceSummary.inputType} at <code>{sourceSummary.inputPath}</code>
+              {sourceSummary.inputType} found at <code>{sourceSummary.inputPath}</code>
             </p>
             <p className="muted">
-              Major AI exports are the primary first-user workflow. Document imports shown here remain useful, but they are not the core MVP story.
+              This summary helps you decide whether to import now, clean up the export first, or ignore files that are outside the main MVP path.
             </p>
             <div className="stats-grid two-col">
               <div className="stat-card accent-card">
-                <span className="label">Major AI Export Files</span>
+                <span className="label">AI Export Files</span>
                 <strong>
                   {sourceSummary.countsByKind.chatgpt_export + sourceSummary.countsByKind.conversation_json}
+                    + sourceSummary.countsByKind.gemini_activity_html
                 </strong>
               </div>
               <div className="stat-card">
-                <span className="label">Supported</span>
+                <span className="label">Ready To Process</span>
                 <strong>{sourceSummary.supportedFiles}</strong>
               </div>
               <div className="stat-card">
-                <span className="label">Unsupported</span>
+                <span className="label">Will Be Skipped</span>
                 <strong>{sourceSummary.unsupportedFiles}</strong>
               </div>
               <div className="stat-card subdued-card">
-                <span className="label">Document Expansion Files</span>
+                <span className="label">Document Files</span>
                 <strong>
                   {sourceSummary.countsByKind.text_document + sourceSummary.countsByKind.json_document}
                 </strong>
               </div>
               <div className="stat-card subdued-card">
-                <span className="label">PDF Expansion Files</span>
+                <span className="label">PDF Files</span>
                 <strong>{sourceSummary.countsByKind.pdf_document}</strong>
               </div>
               <div className="stat-card">
@@ -380,14 +485,16 @@ export default function ImportsScreen() {
                   <thead>
                     <tr>
                       <th>Detected Type</th>
+                      <th>Readiness</th>
                       <th>Path</th>
-                      <th>What Quantum Will Do</th>
+                      <th>What Happens If You Import</th>
                     </tr>
                   </thead>
                   <tbody>
                     {sourceSummary.sampleFiles.map((entry) => (
                       <tr key={entry.path} className={sourceEntryRowClassName(entry.kind)}>
                         <td>{formatSourceEntryKindLabel(entry.kind)}</td>
+                        <td>{formatSupportTierLabel(entry.supportTier)}</td>
                         <td>{entry.path}</td>
                         <td>{entry.reason}</td>
                       </tr>

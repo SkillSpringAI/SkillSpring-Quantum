@@ -2,17 +2,16 @@
 
 SkillSpring Quantum is a local-first desktop application and processing engine for turning AI conversation exports into structured, auditable knowledge assets.
 
-It is designed to import local exports, preserve readable archived versions, and produce anonymized dataset artifacts from the same workflow.
+It is designed to import local exports, preserve readable archived versions, and produce privacy-aware dataset artifacts from the same workflow.
 
 ## First user-facing MVP scope
 
-The first real user-facing iteration of SkillSpring Quantum is focused on major AI conversation exports only:
+The first real user-facing iteration of SkillSpring Quantum is focused on a narrow, trustworthy AI-export workflow:
 
-- ChatGPT / OpenAI
-- Claude
-- Gemini
-- Microsoft Copilot
-- Grok
+- import major AI conversation exports
+- produce readable local archives
+- produce inspectable privacy-aware dataset artifacts
+- explain failures and partial imports in plain English
 
 The user-facing workflow should stay simple:
 
@@ -20,10 +19,30 @@ The user-facing workflow should stay simple:
 2. Inspect what Quantum found.
 3. Run the import locally.
 4. Review readable archives and structured dataset output.
+5. Understand what succeeded, failed, or used fallback recovery.
 
 Other intake types such as Kimi, DeepSeek, Perplexity, generic JSON, PDFs, mixed local documents, and enterprise conversation systems remain useful expansion paths, but they are not the first user-facing MVP promise.
 
 For MVP discipline, broader document intake such as PDFs, CSVs, Excel files, and Word documents should stay out of the first public/user-facing scope unless actual user demand proves they are a higher priority than the major AI export workflow.
+
+## Current support tiers
+
+### MVP first-class now
+
+- ChatGPT / OpenAI
+- Grok
+
+### MVP compatibility fallback now
+
+- Claude via generic conversation parsing
+- Gemini via generic conversation parsing
+- Microsoft Copilot only where recoverable conversation JSON is proven by fixture and test coverage
+
+### Explicitly deferred from first-class MVP support
+
+- named Claude adapter
+- named Gemini adapter
+- named Copilot adapter
 
 ## Current purpose
 
@@ -31,7 +50,7 @@ The system converts raw exported conversation data into:
 
 - human-readable archived markdown
 - topic-organized conversation output
-- anonymized dataset-ready JSONL records
+- privacy-aware dataset-ready JSONL records
 - diagnostics, manifests, and audit artifacts
 - tiered local data storage for raw, processed, curated, and private-review records
 - import history and file-level import result visibility
@@ -44,10 +63,9 @@ There is a difference between the user-facing MVP scope and current internal sup
 ### User-facing MVP intake
 
 - ChatGPT export JSON files
-- Claude export JSON files or extracted conversation JSON
-- Gemini export JSON or extracted conversation JSON where conversational structure is recoverable
-- Microsoft Copilot conversation export JSON when available
 - Grok export manifest JSON files with referenced attachment blob preservation when the blob folders are present
+- Claude- and Gemini-shaped conversation JSON only as compatibility fallback where conversational structure is recoverable
+- Microsoft Copilot conversation JSON only where recoverable shapes are actually proven
 
 ### Internal and experimental intake already present
 

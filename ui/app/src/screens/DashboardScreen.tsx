@@ -27,6 +27,7 @@ export default function DashboardScreen() {
     );
   const hasConversationOutputs = (latestRun?.conversationFilesProcessed ?? 0) > 0;
   const hasDatasetOutputs = !!latestRun?.retrievalSummary;
+  const latestOutcomeSummary = latestRun ? summarizeRunOutcomeCounts(latestRun) : null;
 
   return (
     <section className="screen-grid">
@@ -126,7 +127,7 @@ export default function DashboardScreen() {
             <p className="muted">{new Date(latestRun.runAt).toLocaleString()}</p>
             <p className="muted">{latestRun.inputPath}</p>
             <p className="muted">
-              Imported {latestRun.filesImported} of {latestRun.filesDiscovered} file(s), skipped {latestRun.unsupportedFilesSkipped}.
+              Imported {latestRun.filesImported} of {latestRun.filesDiscovered} file(s). {latestOutcomeSummary}
             </p>
             <p className="muted">
               {runNeedsDiagnostics
@@ -152,6 +153,37 @@ export default function DashboardScreen() {
       </div>
     </section>
   );
+}
+
+function summarizeRunOutcomeCounts(run: ImportRunSummary): string {
+  let archivedOnly = 0;
+  let recoveryPath = 0;
+
+  for (const result of run.results) {
+    if (result.metadata?.sourceCategory === "document" && result.metadata.parseStatus === "binary_archived_only") {
+      archivedOnly += 1;
+    }
+
+    if (result.metadata?.sourceCategory === "conversation" && result.metadata.supportTier === "mvp_compatibility_fallback") {
+      recoveryPath += 1;
+    }
+  }
+
+  const parts = [
+    run.filesImported + " imported",
+    run.filesFailed + " failed",
+    run.unsupportedFilesSkipped + " skipped"
+  ];
+
+  if (archivedOnly > 0) {
+    parts.push(archivedOnly + " archived only");
+  }
+
+  if (recoveryPath > 0) {
+    parts.push(recoveryPath + " recovery path");
+  }
+
+  return parts.join(" | ");
 }
 
 function summarizeLatestRunSignals(

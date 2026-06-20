@@ -153,6 +153,41 @@ function findLatestDatasetArtifactPath(run: ImportRunSummary | null): string | n
   return fallback?.path ?? null;
 }
 
+function summarizeRunOutcomeCounts(run: ImportRunSummary | null): string | null {
+  if (!run) {
+    return null;
+  }
+
+  let archivedOnly = 0;
+  let recoveryPath = 0;
+
+  for (const result of run.results) {
+    if (result.metadata?.sourceCategory === "document" && result.metadata.parseStatus === "binary_archived_only") {
+      archivedOnly += 1;
+    }
+
+    if (result.metadata?.sourceCategory === "conversation" && result.metadata.supportTier === "mvp_compatibility_fallback") {
+      recoveryPath += 1;
+    }
+  }
+
+  const parts = [
+    run.filesImported + " imported",
+    run.filesFailed + " failed",
+    run.unsupportedFilesSkipped + " skipped"
+  ];
+
+  if (archivedOnly > 0) {
+    parts.push(archivedOnly + " archived only");
+  }
+
+  if (recoveryPath > 0) {
+    parts.push(recoveryPath + " recovery path");
+  }
+
+  return parts.join(" | ");
+}
+
 export default function ImportsScreen() {
   const { openRetrievalInvestigation, setActiveScreen } = useNavigation();
   const [form, setForm] = useState<ImportJobForm>({
@@ -331,6 +366,7 @@ export default function ImportsScreen() {
   const latestRunForNextSteps = importHistory?.latest;
   const latestArchiveArtifactPath = findLatestArchiveArtifactPath(latestRunForNextSteps ?? null);
   const latestDatasetArtifactPath = findLatestDatasetArtifactPath(latestRunForNextSteps ?? null);
+  const latestRunOutcomeSummary = summarizeRunOutcomeCounts(latestRunForNextSteps ?? null);
   const hasConversationOutputs = (latestRunForNextSteps?.conversationFilesProcessed ?? 0) > 0;
   const hasDatasetOutputs = !!latestRunForNextSteps?.retrievalSummary;
   const runNeedsDiagnostics =
@@ -414,7 +450,7 @@ export default function ImportsScreen() {
           <>
             <p className="muted">{nextStepSummary(latestRunForNextSteps)}</p>
             <p className="muted">
-              Latest run: {new Date(latestRunForNextSteps.runAt).toLocaleString()} | Imported {latestRunForNextSteps.filesImported} of {latestRunForNextSteps.filesDiscovered} file(s)
+              Latest run: {new Date(latestRunForNextSteps.runAt).toLocaleString()} | {latestRunOutcomeSummary}
             </p>
             <div className="action-bar">
               {hasConversationOutputs ? (

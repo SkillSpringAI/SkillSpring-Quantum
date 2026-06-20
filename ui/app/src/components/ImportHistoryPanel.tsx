@@ -65,6 +65,37 @@ function findLatestDatasetArtifactPath(run: ImportRunSummary | null): string | n
   return fallback?.path ?? null;
 }
 
+function summarizeRunOutcomeCounts(run: ImportRunSummary): string {
+  let archivedOnly = 0;
+  let recoveryPath = 0;
+
+  for (const result of run.results) {
+    if (result.metadata?.sourceCategory === "document" && result.metadata.parseStatus === "binary_archived_only") {
+      archivedOnly += 1;
+    }
+
+    if (result.metadata?.sourceCategory === "conversation" && result.metadata.supportTier === "mvp_compatibility_fallback") {
+      recoveryPath += 1;
+    }
+  }
+
+  const parts = [
+    run.filesImported + " imported",
+    run.filesFailed + " failed",
+    run.unsupportedFilesSkipped + " skipped"
+  ];
+
+  if (archivedOnly > 0) {
+    parts.push(archivedOnly + " archived only");
+  }
+
+  if (recoveryPath > 0) {
+    parts.push(recoveryPath + " recovery path");
+  }
+
+  return parts.join(", ");
+}
+
 export default function ImportHistoryPanel({
   history,
   selectedRun,
@@ -580,7 +611,7 @@ export default function ImportHistoryPanel({
                   >
                     <div><strong>{new Date(run.runAt).toLocaleString()}</strong></div>
                     <div className="muted">
-                      {run.filesImported} imported, {run.filesFailed} failed, {run.unsupportedFilesSkipped} skipped
+                      {summarizeRunOutcomeCounts(run)}
                     </div>
                     {renderSignalBadges(summarizeRunSignalsCompact(run))}
                   </li>
@@ -597,7 +628,7 @@ export default function ImportHistoryPanel({
                   <p className="muted">Imported from: {runForDetail.inputPath}</p>
                   <p className="muted">Saved to: {runForDetail.outputRoot}</p>
                   <p className="muted">
-                    Imported {runForDetail.filesImported} of {runForDetail.filesDiscovered} file(s)
+                    Imported {runForDetail.filesImported} of {runForDetail.filesDiscovered} file(s) | {summarizeRunOutcomeCounts(runForDetail)}
                   </p>
                   {renderSignalBadges(summarizeRunSignals(runForDetail))}
                   <p className="muted">

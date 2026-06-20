@@ -9,6 +9,20 @@ import { shouldIncludeTopic } from "./topicFilter.js";
 import { writeTierRecords, writeDbManifest } from "../db/tieredStore.js";
 import { formatRelativeTimestamp } from "../utils/time.js";
 import { writeSegmentRetrievalIndex, type SegmentRetrievalIndexEntry } from "./segmentRetrievalIndex.js";
+import type { ImportSupportTier } from "../imports/importMetadata.js";
+
+export interface DatasetSourceContext {
+  pipeline_run_id: string;
+  source_input_path?: string;
+  detected_kind?: string;
+  detected_label?: string;
+  support_tier?: ImportSupportTier;
+  vendor_sources: string[];
+  conversation_count?: number;
+  message_count?: number;
+  attachment_count?: number;
+  topic_hints: string[];
+}
 
 interface TopicSegmentRecord {
   schema_version: "topic_segment.v1";
@@ -64,6 +78,7 @@ interface MicroSegmentRecord {
 export interface DatasetSummary {
   run_id: string;
   dataset_version: string;
+  source_context: DatasetSourceContext;
   topic_segments: number;
   prompt_response_pairs: number;
   micro_segments: number;
@@ -130,7 +145,8 @@ function chunkMessages(
 export async function exportDatasets(
   segments: ConversationSegment[],
   rootOutputDir: string,
-  version = "v1"
+  version = "v1",
+  sourceContext?: Partial<DatasetSourceContext>
 ): Promise<DatasetSummary> {
   const paths = buildDatasetPaths(rootOutputDir, version);
   const dbRoot = path.join(rootOutputDir, "db");
@@ -150,6 +166,18 @@ export async function exportDatasets(
   const summary: DatasetSummary = {
     run_id: paths.runId,
     dataset_version: version,
+    source_context: {
+      pipeline_run_id: sourceContext?.pipeline_run_id ?? paths.runId,
+      source_input_path: sourceContext?.source_input_path,
+      detected_kind: sourceContext?.detected_kind,
+      detected_label: sourceContext?.detected_label,
+      support_tier: sourceContext?.support_tier,
+      vendor_sources: sourceContext?.vendor_sources ?? [],
+      conversation_count: sourceContext?.conversation_count,
+      message_count: sourceContext?.message_count,
+      attachment_count: sourceContext?.attachment_count,
+      topic_hints: sourceContext?.topic_hints ?? []
+    },
     topic_segments: 0,
     prompt_response_pairs: 0,
     micro_segments: 0,
@@ -326,6 +354,7 @@ export async function exportDatasets(
   await writeDbManifest(dbRoot, "latest-dataset-run.json", {
     run_id: summary.run_id,
     dataset_version: summary.dataset_version,
+    source_context: summary.source_context,
     topic_segments: summary.topic_segments,
     prompt_response_pairs: summary.prompt_response_pairs,
     micro_segments: summary.micro_segments,

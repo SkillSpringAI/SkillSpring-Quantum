@@ -6,6 +6,18 @@ import { resolveOutputRoot } from "../utils/paths.js";
 interface DatasetRunSummary {
   run_id: string;
   dataset_version: string;
+  source_context?: {
+    pipeline_run_id: string;
+    source_input_path?: string;
+    detected_kind?: string;
+    detected_label?: string;
+    support_tier?: string;
+    vendor_sources: string[];
+    conversation_count?: number;
+    message_count?: number;
+    attachment_count?: number;
+    topic_hints: string[];
+  };
   topic_segments: number;
   prompt_response_pairs: number;
   micro_segments: number;

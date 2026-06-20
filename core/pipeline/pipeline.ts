@@ -16,6 +16,7 @@ import { runPipelinePreflight } from "../diagnostics/preflight.js";
 import { writeArchiveNotification } from "./archiveNotifier.js";
 import { archiveGrokConversationAttachments } from "./grokAttachmentArchive.js";
 import { archiveGeminiConversationAttachments } from "./geminiAttachmentArchive.js";
+import { summarizeDetectedConversationImport } from "../imports/importMetadata.js";
 import programManifest from "../../config/programManifest.json" with { type: "json" };
 
 const PIPELINE_VERSION = programManifest.pipeline_version;
@@ -119,6 +120,7 @@ export async function runConversationPipeline(
 
     const raw = await readConversationImportSource(filePath);
     const detected = detectAndParseConversationExport(raw);
+    const importMetadata = summarizeDetectedConversationImport(detected);
     const parsed = detected.parsed;
     const index = await loadIndex(outputRoot);
     const allSegments = [];
@@ -275,7 +277,23 @@ export async function runConversationPipeline(
       }
     }
 
-    const datasetSummary = await exportDatasets(allSegments, outputRoot, DATASET_VERSION);
+    const datasetSummary = await exportDatasets(
+      allSegments,
+      outputRoot,
+      DATASET_VERSION,
+      {
+        pipeline_run_id: diagnostics.run_id,
+        source_input_path: filePath,
+        detected_kind: importMetadata?.detectedKind ?? detected.kind,
+        detected_label: importMetadata?.detectedLabel ?? detected.label,
+        support_tier: importMetadata?.supportTier,
+        vendor_sources: importMetadata?.vendorSources ?? [],
+        conversation_count: importMetadata?.conversationCount ?? parsed.conversations.length,
+        message_count: importMetadata?.messageCount,
+        attachment_count: importMetadata?.attachmentCount,
+        topic_hints: importMetadata?.topicHints ?? []
+      }
+    );
     await saveIndex(outputRoot, index);
 
     diagnostics.dataset_topic_segments = datasetSummary.topic_segments;

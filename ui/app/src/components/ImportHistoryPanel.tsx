@@ -107,6 +107,25 @@ export default function ImportHistoryPanel({
     }
   }
 
+  function formatResultStatusLabel(
+    status: "imported" | "skipped" | "failed",
+    metadata?: ImportFileMetadata
+  ): string {
+    if (status === "failed") {
+      return "Failed";
+    }
+
+    if (status === "skipped") {
+      return "Skipped";
+    }
+
+    if (metadata?.sourceCategory === "document" && metadata.parseStatus === "binary_archived_only") {
+      return "Archived only";
+    }
+
+    return "Imported";
+  }
+
   function formatSupportTierLabel(tier: ImportSupportTier): string {
     switch (tier) {
       case "mvp_first_class":
@@ -662,8 +681,8 @@ export default function ImportHistoryPanel({
                     </thead>
                     <tbody>
                       {visibleResults.map((result) => (
-                        <tr key={result.path + result.kind}>
-                          <td>{result.status}</td>
+                      <tr key={result.path + result.kind}>
+                          <td>{formatResultStatusLabel(result.status, result.metadata)}</td>
                           <td>
                             {result.metadata?.sourceCategory === "conversation"
                               ? result.metadata.detectedLabel

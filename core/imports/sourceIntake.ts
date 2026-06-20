@@ -243,7 +243,7 @@ export async function runImportSource(
         path: filePath,
         kind: entry.kind,
         status: "skipped",
-        message: entry.reason
+        message: "Skipped: " + entry.reason
       });
       continue;
     }
@@ -258,7 +258,7 @@ export async function runImportSource(
             path: filePath,
             kind: entry.kind,
             status: "failed",
-            message: "Conversation pipeline failed.",
+            message: "Import failed before archive and dataset outputs were completed. Check diagnostics for details.",
             metadata: metadata ?? undefined
           });
           continue;
@@ -307,7 +307,9 @@ export async function runImportSource(
         path: filePath,
         kind: entry.kind,
         status: "failed",
-        message: error instanceof Error ? error.message : "Import failed."
+        message: error instanceof Error
+          ? "Import failed: " + error.message
+          : "Import failed before outputs were completed."
       });
     }
   }
@@ -359,7 +361,8 @@ export function buildConversationImportResultMessage(
   diagnostics: Awaited<ReturnType<typeof runConversationPipeline>>
 ): string {
   const label = metadata?.detectedLabel ?? "Conversation import";
-  const tierLabel = metadata ? formatSupportTierLabel(metadata.supportTier) : null;
+  const supportTier = metadata?.supportTier;
+  const tierLabel = supportTier ? formatSupportTierLabel(supportTier) : null;
   const details = [
     diagnostics.conversations_found + " conversation(s)",
     diagnostics.dataset_topic_segments + " topic segment(s)",
@@ -396,7 +399,11 @@ export function buildConversationImportResultMessage(
     }
   }
 
-  return (tierLabel ? label + " (" + tierLabel + ")" : label) + " processed: " + details.join(", ") + ".";
+  if (supportTier === "mvp_compatibility_fallback") {
+    return (tierLabel ? label + " (" + tierLabel + ")" : label) + " imported through recovery path: " + details.join(", ") + ".";
+  }
+
+  return (tierLabel ? label + " (" + tierLabel + ")" : label) + " imported: " + details.join(", ") + ".";
 }
 
 export function buildDocumentImportResultMessage(
@@ -408,19 +415,19 @@ export function buildDocumentImportResultMessage(
     if (metadata.parseStatus === "text_extracted") {
       return (
         documentLabel +
-        " archived with extracted text and source-document dataset record written."
+        " imported: archived intact, extracted text was available, and a source-document dataset record was written."
       );
     }
 
     return (
       documentLabel +
-      " archived intact without extracted text; source-document dataset record still written."
+      " archived only: saved intact without extracted text, and a source-document dataset record was still written."
     );
   }
 
   return (
     documentLabel +
-    " archived and source-document dataset record written."
+    " imported: archived markdown and source-document dataset record written."
   );
 }
 

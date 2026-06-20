@@ -61,7 +61,7 @@ const grokConversationMessage = buildConversationImportResultMessage(
 
 assert.equal(
   grokConversationMessage,
-  "Grok export (MVP first-class) processed: 1 conversation(s), 2 topic segment(s), 1 prompt/response pair(s), 1 attachment blob(s) preserved, 1 referenced blob(s) missing."
+  "Grok export (MVP first-class) imported: 1 conversation(s), 2 topic segment(s), 1 prompt/response pair(s), 1 attachment blob(s) preserved, 1 referenced blob(s) missing."
 );
 
 const geminiConversationMessage = buildConversationImportResultMessage(
@@ -121,7 +121,7 @@ const geminiConversationMessage = buildConversationImportResultMessage(
 
 assert.equal(
   geminiConversationMessage,
-  "Gemini My Activity export (Compatibility fallback) processed: 1 conversation(s), 1 topic segment(s), 1 prompt/response pair(s), 1 linked file(s) preserved, 2 linked file(s) missing from export folder."
+  "Gemini My Activity export (Compatibility fallback) imported through recovery path: 1 conversation(s), 1 topic segment(s), 1 prompt/response pair(s), 1 linked file(s) preserved, 2 linked file(s) missing from export folder."
 );
 
 const claudeConversationMessage = buildConversationImportResultMessage(
@@ -181,7 +181,7 @@ const claudeConversationMessage = buildConversationImportResultMessage(
 
 assert.equal(
   claudeConversationMessage,
-  "Claude conversation JSON (Compatibility fallback) processed: 1 conversation(s), 3 topic segment(s), 2 prompt/response pair(s), 1 attachment reference(s) detected."
+  "Claude conversation JSON (Compatibility fallback) imported through recovery path: 1 conversation(s), 3 topic segment(s), 2 prompt/response pair(s), 1 attachment reference(s) detected."
 );
 
 assert.equal(
@@ -194,7 +194,7 @@ assert.equal(
     parseStatus: "binary_archived_only",
     textLength: 0
   }),
-  "PDF document archived intact without extracted text; source-document dataset record still written."
+  "PDF document archived only: saved intact without extracted text, and a source-document dataset record was still written."
 );
 
 assert.equal(
@@ -207,7 +207,7 @@ assert.equal(
     parseStatus: "text_extracted",
     textLength: 128
   }),
-  "Text document archived and source-document dataset record written."
+  "Text document imported: archived markdown and source-document dataset record written."
 );
 
 console.log("import-result-messages.test.ts passed");

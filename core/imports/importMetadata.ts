@@ -185,7 +185,7 @@ export function classifyConversationSupportTier(
     return "mvp_first_class";
   }
 
-  if (kind === "gemini_activity_html") {
+  if (kind === "claude_export" || kind === "gemini_activity_html") {
     return "mvp_compatibility_fallback";
   }
 
@@ -215,6 +215,10 @@ function buildConversationImportDisplayLabel(
 
   if (kind === "grok_export") {
     return "Grok export";
+  }
+
+  if (kind === "claude_export") {
+    return "Claude export";
   }
 
   if (kind === "gemini_activity_html") {

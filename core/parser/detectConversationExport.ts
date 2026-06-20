@@ -8,6 +8,7 @@ import { parseGrokExport } from "./grok.js";
 export type ConversationParserKind =
   | "chatgpt_export"
   | "grok_export"
+  | "claude_export"
   | "copilot_activity_csv"
   | "gemini_activity_html"
   | "generic_conversation"
@@ -83,6 +84,18 @@ export function detectAndParseConversationExport(raw: unknown): DetectedConversa
   }
 
   const generic = parseGenericConversationExport(raw);
+  if (generic.conversations.length > 0 && looksLikeClaudeExport(raw, generic)) {
+    return {
+      kind: "claude_export",
+      label: "Claude export",
+      parsed: generic,
+      diagnostics: {
+        ...diagnostics,
+        matchedPath: diagnostics.matchedPath ?? "[0].chat_messages"
+      }
+    };
+  }
+
   if (generic.conversations.length > 0) {
     return {
       kind: "generic_conversation",
@@ -136,6 +149,40 @@ export function inspectConversationExportShape(raw: unknown): ConversationDetect
     candidateContainers,
     candidateMessageKeys
   };
+}
+
+function looksLikeClaudeExport(raw: unknown, parsed: ParseResult): boolean {
+  if (!Array.isArray(raw) || parsed.conversations.length === 0) {
+    return false;
+  }
+
+  const sample = raw[0];
+  if (!sample || typeof sample !== "object") {
+    return false;
+  }
+
+  const record = sample as Record<string, unknown>;
+  if (
+    typeof record.uuid !== "string" ||
+    !Array.isArray(record.chat_messages) ||
+    !record.account ||
+    typeof record.account !== "object" ||
+    (!("name" in record) && !("summary" in record))
+  ) {
+    return false;
+  }
+
+  const firstMessage = record.chat_messages[0];
+  if (!firstMessage || typeof firstMessage !== "object") {
+    return false;
+  }
+
+  const firstMessageRecord = firstMessage as Record<string, unknown>;
+  return (
+    typeof firstMessageRecord.sender === "string" &&
+    "attachments" in firstMessageRecord &&
+    "files" in firstMessageRecord
+  );
 }
 
 function findContainerPaths(raw: unknown): string[] {

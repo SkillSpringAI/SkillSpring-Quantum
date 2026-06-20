@@ -893,7 +893,11 @@ async function classifyImportFile(filePath: string): Promise<ImportSourceEntry> 
         };
       }
 
-      if (detected.kind === "grok_export" || detected.kind === "generic_conversation") {
+      if (
+        detected.kind === "grok_export" ||
+        detected.kind === "claude_export" ||
+        detected.kind === "generic_conversation"
+      ) {
         const vendorSources = uniqueConversationSources(detected);
         const supportTier = classifyConversationSupportTier(detected.kind, vendorSources);
         return {
@@ -901,9 +905,12 @@ async function classifyImportFile(filePath: string): Promise<ImportSourceEntry> 
           kind: "conversation_json",
           supported: true,
           supportTier,
-          reason: detected.kind === "grok_export"
-            ? "Recognized as a Grok export and will be imported as conversations."
-            : buildConversationJsonReason(vendorSources, supportTier)
+          reason:
+            detected.kind === "grok_export"
+              ? "Recognized as a Grok export and will be imported as conversations."
+              : detected.kind === "claude_export"
+                ? "Recognized as a Claude export and will be recovered through compatibility fallback parsing."
+                : buildConversationJsonReason(vendorSources, supportTier)
         };
       }
 

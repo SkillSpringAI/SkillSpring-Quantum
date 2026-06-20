@@ -2,8 +2,12 @@
   {
     "uuid": "claude-conversation-1",
     "name": "Claude Export Sample",
+    "summary": "Sample Claude export conversation",
     "created_at": "2026-04-04T05:29:29.317Z",
     "updated_at": "2026-04-04T05:35:06.550Z",
+    "account": {
+      "uuid": "claude-account-1"
+    },
     "chat_messages": [
       {
         "uuid": "claude-message-1",
@@ -15,7 +19,20 @@
           }
         ],
         "sender": "human",
-        "created_at": "2026-04-04T05:29:31.577Z"
+        "created_at": "2026-04-04T05:29:31.577Z",
+        "attachments": [
+          {
+            "file_uuid": "claude-attachment-1",
+            "file_name": "era-of-ruin-notes.txt",
+            "file_type": "text/plain"
+          }
+        ],
+        "files": [
+          {
+            "file_uuid": "claude-file-1",
+            "file_name": "era-of-ruin-design.md"
+          }
+        ]
       },
       {
         "uuid": "claude-message-2",
@@ -36,7 +53,9 @@
           }
         ],
         "sender": "assistant",
-        "created_at": "2026-04-04T05:32:17.861Z"
+        "created_at": "2026-04-04T05:32:17.861Z",
+        "attachments": [],
+        "files": []
       }
     ]
   }

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Conversation, ConversationMessage, ParseResult, Role } from "./types.js";
+import type { Conversation, ConversationAttachment, ConversationMessage, ParseResult, Role } from "./types.js";
 
 interface GenericMessageLike {
   id?: string;
@@ -25,6 +25,8 @@ interface GenericMessageLike {
   createdAt?: string | number;
   updated_at?: string | number;
   time?: string | number;
+  attachments?: unknown;
+  files?: unknown;
 }
 
 interface GenericConversationLike {
@@ -33,6 +35,8 @@ interface GenericConversationLike {
   conversation_id?: string;
   title?: string;
   name?: string;
+  summary?: string;
+  account?: unknown;
   subject?: string;
   created_at?: string | number;
   createdAt?: string | number;
@@ -151,6 +155,8 @@ function toMessage(value: GenericMessageLike, index: number): ConversationMessag
     .find(Boolean);
   if (!text) return null;
 
+  const attachments = extractAttachments(value);
+
   return {
     id: value.id ?? value.uuid ?? "message-" + index,
     role: mapRole(value.role ?? value.author ?? value.speaker ?? value.sender ?? value.source ?? value.type),
@@ -161,7 +167,8 @@ function toMessage(value: GenericMessageLike, index: number): ConversationMessag
       value.createdAt ??
       value.updated_at ??
       value.time
-    )
+    ),
+    attachments: attachments.length > 0 ? attachments : undefined
   };
 }
 
@@ -268,9 +275,19 @@ function inferConversationSource(
   raw: GenericConversationLike,
   messages: ConversationMessage[]
 ): InferredConversationSource {
+  if (
+    Array.isArray(raw.chat_messages) &&
+    raw.account &&
+    typeof raw.account === "object" &&
+    (typeof raw.name === "string" || typeof raw.summary === "string")
+  ) {
+    return "claude";
+  }
+
   const candidates = [
     raw.title,
     raw.name,
+    raw.summary,
     raw.subject,
     ...messages.slice(0, 4).map((message) => message.text.slice(0, 160))
   ]
@@ -284,4 +301,63 @@ function inferConversationSource(
   if (candidates.includes("copilot")) return "copilot";
 
   return "generic";
+}
+
+function extractAttachments(value: GenericMessageLike): ConversationAttachment[] {
+  const attachments = [
+    ...extractAttachmentArray(value.attachments),
+    ...extractAttachmentArray(value.files)
+  ];
+  const seen = new Set<string>();
+
+  return attachments.filter((attachment) => {
+    if (seen.has(attachment.id)) {
+      return false;
+    }
+
+    seen.add(attachment.id);
+    return true;
+  });
+}
+
+function extractAttachmentArray(value: unknown): ConversationAttachment[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((entry, index) => toAttachment(entry, index))
+    .filter((attachment): attachment is ConversationAttachment => attachment !== null);
+}
+
+function toAttachment(value: unknown, index: number): ConversationAttachment | null {
+  if (typeof value === "string" && value.trim().length > 0) {
+    return {
+      id: value.trim(),
+      label: "Attachment " + (index + 1)
+    };
+  }
+
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const idCandidate = [record.file_uuid, record.uuid, record.id, record.file_name]
+    .find((entry) => typeof entry === "string" && entry.trim().length > 0);
+
+  if (typeof idCandidate !== "string") {
+    return null;
+  }
+
+  const labelCandidate = [record.file_name, record.name, record.title]
+    .find((entry) => typeof entry === "string" && entry.trim().length > 0);
+  const mimeTypeCandidate = [record.file_type, record.mime_type, record.mimeType]
+    .find((entry) => typeof entry === "string" && entry.trim().length > 0);
+
+  return {
+    id: idCandidate.trim(),
+    label: typeof labelCandidate === "string" ? labelCandidate.trim() : undefined,
+    mimeType: typeof mimeTypeCandidate === "string" ? mimeTypeCandidate.trim() : undefined
+  };
 }

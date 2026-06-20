@@ -4,6 +4,8 @@ This document is the working product-direction reference for SkillSpring Quantum
 
 Use it to keep implementation focused on the smallest version of Quantum that general users could realistically use and prefer over stitching together multiple existing tools.
 
+For the higher-level reasoning behind these boundaries, also see `docs/SKILLSPRING_QUANTUM_PRODUCT_PHILOSOPHY.md`.
+
 ## Product test
 
 Before adding meaningful new work, ask:

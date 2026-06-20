@@ -34,6 +34,8 @@ const claudeParsed = parseGenericConversationExport(claudeFixture);
 assert.equal(claudeParsed.conversations.length, 1, "Expected Claude export fixture to parse as one conversation");
 assert.equal(claudeParsed.conversations[0].title, "Claude Export Sample", "Expected Claude name to map to title");
 assert.equal(claudeParsed.conversations[0].messages[1].role, "assistant", "Expected Claude assistant sender to map to assistant");
+assert.equal(claudeParsed.conversations[0].messages[0].attachments?.length, 2, "Expected Claude attachment and file references to parse");
+assert.equal(claudeParsed.conversations[0].messages[0].attachments?.[0].label, "era-of-ruin-notes.txt", "Expected Claude attachment label");
 assert.equal(
   claudeParsed.conversations[0].messages[1].text,
   "This is a meaty design doc - let me build a playable prototype of Era of Ruin.",

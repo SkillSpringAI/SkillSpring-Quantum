@@ -58,6 +58,7 @@ This is narrower than the full internal parser and document-ingestion surface al
 - user-visible capability growth should stay ahead of governance/documentation drag
 - user-facing scope should stay narrower than experimental internal parser coverage
 - MVP direction and anti-drift reference: see `docs/SKILLSPRING_QUANTUM_MVP_DIRECTION.md`
+- contributor philosophy reference: see `docs/SKILLSPRING_QUANTUM_PRODUCT_PHILOSOPHY.md`
 
 ## Current Gaps / Next Build Targets
 

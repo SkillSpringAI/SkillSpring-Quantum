@@ -34,13 +34,13 @@ If a feature does not make that loop clearer, more trustworthy, or more complete
 
 - Claude via generic conversation parser
 - Gemini via generic conversation parser
-- Microsoft Copilot only where fixture and test coverage prove the recoverable shape
+- Microsoft Copilot activity CSV where fixture and test coverage prove the recoverable shape
 
 ### Explicit coming soon
 
 - Claude adapter
 - Gemini adapter
-- Copilot adapter
+- Copilot adapter beyond the current CSV fallback path
 
 ## Public readiness rule
 
@@ -98,7 +98,7 @@ Goal: prove the workflow.
 
 - Claude adapter
 - Gemini adapter
-- Copilot adapter
+- Copilot adapter beyond the current CSV fallback path
 
 Goal: expand from a polished two-vendor MVP into a true five-vendor first-class promise.
 

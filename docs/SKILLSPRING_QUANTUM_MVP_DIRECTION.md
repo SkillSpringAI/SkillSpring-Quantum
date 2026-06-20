@@ -54,7 +54,7 @@ Priority items:
 
 - stable first-class import handling for ChatGPT and Grok export packages
 - honest compatibility fallback handling for Claude and Gemini-shaped conversation JSON
-- Copilot treated as unproven until fixture and test coverage exist
+- honest compatibility fallback handling for proven Microsoft Copilot activity CSV exports
 - vendor detection and routing that is easy to understand in the app
 - attachment preservation where vendor exports include uploaded files or blob references
 - source-level manifests for imported, skipped, archived-only, and failed files
@@ -88,7 +88,7 @@ Priority items:
 
 - official export adapters where vendor packages meaningfully differ
 - generic threaded JSON recovery where that improves Claude or Gemini fallback intake
-- Copilot support only after a proven export fixture and targeted tests exist
+- keep Copilot support narrowly scoped to the proven activity CSV shape until a stronger official export path exists
 - preserve referenced attachments and uploaded files when vendor exports include them
 - stronger vendor package inspection and result labeling
 

@@ -340,7 +340,7 @@ export default function ImportsScreen() {
         </p>
         <ul>
           <li>ChatGPT and Grok are the clearest ready-now conversation import paths.</li>
-          <li>Claude-style JSON and Gemini My Activity HTML can still import through recovery paths when their structure is intact.</li>
+          <li>Claude-style JSON, Gemini My Activity HTML, and proven Copilot activity CSV exports can still import through recovery paths when their structure is intact.</li>
           <li>Quantum inspects a file or folder first, then tells you what it can import, archive, or skip before the run starts.</li>
           <li>Conversation imports produce both a readable archive and privacy-aware dataset records in the same local run.</li>
           <li>Keep one stable output folder for related imports so history, search, and datasets stay connected.</li>

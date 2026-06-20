@@ -9,7 +9,7 @@ The first user-facing MVP should be framed around a narrow AI-export workflow:
 - ChatGPT / OpenAI
 - Grok
 
-Compatibility fallback can still recover some Claude- and Gemini-shaped conversation JSON, but that should not be described as the same thing as first-class vendor support. Copilot should remain unproven until a real fixture and test set exists.
+Compatibility fallback can still recover some Claude- and Gemini-shaped conversation JSON, and now also proven Microsoft Copilot activity CSV exports, but that should not be described as the same thing as first-class vendor support.
 
 This is narrower than the full internal parser and document-ingestion surface already present in the codebase. The distinction matters. Current internal coverage helps development, fixture work, and future expansion, but the product promise for early users should stay centered on a clear export-to-archive-to-dataset workflow for recognizable vendors.
 

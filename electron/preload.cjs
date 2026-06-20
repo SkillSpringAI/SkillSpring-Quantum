@@ -29,7 +29,7 @@ contextBridge.exposeInMainWorld("skillspringDesktop", {
   },
 
   datasets: {
-    readLatestRun: (outputRoot) => ipcRenderer.invoke("datasets:latestRun", { outputRoot }),
+    readLatestRun: (outputRoot, limit) => ipcRenderer.invoke("datasets:latestRun", { outputRoot, limit }),
     readSegmentRetrievalIndex: (outputRoot) => ipcRenderer.invoke("datasets:segmentRetrievalIndex", { outputRoot })
   },
 

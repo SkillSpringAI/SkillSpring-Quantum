@@ -32,4 +32,5 @@ export interface DatasetRunResult {
   datasetsRoot: string;
   manifestPath: string;
   latest: DatasetRunSummary | null;
+  runs: DatasetRunSummary[];
 }

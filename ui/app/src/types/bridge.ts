@@ -191,4 +191,5 @@ export interface OpenPathPayload {
 
 export interface DatasetLatestRunPayload {
   outputRoot: string;
+  limit?: number;
 }

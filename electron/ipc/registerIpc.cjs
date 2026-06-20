@@ -172,7 +172,8 @@ function registerIpc() {
 
   ipcMain.handle("datasets:latestRun", async (_event, payload = {}) => {
     const result = await runTsx("core/pipeline/readLatestDatasetRun.ts", [
-      payload.outputRoot || "organized_output"
+      payload.outputRoot || "organized_output",
+      String(payload.limit || 8)
     ]);
     return result.ok ? ok(result, "Dataset summary loaded.") : fail(result, "Failed to load dataset summary.");
   });

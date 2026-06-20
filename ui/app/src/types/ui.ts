@@ -54,7 +54,7 @@ declare global {
         deleteSavedView: (outputRoot: string, id: string) => Promise<unknown>;
       };
       datasets: {
-        readLatestRun: (outputRoot: string) => Promise<unknown>;
+        readLatestRun: (outputRoot: string, limit?: number) => Promise<unknown>;
         readSegmentRetrievalIndex: (outputRoot: string) => Promise<unknown>;
       };
       governance: {

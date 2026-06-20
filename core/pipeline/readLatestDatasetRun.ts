@@ -33,24 +33,48 @@ interface DatasetRunResult {
   datasetsRoot: string;
   manifestPath: string;
   latest: DatasetRunSummary | null;
+  runs: DatasetRunSummary[];
 }
 
 async function main(): Promise<void> {
   const outputRoot = resolveOutputRoot(process.argv[2]);
+  const limit = Number(process.argv[3] || 8);
+  const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 8;
   const datasetsRoot = path.join(outputRoot, "datasets");
   const manifestPath = path.join(outputRoot, "db", "manifests", "latest-dataset-run.json");
+  const manifestsDir = path.join(datasetsRoot, "manifests");
 
   let latest: DatasetRunSummary | null = null;
+  const runs: DatasetRunSummary[] = [];
 
   if (await fileExists(manifestPath)) {
     latest = JSON.parse(await fs.readFile(manifestPath, "utf-8")) as DatasetRunSummary;
+  }
+
+  if (await fileExists(manifestsDir)) {
+    const entries = await fs.readdir(manifestsDir, { withFileTypes: true });
+    const files = entries
+      .filter((entry) => entry.isFile() && /^run-.*\.json$/i.test(entry.name))
+      .map((entry) => path.join(manifestsDir, entry.name))
+      .sort()
+      .reverse()
+      .slice(0, safeLimit);
+
+    for (const filePath of files) {
+      runs.push(JSON.parse(await fs.readFile(filePath, "utf-8")) as DatasetRunSummary);
+    }
+  }
+
+  if (!latest) {
+    latest = runs[0] ?? null;
   }
 
   const result: DatasetRunResult = {
     outputRoot,
     datasetsRoot,
     manifestPath,
-    latest
+    latest,
+    runs
   };
 
   console.log(JSON.stringify(result, null, 2));

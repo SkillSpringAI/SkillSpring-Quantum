@@ -330,7 +330,8 @@ export async function executeMockDesktopCommand(
         outputRoot: p.outputRoot,
         datasetsRoot: p.outputRoot + "/datasets",
         manifestPath: p.outputRoot + "/db/manifests/latest-dataset-run.json",
-        latest: null
+        latest: null,
+        runs: []
       }, "Mock dataset summary returned.");
     }
 

@@ -7,6 +7,7 @@ import { useNavigation } from "../state/navigationContext";
 function buildDatasetArtifactPaths(outputRoot: string) {
   return {
     dbRoot: outputRoot + "\\db",
+    manifestsRoot: outputRoot + "\\datasets\\manifests",
     currentTopicSegments: outputRoot + "\\datasets\\current\\topic_segments.current.jsonl",
     currentPromptResponse: outputRoot + "\\datasets\\current\\prompt_response_pairs.current.jsonl",
     currentMicroSegments: outputRoot + "\\datasets\\current\\micro_segments.current.jsonl",
@@ -18,23 +19,34 @@ function buildDatasetArtifactPaths(outputRoot: string) {
 export default function DatasetsScreen() {
   const { setActiveScreen, openRetrievalInvestigation } = useNavigation();
   const [datasetRun, setDatasetRun] = useState<DatasetRunResult | null>(null);
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadLatestDatasetRun("organized_output").then(setDatasetRun);
+    loadLatestDatasetRun("organized_output", 8).then((result) => {
+      setDatasetRun(result);
+      setSelectedRunId(result.latest?.run_id ?? result.runs[0]?.run_id ?? null);
+    });
   }, []);
 
+  const selectedRun =
+    datasetRun?.runs.find((run) => run.run_id === selectedRunId) ??
+    datasetRun?.latest ??
+    null;
   const artifactPaths = buildDatasetArtifactPaths(datasetRun?.outputRoot ?? "organized_output");
-  const latestSourceContext = datasetRun?.latest?.source_context;
-  const latestSourceSummary = summarizeDatasetSourceContext(latestSourceContext);
-  const latestSourceBadges = summarizeDatasetSourceBadges(latestSourceContext);
-  const latestSourceNeedsAttention = latestSourceContext?.support_tier === "mvp_compatibility_fallback";
-  const latestSourceTopics = latestSourceContext?.topic_hints.slice(0, 4) ?? [];
+  const selectedManifestPath = selectedRun
+    ? artifactPaths.manifestsRoot + "\\" + selectedRun.run_id + ".json"
+    : datasetRun?.manifestPath ?? artifactPaths.manifestsRoot + "\\latest-dataset-run.json";
+  const selectedSourceContext = selectedRun?.source_context;
+  const selectedSourceSummary = summarizeDatasetSourceContext(selectedSourceContext);
+  const selectedSourceBadges = summarizeDatasetSourceBadges(selectedSourceContext);
+  const selectedSourceNeedsAttention = selectedSourceContext?.support_tier === "mvp_compatibility_fallback";
+  const selectedSourceTopics = selectedSourceContext?.topic_hints.slice(0, 4) ?? [];
 
   return (
     <section className="screen-grid">
       <div className="panel">
         <h2>Datasets</h2>
-        {!datasetRun?.latest ? (
+        {!selectedRun ? (
           <>
             <p className="muted">
               No dataset files are available yet. Start in Imports, run a conversation import, then come back here to review structured output.
@@ -48,37 +60,57 @@ export default function DatasetsScreen() {
         ) : (
           <>
             <p className="muted">
-              These files are the structured dataset outputs generated from the same imported conversation run.
+              These files are the structured dataset outputs generated from imported conversation runs in this output folder.
             </p>
-            {latestSourceContext ? (
+            {datasetRun && datasetRun.runs.length > 1 ? (
               <div className="detail-box">
-                <strong>Latest Import Context</strong>
+                <strong>Recent Dataset Runs</strong>
+                <div className="action-bar">
+                  {datasetRun.runs.slice(0, 6).map((run) => (
+                    <button
+                      key={run.run_id}
+                      className={selectedRun.run_id === run.run_id ? "primary-btn" : "secondary-btn"}
+                      type="button"
+                      onClick={() => setSelectedRunId(run.run_id)}
+                    >
+                      {formatDatasetRunLabel(run)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {selectedSourceContext ? (
+              <div className="detail-box">
+                <strong>Selected Import Context</strong>
                 <p className="muted">
-                  Imported from: {latestSourceContext.source_input_path ?? "Source path unavailable"}
+                  Imported from: {selectedSourceContext.source_input_path ?? "Source path unavailable"}
                 </p>
                 <p className="muted">
-                  Dataset source: {latestSourceSummary}
+                  Dataset source: {selectedSourceSummary}
                 </p>
-                {latestSourceContext.pipeline_run_id ? (
+                <p className="muted">
+                  Dataset run: {selectedRun.run_id}
+                </p>
+                {selectedSourceContext.pipeline_run_id ? (
                   <p className="muted">
-                    Pipeline run: {latestSourceContext.pipeline_run_id}
+                    Pipeline run: {selectedSourceContext.pipeline_run_id}
                   </p>
                 ) : null}
-                {latestSourceTopics.length > 0 ? (
+                {selectedSourceTopics.length > 0 ? (
                   <p className="muted">
-                    Topic hints: {latestSourceTopics.join(", ")}
+                    Topic hints: {selectedSourceTopics.join(", ")}
                   </p>
                 ) : null}
-                {latestSourceBadges.length > 0 ? (
+                {selectedSourceBadges.length > 0 ? (
                   <p className="muted">
-                    {latestSourceBadges.join(" | ")}
+                    {selectedSourceBadges.join(" | ")}
                   </p>
                 ) : null}
                 <div className="action-bar">
                   <button className="secondary-btn" type="button" onClick={() => setActiveScreen("imports")}>
                     Review Import History
                   </button>
-                  {latestSourceContext.vendor_sources.length > 0 || latestSourceTopics.length > 0 ? (
+                  {selectedSourceContext.vendor_sources.length > 0 || selectedSourceTopics.length > 0 ? (
                     <button
                       className="secondary-btn"
                       type="button"
@@ -86,23 +118,23 @@ export default function DatasetsScreen() {
                         openRetrievalInvestigation({
                           filters: {
                             text: "",
-                            vendor: latestSourceContext.vendor_sources[0] ?? "",
-                            topic: latestSourceTopics[0] ?? "",
+                            vendor: selectedSourceContext.vendor_sources[0] ?? "",
+                            topic: selectedSourceTopics[0] ?? "",
                             status: "all",
                             from: "",
                             to: ""
                           },
                           suggestedName:
-                            latestSourceTopics[0] ||
-                            latestSourceContext.vendor_sources[0] ||
-                            "Latest dataset import"
+                            selectedSourceTopics[0] ||
+                            selectedSourceContext.vendor_sources[0] ||
+                            "Selected dataset import"
                         })
                       }
                     >
                       Find Imported Files
                     </button>
                   ) : null}
-                  {latestSourceNeedsAttention ? (
+                  {selectedSourceNeedsAttention ? (
                     <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(artifactPaths.diagnostics)}>
                       Open Latest Diagnostics
                     </button>
@@ -113,22 +145,22 @@ export default function DatasetsScreen() {
             <div className="stats-grid two-col">
               <div className="stat-card">
                 <span className="label">Topic Segments</span>
-                <strong>{datasetRun.latest.topic_segments}</strong>
+                <strong>{selectedRun.topic_segments}</strong>
                 <p className="muted">Longer grouped conversation chunks organized by inferred topic.</p>
               </div>
               <div className="stat-card">
                 <span className="label">Prompt/Response</span>
-                <strong>{datasetRun.latest.prompt_response_pairs}</strong>
+                <strong>{selectedRun.prompt_response_pairs}</strong>
                 <p className="muted">User prompt and assistant reply pairs that are easiest to review quickly.</p>
               </div>
               <div className="stat-card">
                 <span className="label">Micro Segments</span>
-                <strong>{datasetRun.latest.micro_segments}</strong>
+                <strong>{selectedRun.micro_segments}</strong>
                 <p className="muted">Small message windows for search, spot checks, and lightweight review.</p>
               </div>
               <div className="stat-card">
                 <span className="label">Private Review</span>
-                <strong>{datasetRun.latest.private_review_segments}</strong>
+                <strong>{selectedRun.private_review_segments}</strong>
                 <p className="muted">Records that need extra care because signal or privacy rules were more sensitive.</p>
               </div>
             </div>
@@ -136,17 +168,17 @@ export default function DatasetsScreen() {
               <button className="primary-btn" type="button" onClick={() => revealDesktopPath(datasetRun.datasetsRoot)}>
                 Open Dataset Files
               </button>
-              <button className="primary-btn" type="button" onClick={() => revealDesktopPath(datasetRun.manifestPath)}>
-                Open Dataset Summary
+              <button className="primary-btn" type="button" onClick={() => revealDesktopPath(selectedManifestPath)}>
+                Open Selected Dataset Summary
               </button>
               <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(artifactPaths.currentTopicSegments)}>
-                Open Topic Segments
+                Open Current Topic Segments
               </button>
               <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(artifactPaths.currentPromptResponse)}>
-                Open Prompt/Response
+                Open Current Prompt/Response
               </button>
               <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(artifactPaths.currentMicroSegments)}>
-                Open Micro Segments
+                Open Current Micro Segments
               </button>
             </div>
           </>
@@ -155,18 +187,18 @@ export default function DatasetsScreen() {
 
       <div className="panel">
         <h2>Dataset Notes</h2>
-        {datasetRun?.latest ? (
+        {selectedRun ? (
           <>
-            <p className="muted">Latest dataset build: {datasetRun.latest.run_id}</p>
-            <p className="muted">Format version: {datasetRun.latest.dataset_version}</p>
-            <p className="muted">Filtered out during cleanup: {datasetRun.latest.filtered_out_segments}</p>
+            <p className="muted">Selected dataset build: {selectedRun.run_id}</p>
+            <p className="muted">Format version: {selectedRun.dataset_version}</p>
+            <p className="muted">Filtered out during cleanup: {selectedRun.filtered_out_segments}</p>
             <p className="muted">
-              High-signal sections: {datasetRun.latest.tiers.high_signal ?? 0} | Low-signal sections: {datasetRun.latest.tiers.low_signal ?? 0}
+              High-signal sections: {selectedRun.tiers.high_signal ?? 0} | Low-signal sections: {selectedRun.tiers.low_signal ?? 0}
             </p>
             <p className="muted">
               Private-review sections are separated so you can inspect them before treating them as normal reusable data.
             </p>
-            {latestSourceNeedsAttention ? (
+            {selectedSourceNeedsAttention ? (
               <p className="muted">
                 This dataset came from a recovery-path import. Review diagnostics or import history before treating every record as equally complete.
               </p>
@@ -197,7 +229,9 @@ export default function DatasetsScreen() {
       <div className="panel">
         <h2>How To Read This</h2>
         <ul className="list">
-          <li>Start with Latest Import Context when you want to know where this dataset came from and whether it used a recovery path.</li>
+          <li>Start with Selected Import Context when you want to know where this dataset came from and whether it used a recovery path.</li>
+          <li>Use Recent Dataset Runs when you want to compare the latest dataset with an earlier import in the same output folder.</li>
+          <li>The selected dataset summary is per run, while the current dataset files reflect the latest accumulated current outputs.</li>
           <li>Open topic segments when you want the clearest topic-organized view of imported conversations.</li>
           <li>Open prompt/response pairs when you want faster review of direct question-and-answer examples.</li>
           <li>Open micro segments when you want smaller chunks for search or lightweight review.</li>
@@ -250,4 +284,10 @@ function summarizeDatasetSourceBadges(sourceContext: DatasetSourceContext | unde
     badges.push((sourceContext.attachment_count ?? 0) + " attachment reference(s)");
   }
   return badges;
+}
+
+function formatDatasetRunLabel(run: DatasetRunResult["runs"][number]): string {
+  const stamp = run.run_id.replace(/^run-/, "").replace(/-/g, ":");
+  const source = run.source_context?.vendor_sources[0] ?? run.source_context?.detected_label ?? "dataset";
+  return source + " | " + stamp.slice(0, 16);
 }

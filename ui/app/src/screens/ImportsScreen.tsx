@@ -127,6 +127,32 @@ function findLatestArchiveArtifactPath(run: ImportRunSummary | null): string | n
   return fallback?.path ?? null;
 }
 
+function findLatestDatasetArtifactPath(run: ImportRunSummary | null): string | null {
+  if (!run) {
+    return null;
+  }
+
+  const preferredLabels = [
+    "Current prompt/response dataset",
+    "Current topic segments dataset",
+    "Latest dataset manifest"
+  ];
+
+  for (const label of preferredLabels) {
+    const match = run.artifacts.find((artifact) => artifact.label === label);
+    if (match) {
+      return match.path;
+    }
+  }
+
+  const fallback = run.artifacts.find((artifact) => {
+    const label = artifact.label.toLowerCase();
+    return label.includes("dataset") || label.includes("prompt/response");
+  });
+
+  return fallback?.path ?? null;
+}
+
 export default function ImportsScreen() {
   const { openRetrievalInvestigation, setActiveScreen } = useNavigation();
   const [form, setForm] = useState<ImportJobForm>({
@@ -304,6 +330,7 @@ export default function ImportsScreen() {
 
   const latestRunForNextSteps = importHistory?.latest;
   const latestArchiveArtifactPath = findLatestArchiveArtifactPath(latestRunForNextSteps ?? null);
+  const latestDatasetArtifactPath = findLatestDatasetArtifactPath(latestRunForNextSteps ?? null);
   const hasConversationOutputs = (latestRunForNextSteps?.conversationFilesProcessed ?? 0) > 0;
   const hasDatasetOutputs = !!latestRunForNextSteps?.retrievalSummary;
   const runNeedsDiagnostics =
@@ -407,6 +434,15 @@ export default function ImportsScreen() {
               {hasDatasetOutputs ? (
                 <button className="primary-btn" type="button" onClick={() => setActiveScreen("datasets")}>
                   Open Datasets
+                </button>
+              ) : null}
+              {latestDatasetArtifactPath ? (
+                <button
+                  className="secondary-btn"
+                  type="button"
+                  onClick={() => revealDesktopPath(latestDatasetArtifactPath)}
+                >
+                  Open Latest Dataset File
                 </button>
               ) : null}
               {runNeedsDiagnostics ? (

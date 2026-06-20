@@ -39,6 +39,32 @@ function findLatestArchiveArtifactPath(run: ImportRunSummary | null): string | n
   return fallback?.path ?? null;
 }
 
+function findLatestDatasetArtifactPath(run: ImportRunSummary | null): string | null {
+  if (!run) {
+    return null;
+  }
+
+  const preferredLabels = [
+    "Current prompt/response dataset",
+    "Current topic segments dataset",
+    "Latest dataset manifest"
+  ];
+
+  for (const label of preferredLabels) {
+    const match = run.artifacts.find((artifact) => artifact.label === label);
+    if (match) {
+      return match.path;
+    }
+  }
+
+  const fallback = run.artifacts.find((artifact) => {
+    const label = artifact.label.toLowerCase();
+    return label.includes("dataset") || label.includes("prompt/response");
+  });
+
+  return fallback?.path ?? null;
+}
+
 export default function ImportHistoryPanel({
   history,
   selectedRun,
@@ -380,6 +406,7 @@ export default function ImportHistoryPanel({
   const filteredSelectedRun = filteredRuns.find((run) => run.runAt === selectedRun?.runAt) ?? null;
   const runForDetail = filteredSelectedRun ?? (filteredRuns.length === 1 ? filteredRuns[0] : null);
   const latestArchiveArtifactPath = findLatestArchiveArtifactPath(runForDetail);
+  const latestDatasetArtifactPath = findLatestDatasetArtifactPath(runForDetail);
   const visibleResults = runForDetail
     ? runForDetail.results.filter((result) => {
         if (filters.status !== "all" && result.status !== filters.status) {
@@ -594,6 +621,15 @@ export default function ImportHistoryPanel({
                         onClick={() => handleOpenPath(latestArchiveArtifactPath)}
                       >
                         Open Latest Archive File
+                      </button>
+                    ) : null}
+                    {latestDatasetArtifactPath ? (
+                      <button
+                        className="secondary-btn"
+                        type="button"
+                        onClick={() => handleOpenPath(latestDatasetArtifactPath)}
+                      >
+                        Open Latest Dataset File
                       </button>
                     ) : null}
                     {runForDetail.artifacts.length > 0 ? (

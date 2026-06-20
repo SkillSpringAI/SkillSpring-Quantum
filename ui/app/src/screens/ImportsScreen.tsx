@@ -22,6 +22,7 @@ import {
 } from "../services/importBridge";
 import { loadImportHistory, searchImportHistory } from "../services/importHistoryBridge";
 import { loadArchiveNotifications } from "../services/archiveNotificationsBridge";
+import { revealDesktopPath } from "../services/pathBridge";
 import type { ImportHistoryFilters, ImportHistoryResult, ImportRunSummary } from "../types/importHistory";
 import { useNavigation } from "../state/navigationContext";
 
@@ -106,6 +107,24 @@ function notePriority(note: string): number {
   }
 
   return 3;
+}
+
+function findLatestArchiveArtifactPath(run: ImportRunSummary | null): string | null {
+  if (!run) {
+    return null;
+  }
+
+  const preferred = run.artifacts.find((artifact) => artifact.label === "Latest archived markdown");
+  if (preferred) {
+    return preferred.path;
+  }
+
+  const fallback = run.artifacts.find((artifact) =>
+    artifact.label.toLowerCase().includes("archived markdown") ||
+    artifact.label.toLowerCase().includes("markdown archive")
+  );
+
+  return fallback?.path ?? null;
 }
 
 export default function ImportsScreen() {
@@ -284,6 +303,7 @@ export default function ImportsScreen() {
   }, [form.outputRoot]);
 
   const latestRunForNextSteps = importHistory?.latest;
+  const latestArchiveArtifactPath = findLatestArchiveArtifactPath(latestRunForNextSteps ?? null);
   const hasConversationOutputs = (latestRunForNextSteps?.conversationFilesProcessed ?? 0) > 0;
   const hasDatasetOutputs = !!latestRunForNextSteps?.retrievalSummary;
   const runNeedsDiagnostics =
@@ -373,6 +393,15 @@ export default function ImportsScreen() {
               {hasConversationOutputs ? (
                 <button className="primary-btn" type="button" onClick={() => setActiveScreen("organized-output")}>
                   Open Readable Archive
+                </button>
+              ) : null}
+              {latestArchiveArtifactPath ? (
+                <button
+                  className="secondary-btn"
+                  type="button"
+                  onClick={() => revealDesktopPath(latestArchiveArtifactPath)}
+                >
+                  Open Latest Archive File
                 </button>
               ) : null}
               {hasDatasetOutputs ? (

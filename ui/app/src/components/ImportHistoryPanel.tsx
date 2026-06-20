@@ -21,6 +21,24 @@ interface ImportHistoryPanelProps {
   searchBusy?: boolean;
 }
 
+function findLatestArchiveArtifactPath(run: ImportRunSummary | null): string | null {
+  if (!run) {
+    return null;
+  }
+
+  const preferred = run.artifacts.find((artifact) => artifact.label === "Latest archived markdown");
+  if (preferred) {
+    return preferred.path;
+  }
+
+  const fallback = run.artifacts.find((artifact) =>
+    artifact.label.toLowerCase().includes("archived markdown") ||
+    artifact.label.toLowerCase().includes("markdown archive")
+  );
+
+  return fallback?.path ?? null;
+}
+
 export default function ImportHistoryPanel({
   history,
   selectedRun,
@@ -361,6 +379,7 @@ export default function ImportHistoryPanel({
 
   const filteredSelectedRun = filteredRuns.find((run) => run.runAt === selectedRun?.runAt) ?? null;
   const runForDetail = filteredSelectedRun ?? (filteredRuns.length === 1 ? filteredRuns[0] : null);
+  const latestArchiveArtifactPath = findLatestArchiveArtifactPath(runForDetail);
   const visibleResults = runForDetail
     ? runForDetail.results.filter((result) => {
         if (filters.status !== "all" && result.status !== filters.status) {
@@ -566,6 +585,15 @@ export default function ImportHistoryPanel({
                         onClick={() => onOpenRunInRetrieval(runForDetail, filters)}
                       >
                         Open In Search
+                      </button>
+                    ) : null}
+                    {latestArchiveArtifactPath ? (
+                      <button
+                        className="primary-btn"
+                        type="button"
+                        onClick={() => handleOpenPath(latestArchiveArtifactPath)}
+                      >
+                        Open Latest Archive File
                       </button>
                     ) : null}
                     {runForDetail.artifacts.length > 0 ? (

@@ -3,11 +3,13 @@ import ArchiveNotificationPanel from "../components/ArchiveNotificationPanel";
 import MarkdownArchiveBrowser from "../components/MarkdownArchiveBrowser";
 import type { ArchiveNotification } from "../types/notifications";
 import type {
+  AttachmentArchiveSummary,
   MarkdownArchiveFile,
   MarkdownArchiveTopic
 } from "../types/markdownArchive";
 import { loadArchiveNotifications } from "../services/archiveNotificationsBridge";
 import { loadMarkdownArchive } from "../services/markdownArchiveBridge";
+import { revealDesktopPath } from "../services/pathBridge";
 import { useNavigation } from "../state/navigationContext";
 
 export default function OrganizedOutputScreen() {
@@ -17,6 +19,7 @@ export default function OrganizedOutputScreen() {
   const [topics, setTopics] = useState<MarkdownArchiveTopic[]>([]);
   const [selectedFile, setSelectedFile] = useState<MarkdownArchiveFile | null>(null);
   const [content, setContent] = useState("");
+  const [attachmentSummaries, setAttachmentSummaries] = useState<AttachmentArchiveSummary[]>([]);
 
   async function refreshArchiveNotifications() {
     const result = await loadArchiveNotifications("organized_output", 12);
@@ -29,6 +32,7 @@ export default function OrganizedOutputScreen() {
     setTopics(result.topics);
     setSelectedFile(result.selectedFile);
     setContent(result.content);
+    setAttachmentSummaries(result.attachmentSummaries);
   }
 
   async function handleSelectFile(file: MarkdownArchiveFile) {
@@ -75,7 +79,50 @@ export default function OrganizedOutputScreen() {
               <li>Readable markdown is grouped by topic so you can browse what was imported quickly.</li>
               <li>Recent archive updates show which files were written, backed up, skipped, or replaced.</li>
               <li>These archive files come from the same imported conversation content used for datasets.</li>
+              <li>When vendor exports included uploaded files or linked files, preserved attachments are summarized separately below.</li>
             </ul>
+          </>
+        )}
+      </div>
+
+      <div className="panel">
+        <h2>Preserved Files</h2>
+        {attachmentSummaries.length === 0 ? (
+          <p className="muted">
+            No preserved vendor attachment archives were detected for this output folder yet.
+          </p>
+        ) : (
+          <>
+            <p className="muted">
+              These summaries help you verify whether linked files or uploaded blobs were preserved alongside the readable archive.
+            </p>
+            <div className="stats-grid two-col">
+              {attachmentSummaries.map((summary) => (
+                <div key={summary.vendor} className="stat-card">
+                  <span className="label">{formatAttachmentVendorLabel(summary.vendor)}</span>
+                  <strong>{summary.attachmentsArchived} preserved</strong>
+                  <p className="muted">
+                    {summary.attachmentsReferenced} referenced | {summary.attachmentsMissing} missing
+                  </p>
+                  <div className="action-bar">
+                    <button
+                      className="secondary-btn"
+                      type="button"
+                      onClick={() => revealDesktopPath(summary.archiveRoot)}
+                    >
+                      Open Preserved Files
+                    </button>
+                    <button
+                      className="secondary-btn"
+                      type="button"
+                      onClick={() => revealDesktopPath(summary.manifestPath)}
+                    >
+                      Open Preservation Manifest
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </>
         )}
       </div>
@@ -89,4 +136,8 @@ export default function OrganizedOutputScreen() {
       />
     </section>
   );
+}
+
+function formatAttachmentVendorLabel(vendor: AttachmentArchiveSummary["vendor"]): string {
+  return vendor === "grok" ? "Grok attachments" : "Gemini attachments";
 }

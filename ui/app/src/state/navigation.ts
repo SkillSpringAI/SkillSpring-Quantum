@@ -49,3 +49,10 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
   { id: "datasets", label: "Datasets" },
   { id: "diagnostics", label: "Diagnostics" }
 ];
+
+export const ADVANCED_NAV_ITEMS: NavItem[] = [
+  { id: "tiered-db", label: "Tiered DB" },
+  { id: "review-queue", label: "Review Queue" },
+  { id: "governance", label: "Governance" },
+  { id: "settings", label: "Settings" }
+];

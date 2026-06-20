@@ -202,11 +202,23 @@ export default function GovernanceScreen() {
 
   return (
     <section className="governance-grid">
-      <RuleFileList
-        files={files}
-        selectedPath={selected?.file.path}
-        onSelect={handleSelect}
-      />
+      <div className="governance-main-stack">
+        <div className="panel">
+          <h2>Advanced Controls</h2>
+          <p className="muted">
+            Governance is for power users and follow-up tuning. It should not be required for normal importing, archive review, or dataset review.
+          </p>
+          <p className="muted">
+            Come here when imports, diagnostics, or dataset privacy summaries show you a concrete reason to adjust filters, review thresholds, or privacy-sensitive handling.
+          </p>
+        </div>
+
+        <RuleFileList
+          files={files}
+          selectedPath={selected?.file.path}
+          onSelect={handleSelect}
+        />
+      </div>
 
       <div className="governance-main-stack">
         <GovernanceModeSwitcher

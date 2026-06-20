@@ -18,7 +18,8 @@ export async function loadMarkdownArchive(
       outputRoot,
       topics: [],
       selectedFile: null,
-      content: ""
+      content: "",
+      attachmentSummaries: []
     };
   }
 

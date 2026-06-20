@@ -187,6 +187,11 @@ export default function MarkdownArchiveBrowser({
                 ) : null}
               </div>
             ) : null}
+            {selectedFile ? (
+              <p className="muted">
+                If this markdown file references preserved attachments, use the Preserved Files panel above to open the archived files or their manifest.
+              </p>
+            ) : null}
             <pre className="record-block markdown-preview">
               {content || "No markdown content loaded."}
             </pre>

@@ -18,6 +18,15 @@ interface MarkdownArchiveTopic {
   files: MarkdownArchiveFile[];
 }
 
+interface AttachmentArchiveSummary {
+  vendor: "grok" | "gemini";
+  attachmentsReferenced: number;
+  attachmentsArchived: number;
+  attachmentsMissing: number;
+  manifestPath: string;
+  archiveRoot: string;
+}
+
 const SYSTEM_FOLDERS = new Set([
   "archive",
   "backup",
@@ -66,7 +75,8 @@ async function main(): Promise<void> {
       outputRoot,
       topics: [],
       selectedFile: null,
-      content: ""
+      content: "",
+      attachmentSummaries: []
     }, null, 2));
     return;
   }
@@ -94,6 +104,7 @@ async function main(): Promise<void> {
 
   let selectedFile: MarkdownArchiveFile | null = null;
   let content = "";
+  const attachmentSummaries = await readAttachmentArchiveSummaries(outputRoot);
 
   if (requestedFile) {
     const allFiles = topics.flatMap(topic => topic.files);
@@ -108,8 +119,59 @@ async function main(): Promise<void> {
     outputRoot,
     topics,
     selectedFile,
-    content
+    content,
+    attachmentSummaries
   }, null, 2));
+}
+
+async function readAttachmentArchiveSummaries(outputRoot: string): Promise<AttachmentArchiveSummary[]> {
+  const manifests = [
+    {
+      vendor: "grok" as const,
+      manifestPath: path.join(outputRoot, "db", "manifests", "latest-grok-attachment-archive.json")
+    },
+    {
+      vendor: "gemini" as const,
+      manifestPath: path.join(outputRoot, "db", "manifests", "latest-gemini-attachment-archive.json")
+    }
+  ];
+
+  const results: AttachmentArchiveSummary[] = [];
+
+  for (const item of manifests) {
+    if (!(await fileExists(item.manifestPath))) {
+      continue;
+    }
+
+    try {
+      const parsed = JSON.parse(await fs.readFile(item.manifestPath, "utf-8")) as {
+        archive_root?: string;
+        attachments_referenced?: number;
+        attachments_archived?: number;
+        attachments_missing?: number;
+      };
+
+      if (
+        typeof parsed.archive_root === "string" &&
+        typeof parsed.attachments_referenced === "number" &&
+        typeof parsed.attachments_archived === "number" &&
+        typeof parsed.attachments_missing === "number"
+      ) {
+        results.push({
+          vendor: item.vendor,
+          attachmentsReferenced: parsed.attachments_referenced,
+          attachmentsArchived: parsed.attachments_archived,
+          attachmentsMissing: parsed.attachments_missing,
+          manifestPath: item.manifestPath,
+          archiveRoot: parsed.archive_root
+        });
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return results;
 }
 
 main().catch((error) => {

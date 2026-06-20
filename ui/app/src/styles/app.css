@@ -109,15 +109,36 @@ code {
   gap: 8px;
 }
 
+.nav-secondary {
+  margin-top: 10px;
+}
+
 .nav-btn.active {
   background: rgba(110, 168, 254, 0.16);
   border-color: var(--accent);
+}
+
+.more-btn {
+  width: 100%;
+  margin-top: 18px;
 }
 
 .brand {
   font-size: 20px;
   font-weight: 700;
   margin-bottom: 20px;
+}
+
+.sidebar-secondary {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.sidebar-note {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .muted {
@@ -460,6 +481,18 @@ select {
   border-radius: 12px;
   background: var(--panel-alt);
   border: 1px solid var(--border);
+}
+
+.context-tip {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(110, 168, 254, 0.08);
+  border: 1px solid rgba(110, 168, 254, 0.3);
+}
+
+.context-tip p {
+  margin-bottom: 0;
 }
 
 .archive-event-list {

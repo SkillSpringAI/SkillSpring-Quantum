@@ -115,6 +115,14 @@ export default function DatasetsScreen() {
                     {selectedSourceBadges.join(" | ")}
                   </p>
                 ) : null}
+                {shouldRecommendGovernance(selectedRun) ? (
+                  <div className="context-tip">
+                    <strong>Power-user option</strong>
+                    <p className="muted">
+                      If you want to tune privacy handling or review thresholds, open <strong>More Tools</strong> in the sidebar, then choose <strong>Governance</strong>.
+                    </p>
+                  </div>
+                ) : null}
                 <div className="action-bar">
                   <button className="secondary-btn" type="button" onClick={() => setActiveScreen("imports")}>
                     Review Import History
@@ -245,6 +253,7 @@ export default function DatasetsScreen() {
           <li>Use Recent Dataset Runs when you want to compare the latest dataset with an earlier import in the same output folder.</li>
           <li>The selected dataset summary is per run, while the current dataset files reflect the latest accumulated current outputs.</li>
           <li>Privacy handling summarizes which common sensitive patterns were redacted before dataset records were written.</li>
+          <li>Governance is available under More Tools for power users, but it should not block normal importing or dataset review.</li>
           <li>Open topic segments when you want the clearest topic-organized view of imported conversations.</li>
           <li>Open prompt/response pairs when you want faster review of direct question-and-answer examples.</li>
           <li>Open micro segments when you want smaller chunks for search or lightweight review.</li>
@@ -303,6 +312,18 @@ function formatDatasetRunLabel(run: DatasetRunResult["runs"][number]): string {
   const stamp = run.run_id.replace(/^run-/, "").replace(/-/g, ":");
   const source = run.source_context?.vendor_sources[0] ?? run.source_context?.detected_label ?? "dataset";
   return source + " | " + stamp.slice(0, 16);
+}
+
+function shouldRecommendGovernance(run: DatasetRunResult["runs"][number] | null): boolean {
+  if (!run) {
+    return false;
+  }
+
+  return (
+    (run.redaction_summary?.total_redactions ?? 0) > 0 ||
+    run.private_review_segments > 0 ||
+    run.source_context?.support_tier === "mvp_compatibility_fallback"
+  );
 }
 
 function summarizeRedactionExplanation(

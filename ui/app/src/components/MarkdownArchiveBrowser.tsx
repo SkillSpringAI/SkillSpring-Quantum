@@ -13,6 +13,8 @@ interface MarkdownArchiveBrowserProps {
   onRefresh: () => void;
 }
 
+type ArchiveSortMode = "newest" | "oldest" | "topic";
+
 export default function MarkdownArchiveBrowser({
   topics,
   selectedFile,
@@ -21,23 +23,30 @@ export default function MarkdownArchiveBrowser({
   onRefresh
 }: MarkdownArchiveBrowserProps) {
   const [filterText, setFilterText] = useState("");
+  const [sortMode, setSortMode] = useState<ArchiveSortMode>("newest");
+  const [activeTopic, setActiveTopic] = useState("");
   const normalizedFilter = filterText.trim().toLowerCase();
 
   const visibleTopics = useMemo(() => {
-    if (!normalizedFilter) {
-      return topics;
-    }
-
-    return topics
+    const filteredTopics = topics
       .map((topic) => {
+        const topicSelected = !activeTopic || topic.name === activeTopic;
         const topicMatches = topic.name.toLowerCase().includes(normalizedFilter);
-        const files = topic.files.filter((file) =>
-          file.name.toLowerCase().includes(normalizedFilter) ||
-          file.path.toLowerCase().includes(normalizedFilter)
-        );
+        const files = topic.files
+          .filter((file) =>
+            topicSelected && (
+              file.name.toLowerCase().includes(normalizedFilter) ||
+              file.path.toLowerCase().includes(normalizedFilter)
+            )
+          )
+          .sort((left, right) => compareArchiveFiles(left, right, sortMode));
 
         if (topicMatches && files.length === 0) {
-          return topic;
+          return {
+            ...topic,
+            fileCount: topic.files.length,
+            files: [...topic.files].sort((left, right) => compareArchiveFiles(left, right, sortMode))
+          };
         }
 
         return {
@@ -46,8 +55,24 @@ export default function MarkdownArchiveBrowser({
           files
         };
       })
-      .filter((topic) => topic.files.length > 0 || topic.name.toLowerCase().includes(normalizedFilter));
-  }, [normalizedFilter, topics]);
+      .filter((topic) => {
+        if (activeTopic && topic.name !== activeTopic) {
+          return false;
+        }
+
+        return topic.files.length > 0 || topic.name.toLowerCase().includes(normalizedFilter);
+      });
+
+    if (sortMode === "topic") {
+      return filteredTopics.sort((left, right) => left.name.localeCompare(right.name));
+    }
+
+    return filteredTopics.sort((left, right) => {
+      const leftNewest = newestTimestamp(left.files);
+      const rightNewest = newestTimestamp(right.files);
+      return sortMode === "oldest" ? leftNewest - rightNewest : rightNewest - leftNewest;
+    });
+  }, [activeTopic, normalizedFilter, sortMode, topics]);
 
   const selectedTopic = selectedFile
     ? topics.find((topic) => topic.files.some((file) => file.path === selectedFile.path)) ?? null
@@ -77,6 +102,36 @@ export default function MarkdownArchiveBrowser({
                 placeholder="topic, file name, path"
               />
             </label>
+            <div className="history-filter-grid archive-filter-grid">
+              <label className="form-label tight">
+                Sort
+                <select
+                  value={sortMode}
+                  onChange={(event) => setSortMode(event.target.value as ArchiveSortMode)}
+                >
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="topic">Topic order</option>
+                </select>
+              </label>
+              <label className="form-label tight">
+                Topic
+                <select
+                  value={activeTopic}
+                  onChange={(event) => setActiveTopic(event.target.value)}
+                >
+                  <option value="">All topics</option>
+                  {topics
+                    .map((topic) => topic.name)
+                    .sort((left, right) => left.localeCompare(right))
+                    .map((topic) => (
+                      <option key={topic} value={topic}>
+                        {topic}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            </div>
             <p className="muted">
               {normalizedFilter
                 ? `${visibleTopics.reduce((sum, topic) => sum + topic.files.length, 0)} matching file(s)`
@@ -140,4 +195,30 @@ export default function MarkdownArchiveBrowser({
       )}
     </div>
   );
+}
+
+function compareArchiveFiles(
+  left: MarkdownArchiveFile,
+  right: MarkdownArchiveFile,
+  sortMode: ArchiveSortMode
+): number {
+  const leftTime = Date.parse(left.modifiedAt);
+  const rightTime = Date.parse(right.modifiedAt);
+
+  if (sortMode === "oldest") {
+    return leftTime - rightTime || left.name.localeCompare(right.name);
+  }
+
+  if (sortMode === "topic") {
+    return left.name.localeCompare(right.name) || rightTime - leftTime;
+  }
+
+  return rightTime - leftTime || left.name.localeCompare(right.name);
+}
+
+function newestTimestamp(files: MarkdownArchiveFile[]): number {
+  return files.reduce((latest, file) => {
+    const value = Date.parse(file.modifiedAt);
+    return Number.isNaN(value) ? latest : Math.max(latest, value);
+  }, 0);
 }

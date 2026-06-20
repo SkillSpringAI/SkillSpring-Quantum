@@ -4,6 +4,7 @@ export interface RedactionResult {
   text: string;
   redactionCount: number;
   flags: string[];
+  flagCounts: Record<string, number>;
 }
 
 const EMAIL_REGEX = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
@@ -15,11 +16,13 @@ export function redactText(input: string): RedactionResult {
   let text = input;
   let redactionCount = 0;
   const flags = new Set<string>();
+  const flagCounts = new Map<string, number>();
 
   const apply = (regex: RegExp, replacement: string, flag: string): void => {
     text = text.replace(regex, (match) => {
       redactionCount += 1;
       flags.add(flag);
+      flagCounts.set(flag, (flagCounts.get(flag) ?? 0) + 1);
       return replacement;
     });
   };
@@ -32,7 +35,8 @@ export function redactText(input: string): RedactionResult {
   return {
     text,
     redactionCount,
-    flags: [...flags]
+    flags: [...flags],
+    flagCounts: Object.fromEntries(flagCounts)
   };
 }
 
@@ -40,14 +44,19 @@ export function redactMessages(messages: ConversationMessage[]): {
   messages: ConversationMessage[];
   redactionCount: number;
   flags: string[];
+  flagCounts: Record<string, number>;
 } {
   let total = 0;
   const flags = new Set<string>();
+  const flagCounts = new Map<string, number>();
 
   const output = messages.map((message) => {
     const result = redactText(message.text);
     total += result.redactionCount;
     result.flags.forEach((flag) => flags.add(flag));
+    for (const [flag, count] of Object.entries(result.flagCounts)) {
+      flagCounts.set(flag, (flagCounts.get(flag) ?? 0) + count);
+    }
 
     return {
       ...message,
@@ -58,6 +67,7 @@ export function redactMessages(messages: ConversationMessage[]): {
   return {
     messages: output,
     redactionCount: total,
-    flags: [...flags]
+    flags: [...flags],
+    flagCounts: Object.fromEntries(flagCounts)
   };
 }

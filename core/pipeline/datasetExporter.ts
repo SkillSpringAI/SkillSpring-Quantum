@@ -24,6 +24,12 @@ export interface DatasetSourceContext {
   topic_hints: string[];
 }
 
+export interface DatasetRedactionSummary {
+  affected_segments: number;
+  total_redactions: number;
+  redaction_types: Record<string, number>;
+}
+
 interface TopicSegmentRecord {
   schema_version: "topic_segment.v1";
   conversation_id: string;
@@ -79,6 +85,7 @@ export interface DatasetSummary {
   run_id: string;
   dataset_version: string;
   source_context: DatasetSourceContext;
+  redaction_summary: DatasetRedactionSummary;
   topic_segments: number;
   prompt_response_pairs: number;
   micro_segments: number;
@@ -178,6 +185,11 @@ export async function exportDatasets(
       attachment_count: sourceContext?.attachment_count,
       topic_hints: sourceContext?.topic_hints ?? []
     },
+    redaction_summary: {
+      affected_segments: 0,
+      total_redactions: 0,
+      redaction_types: {}
+    },
     topic_segments: 0,
     prompt_response_pairs: 0,
     micro_segments: 0,
@@ -212,6 +224,15 @@ export async function exportDatasets(
 
     const redacted = redactMessages(segment.messages);
     const assessment = assessSegmentSignal(segment, redacted.flags, redacted.redactionCount);
+
+    if (redacted.redactionCount > 0) {
+      summary.redaction_summary.affected_segments += 1;
+      summary.redaction_summary.total_redactions += redacted.redactionCount;
+      for (const [flag, count] of Object.entries(redacted.flagCounts)) {
+        summary.redaction_summary.redaction_types[flag] =
+          (summary.redaction_summary.redaction_types[flag] ?? 0) + count;
+      }
+    }
 
     const topicRecord: TopicSegmentRecord = {
       schema_version: "topic_segment.v1",
@@ -355,6 +376,7 @@ export async function exportDatasets(
     run_id: summary.run_id,
     dataset_version: summary.dataset_version,
     source_context: summary.source_context,
+    redaction_summary: summary.redaction_summary,
     topic_segments: summary.topic_segments,
     prompt_response_pairs: summary.prompt_response_pairs,
     micro_segments: summary.micro_segments,

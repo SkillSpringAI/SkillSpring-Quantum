@@ -14,6 +14,11 @@ try {
   const olderRun = {
     run_id: "run-2026-06-20T09-00-00-000Z",
     dataset_version: "v1",
+    redaction_summary: {
+      affected_segments: 0,
+      total_redactions: 0,
+      redaction_types: {}
+    },
     topic_segments: 2,
     prompt_response_pairs: 3,
     micro_segments: 4,
@@ -33,6 +38,14 @@ try {
       vendor_sources: ["claude"],
       topic_hints: ["beta"],
       support_tier: "mvp_compatibility_fallback"
+    },
+    redaction_summary: {
+      affected_segments: 2,
+      total_redactions: 3,
+      redaction_types: {
+        email: 1,
+        phone: 2
+      }
     },
     topic_segments: 5,
     prompt_response_pairs: 6,
@@ -84,6 +97,7 @@ try {
   assert.equal(parsed.runs[0].run_id, newerRun.run_id);
   assert.equal(parsed.runs[1].run_id, olderRun.run_id);
   assert.equal(parsed.runs[0].source_context?.detected_label, "Claude export");
+  assert.equal(parsed.runs[0].redaction_summary?.total_redactions, 3);
 
   console.log("read-latest-dataset-run.test.ts passed");
 } finally {

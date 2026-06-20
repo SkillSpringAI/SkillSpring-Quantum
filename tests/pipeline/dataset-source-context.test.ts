@@ -26,7 +26,7 @@ try {
       messages: [
         {
           role: "user",
-          text: "What changed in crypto markets today?",
+          text: "What changed in crypto markets today? Email me at analyst@example.com.",
           timestamp: "2026-06-20T10:00:00.000Z"
         },
         {
@@ -57,6 +57,9 @@ try {
   assert.equal(summary.source_context.support_tier, "mvp_compatibility_fallback");
   assert.deepEqual(summary.source_context.vendor_sources, ["claude"]);
   assert.deepEqual(summary.source_context.topic_hints, ["crypto markets"]);
+  assert.equal(summary.redaction_summary.affected_segments, 1);
+  assert.equal(summary.redaction_summary.total_redactions, 1);
+  assert.equal(summary.redaction_summary.redaction_types.email, 1);
 
   const latestManifest = await readJsonFile<{
     source_context?: {
@@ -64,11 +67,18 @@ try {
       detected_label?: string;
       vendor_sources: string[];
     };
+    redaction_summary?: {
+      affected_segments: number;
+      total_redactions: number;
+      redaction_types: Record<string, number>;
+    };
   }>(path.join(tempRoot, "db", "manifests", "latest-dataset-run.json"));
 
   assert.equal(latestManifest.source_context?.pipeline_run_id, "pipeline-run-123");
   assert.equal(latestManifest.source_context?.detected_label, "Claude export");
   assert.deepEqual(latestManifest.source_context?.vendor_sources, ["claude"]);
+  assert.equal(latestManifest.redaction_summary?.affected_segments, 1);
+  assert.equal(latestManifest.redaction_summary?.redaction_types.email, 1);
 
   console.log("dataset-source-context.test.ts passed");
 } finally {

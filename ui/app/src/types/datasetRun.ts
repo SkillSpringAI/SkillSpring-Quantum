@@ -13,10 +13,17 @@ export interface DatasetSourceContext {
   topic_hints: string[];
 }
 
+export interface DatasetRedactionSummary {
+  affected_segments: number;
+  total_redactions: number;
+  redaction_types: Record<string, number>;
+}
+
 export interface DatasetRunSummary {
   run_id: string;
   dataset_version: string;
   source_context?: DatasetSourceContext;
+  redaction_summary?: DatasetRedactionSummary;
   topic_segments: number;
   prompt_response_pairs: number;
   micro_segments: number;

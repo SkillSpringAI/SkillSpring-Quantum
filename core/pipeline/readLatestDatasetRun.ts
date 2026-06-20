@@ -18,6 +18,11 @@ interface DatasetRunSummary {
     attachment_count?: number;
     topic_hints: string[];
   };
+  redaction_summary?: {
+    affected_segments: number;
+    total_redactions: number;
+    redaction_types: Record<string, number>;
+  };
   topic_segments: number;
   prompt_response_pairs: number;
   micro_segments: number;

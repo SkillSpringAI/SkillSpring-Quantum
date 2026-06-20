@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { loadLatestDatasetRun } from "../services/datasetRunBridge";
 import { revealDesktopPath } from "../services/pathBridge";
-import type { DatasetRunResult, DatasetSourceContext } from "../types/datasetRun";
+import type {
+  DatasetRunResult,
+  DatasetSourceContext,
+  DatasetRedactionSummary
+} from "../types/datasetRun";
 import { useNavigation } from "../state/navigationContext";
 
 function buildDatasetArtifactPaths(outputRoot: string) {
@@ -41,6 +45,11 @@ export default function DatasetsScreen() {
   const selectedSourceBadges = summarizeDatasetSourceBadges(selectedSourceContext);
   const selectedSourceNeedsAttention = selectedSourceContext?.support_tier === "mvp_compatibility_fallback";
   const selectedSourceTopics = selectedSourceContext?.topic_hints.slice(0, 4) ?? [];
+  const selectedRedactionSummary = selectedRun?.redaction_summary;
+  const selectedRedactionExplanation = summarizeRedactionExplanation(
+    selectedRedactionSummary,
+    selectedRun?.private_review_segments ?? 0
+  );
 
   return (
     <section className="screen-grid">
@@ -198,6 +207,9 @@ export default function DatasetsScreen() {
             <p className="muted">
               Private-review sections are separated so you can inspect them before treating them as normal reusable data.
             </p>
+            <p className="muted">
+              Privacy handling: {selectedRedactionExplanation}
+            </p>
             {selectedSourceNeedsAttention ? (
               <p className="muted">
                 This dataset came from a recovery-path import. Review diagnostics or import history before treating every record as equally complete.
@@ -232,6 +244,7 @@ export default function DatasetsScreen() {
           <li>Start with Selected Import Context when you want to know where this dataset came from and whether it used a recovery path.</li>
           <li>Use Recent Dataset Runs when you want to compare the latest dataset with an earlier import in the same output folder.</li>
           <li>The selected dataset summary is per run, while the current dataset files reflect the latest accumulated current outputs.</li>
+          <li>Privacy handling summarizes which common sensitive patterns were redacted before dataset records were written.</li>
           <li>Open topic segments when you want the clearest topic-organized view of imported conversations.</li>
           <li>Open prompt/response pairs when you want faster review of direct question-and-answer examples.</li>
           <li>Open micro segments when you want smaller chunks for search or lightweight review.</li>
@@ -290,4 +303,50 @@ function formatDatasetRunLabel(run: DatasetRunResult["runs"][number]): string {
   const stamp = run.run_id.replace(/^run-/, "").replace(/-/g, ":");
   const source = run.source_context?.vendor_sources[0] ?? run.source_context?.detected_label ?? "dataset";
   return source + " | " + stamp.slice(0, 16);
+}
+
+function summarizeRedactionExplanation(
+  redactionSummary: DatasetRedactionSummary | undefined,
+  privateReviewSegments: number
+): string {
+  if (!redactionSummary || redactionSummary.total_redactions === 0) {
+    if (privateReviewSegments > 0) {
+      return privateReviewSegments + " segment(s) were still sent to private review even though no direct email, phone, URL, or address redactions were counted in this summary.";
+    }
+
+    return "No common email, phone, URL, or address redactions were counted in this dataset run.";
+  }
+
+  const typeLabels = Object.entries(redactionSummary.redaction_types)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([flag, count]) => formatRedactionFlagLabel(flag, count));
+
+  const parts = [
+    redactionSummary.total_redactions + " redaction(s) across " + redactionSummary.affected_segments + " segment(s)"
+  ];
+
+  if (typeLabels.length > 0) {
+    parts.push(typeLabels.join(", "));
+  }
+
+  if (privateReviewSegments > 0) {
+    parts.push(privateReviewSegments + " segment(s) also landed in private review for extra caution");
+  }
+
+  return parts.join(" | ") + ".";
+}
+
+function formatRedactionFlagLabel(flag: string, count: number): string {
+  switch (flag) {
+    case "email":
+      return count + " email";
+    case "phone":
+      return count + " phone";
+    case "url":
+      return count + " URL";
+    case "address":
+      return count + " address";
+    default:
+      return count + " " + flag;
+  }
 }

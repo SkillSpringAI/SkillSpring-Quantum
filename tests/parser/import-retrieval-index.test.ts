@@ -23,6 +23,8 @@ try {
     conversationFilesProcessed: 1,
     genericDocumentsProcessed: 0,
     pdfFilesArchived: 0,
+    archivedOnlyFiles: 0,
+    recoveryPathFiles: 1,
     unsupportedFilesSkipped: 0,
     artifacts: [],
     retrievalSummary: {

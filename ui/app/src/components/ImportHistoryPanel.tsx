@@ -66,18 +66,20 @@ function findLatestDatasetArtifactPath(run: ImportRunSummary | null): string | n
 }
 
 function summarizeRunOutcomeCounts(run: ImportRunSummary): string {
-  let archivedOnly = 0;
-  let recoveryPath = 0;
-
-  for (const result of run.results) {
-    if (result.metadata?.sourceCategory === "document" && result.metadata.parseStatus === "binary_archived_only") {
-      archivedOnly += 1;
-    }
-
-    if (result.metadata?.sourceCategory === "conversation" && result.metadata.supportTier === "mvp_compatibility_fallback") {
-      recoveryPath += 1;
-    }
-  }
+  const archivedOnly =
+    run.archivedOnlyFiles ??
+    run.results.filter(
+      (result) =>
+        result.metadata?.sourceCategory === "document" &&
+        result.metadata.parseStatus === "binary_archived_only"
+    ).length;
+  const recoveryPath =
+    run.recoveryPathFiles ??
+    run.results.filter(
+      (result) =>
+        result.metadata?.sourceCategory === "conversation" &&
+        result.metadata.supportTier === "mvp_compatibility_fallback"
+    ).length;
 
   const parts = [
     run.filesImported + " imported",

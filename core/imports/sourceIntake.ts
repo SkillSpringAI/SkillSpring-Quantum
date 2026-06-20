@@ -91,6 +91,8 @@ export interface ImportRunSummary {
   conversationFilesProcessed: number;
   genericDocumentsProcessed: number;
   pdfFilesArchived: number;
+  archivedOnlyFiles: number;
+  recoveryPathFiles: number;
   unsupportedFilesSkipped: number;
   artifacts: ImportArtifact[];
   results: ImportRunFileResult[];
@@ -228,6 +230,8 @@ export async function runImportSource(
   let conversationFilesProcessed = 0;
   let genericDocumentsProcessed = 0;
   let pdfFilesArchived = 0;
+  let archivedOnlyFiles = 0;
+  let recoveryPathFiles = 0;
   let unsupportedFilesSkipped = 0;
 
   const files = summary.inputType === "folder"
@@ -266,6 +270,9 @@ export async function runImportSource(
 
         conversationFilesProcessed += 1;
         filesImported += 1;
+        if (metadata?.supportTier === "mvp_compatibility_fallback") {
+          recoveryPathFiles += 1;
+        }
         const conversationArtifacts = await collectConversationArtifacts(outputRoot, diagnostics);
         artifacts.push(...conversationArtifacts);
         results.push({
@@ -290,6 +297,10 @@ export async function runImportSource(
         pdfFilesArchived += 1;
       } else {
         genericDocumentsProcessed += 1;
+      }
+
+      if (imported.metadata.parseStatus === "binary_archived_only") {
+        archivedOnlyFiles += 1;
       }
 
       artifacts.push(...imported.artifacts);
@@ -326,6 +337,8 @@ export async function runImportSource(
     conversationFilesProcessed,
     genericDocumentsProcessed,
     pdfFilesArchived,
+    archivedOnlyFiles,
+    recoveryPathFiles,
     unsupportedFilesSkipped,
     artifacts: buildRunArtifacts(outputRoot, artifacts),
     results,
@@ -343,6 +356,8 @@ export async function runImportSource(
     conversationFilesProcessed,
     genericDocumentsProcessed,
     pdfFilesArchived,
+    archivedOnlyFiles,
+    recoveryPathFiles,
     unsupportedFilesSkipped,
     artifacts: buildRunArtifacts(outputRoot, artifacts),
     results,

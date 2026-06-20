@@ -14,6 +14,8 @@ const runs: ImportRunSummary[] = [
     conversationFilesProcessed: 1,
     genericDocumentsProcessed: 0,
     pdfFilesArchived: 0,
+    archivedOnlyFiles: 0,
+    recoveryPathFiles: 1,
     unsupportedFilesSkipped: 0,
     artifacts: [],
     retrievalSummary: {
@@ -62,6 +64,8 @@ const runs: ImportRunSummary[] = [
     conversationFilesProcessed: 1,
     genericDocumentsProcessed: 0,
     pdfFilesArchived: 0,
+    archivedOnlyFiles: 0,
+    recoveryPathFiles: 0,
     unsupportedFilesSkipped: 0,
     artifacts: [],
     retrievalSummary: {

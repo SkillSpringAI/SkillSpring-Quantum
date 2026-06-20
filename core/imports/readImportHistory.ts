@@ -33,6 +33,8 @@ interface ImportRunSummary {
   conversationFilesProcessed: number;
   genericDocumentsProcessed: number;
   pdfFilesArchived: number;
+  archivedOnlyFiles?: number;
+  recoveryPathFiles?: number;
   unsupportedFilesSkipped: number;
   results: ImportRunFileResult[];
   retrievalSummary: ImportRunRetrievalSummary | null;

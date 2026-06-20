@@ -69,6 +69,8 @@ export interface ImportRunSummary {
   conversationFilesProcessed: number;
   genericDocumentsProcessed: number;
   pdfFilesArchived: number;
+  archivedOnlyFiles?: number;
+  recoveryPathFiles?: number;
   unsupportedFilesSkipped: number;
   artifacts: ImportArtifact[];
   results: ImportRunFileResult[];

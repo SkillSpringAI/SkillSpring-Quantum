@@ -225,6 +225,8 @@ export async function executeMockDesktopCommand(
         conversationFilesProcessed: 0,
         genericDocumentsProcessed: 0,
         pdfFilesArchived: 0,
+        archivedOnlyFiles: 0,
+        recoveryPathFiles: 0,
         unsupportedFilesSkipped: 0,
         artifacts: [],
         results: [],

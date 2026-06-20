@@ -76,6 +76,7 @@ Priority items:
 - full-history investigation search for prior imports
 - per-file import results in plain English
 - clear failure states and recovery guidance
+- expected vendor-package companion files should read as normal package handling, not as reasons to panic or immediately open diagnostics
 - "what was created" summaries with links to archive and dataset outputs
 
 Why this matters:
@@ -122,6 +123,7 @@ Priority items:
 - dataset browser improvements
 - direct dataset export controls
 - explain what was redacted and why
+- carry source-context trust into datasets so users can see recovery-path imports and package-companion handling without bouncing back to import history
 - import options for archive-only versus archive-plus-dataset behavior where appropriate
 
 Why this matters:
@@ -154,7 +156,7 @@ Use this as the practical sequence unless a clear blocking dependency changes it
 2. Full-history investigation search and retrieval-ready visibility across imported runs
 3. Support-tier labeling and vendor-package hardening for ChatGPT, Grok, and current fallback vendors
 4. Attachment preservation and preview usability for vendor exports
-5. Archive search and open actions
+5. Archive search and open actions, with the trust/handoff language from imports and datasets kept consistent
 6. Defer generic document and broader ingestion work until the AI export loop is clearly strong
 
 ## Anti-drift rules

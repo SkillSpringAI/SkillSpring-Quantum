@@ -164,11 +164,14 @@ export async function inspectImportSource(inputPath: string): Promise<ImportSour
   const files = stat.isDirectory()
     ? await listFilesRecursive(normalizedPath)
     : [normalizedPath];
+  const packageCompanionReasons = stat.isDirectory()
+    ? await buildVendorPackageCompanionReasons(files)
+    : new Map<string, string>();
 
   const entries: ImportSourceEntry[] = [];
 
   for (const filePath of files) {
-    const entry = await classifyImportFile(filePath);
+    const entry = await classifyImportFile(filePath, packageCompanionReasons);
     countsByKind[entry.kind] += 1;
     entries.push(entry);
   }
@@ -197,6 +200,10 @@ export async function inspectImportSource(inputPath: string): Promise<ImportSour
     notes.push("Text and JSON documents can be archived and added to privacy-aware source-document datasets.");
   }
 
+  if (entries.some((entry) => entry.reason.includes("Companion file for"))) {
+    notes.push("Some files belong to a recognized vendor export package and will be handled through the main package import instead of imported separately.");
+  }
+
   const supportedFiles = entries.filter((entry) => entry.supported).length;
 
   return {
@@ -207,7 +214,7 @@ export async function inspectImportSource(inputPath: string): Promise<ImportSour
     unsupportedFiles: entries.length - supportedFiles,
     countsByKind,
     notes,
-    sampleFiles: entries.slice(0, 12)
+    sampleFiles: sortImportSourceEntriesForDisplay(entries).slice(0, 12)
   };
 }
 
@@ -237,9 +244,12 @@ export async function runImportSource(
   const files = summary.inputType === "folder"
     ? await listFilesRecursive(summary.inputPath)
     : [summary.inputPath];
+  const packageCompanionReasons = summary.inputType === "folder"
+    ? await buildVendorPackageCompanionReasons(files)
+    : new Map<string, string>();
 
   for (const filePath of files) {
-    const entry = await classifyImportFile(filePath);
+    const entry = await classifyImportFile(filePath, packageCompanionReasons);
 
     if (!entry.supported) {
       unsupportedFilesSkipped += 1;
@@ -856,7 +866,21 @@ function renderGenericArchiveMarkdown(input: {
   ].join("\n");
 }
 
-async function classifyImportFile(filePath: string): Promise<ImportSourceEntry> {
+async function classifyImportFile(
+  filePath: string,
+  packageCompanionReasons = new Map<string, string>()
+): Promise<ImportSourceEntry> {
+  const companionReason = packageCompanionReasons.get(filePath);
+  if (companionReason) {
+    return {
+      path: filePath,
+      kind: "unsupported",
+      supported: false,
+      supportTier: "unsupported",
+      reason: companionReason
+    };
+  }
+
   const ext = path.extname(filePath).toLowerCase();
 
   if (ext === ".pdf") {
@@ -1002,6 +1026,117 @@ function buildConversationJsonReason(
   }
 
   return vendorLabel + " conversation JSON will be imported as conversations.";
+}
+
+async function buildVendorPackageCompanionReasons(files: string[]): Promise<Map<string, string>> {
+  const reasons = new Map<string, string>();
+  const grouped = new Map<string, string[]>();
+
+  for (const filePath of files) {
+    const dir = path.dirname(filePath);
+    const group = grouped.get(dir) ?? [];
+    group.push(filePath);
+    grouped.set(dir, group);
+  }
+
+  for (const directoryFiles of grouped.values()) {
+    const byName = new Map(
+      directoryFiles.map((filePath) => [path.basename(filePath).toLowerCase(), filePath] as const)
+    );
+
+    const geminiHtmlPath =
+      byName.get("myactivity.html") ??
+      byName.get("my activity.html");
+
+    if (geminiHtmlPath && await isGeminiActivityHtmlFile(geminiHtmlPath)) {
+      for (const filePath of directoryFiles) {
+        if (filePath === geminiHtmlPath) continue;
+        reasons.set(
+          filePath,
+          "Companion file for Gemini My Activity export. Quantum preserves linked files through the HTML import when they are referenced, so this file is not imported separately."
+        );
+      }
+      continue;
+    }
+
+    const claudeConversationsPath = byName.get("conversations.json");
+    const claudeUsersPath = byName.get("users.json");
+    if (
+      claudeConversationsPath &&
+      claudeUsersPath &&
+      await isClaudeExportFile(claudeConversationsPath)
+    ) {
+      reasons.set(
+        claudeUsersPath,
+        "Companion file for Claude export. Quantum uses the conversations export as the MVP import source, so this metadata file is not imported separately."
+      );
+    }
+  }
+
+  return reasons;
+}
+
+async function isGeminiActivityHtmlFile(filePath: string): Promise<boolean> {
+  try {
+    const raw = await fs.readFile(filePath, "utf-8");
+    return detectAndParseConversationExport(raw).kind === "gemini_activity_html";
+  } catch {
+    return false;
+  }
+}
+
+async function isClaudeExportFile(filePath: string): Promise<boolean> {
+  try {
+    const raw = JSON.parse(await fs.readFile(filePath, "utf-8")) as unknown;
+    return detectAndParseConversationExport(raw).kind === "claude_export";
+  } catch {
+    return false;
+  }
+}
+
+function sortImportSourceEntriesForDisplay(entries: ImportSourceEntry[]): ImportSourceEntry[] {
+  return [...entries].sort((left, right) => {
+    const priorityDelta = importSourceEntryPriority(left) - importSourceEntryPriority(right);
+    if (priorityDelta !== 0) {
+      return priorityDelta;
+    }
+
+    const supportDelta = supportTierPriority(left.supportTier) - supportTierPriority(right.supportTier);
+    if (supportDelta !== 0) {
+      return supportDelta;
+    }
+
+    return left.path.localeCompare(right.path);
+  });
+}
+
+function importSourceEntryPriority(entry: ImportSourceEntry): number {
+  if (entry.kind === "chatgpt_export" || entry.kind === "conversation_json" || entry.kind === "gemini_activity_html") {
+    return 0;
+  }
+
+  if (entry.reason.includes("Companion file for")) {
+    return 1;
+  }
+
+  if (entry.kind === "json_document" || entry.kind === "text_document" || entry.kind === "pdf_document") {
+    return 2;
+  }
+
+  return 3;
+}
+
+function supportTierPriority(tier: ImportSupportTier): number {
+  switch (tier) {
+    case "mvp_first_class":
+      return 0;
+    case "mvp_compatibility_fallback":
+      return 1;
+    case "experimental_expansion":
+      return 2;
+    default:
+      return 3;
+  }
 }
 
 async function listFilesRecursive(root: string): Promise<string[]> {

@@ -4,6 +4,15 @@ export interface MarkdownArchiveFile {
   topicFolder: string;
   sizeBytes: number;
   modifiedAt: string;
+  previewText: string;
+  source?: string;
+  title?: string;
+  createdAt?: string;
+  topic?: string;
+  rawTopic?: string;
+  conversationId?: string;
+  startIndex?: number;
+  endIndex?: number;
 }
 
 export interface MarkdownArchiveTopic {

@@ -7,6 +7,7 @@ import type {
   DatasetRedactionSummary
 } from "../types/datasetRun";
 import { useNavigation } from "../state/navigationContext";
+import { findMatchingDatasetRun } from "../utils/datasetIntent";
 
 function buildDatasetArtifactPaths(outputRoot: string) {
   return {
@@ -21,7 +22,12 @@ function buildDatasetArtifactPaths(outputRoot: string) {
 }
 
 export default function DatasetsScreen() {
-  const { setActiveScreen, openRetrievalInvestigation } = useNavigation();
+  const {
+    setActiveScreen,
+    openRetrievalInvestigation,
+    datasetIntent,
+    clearDatasetIntent
+  } = useNavigation();
   const [datasetRun, setDatasetRun] = useState<DatasetRunResult | null>(null);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
 
@@ -31,6 +37,19 @@ export default function DatasetsScreen() {
       setSelectedRunId(result.latest?.run_id ?? result.runs[0]?.run_id ?? null);
     });
   }, []);
+
+  useEffect(() => {
+    if (!datasetIntent || !datasetRun?.runs.length) {
+      return;
+    }
+
+    const matchingRun = findMatchingDatasetRun(datasetRun.runs, datasetIntent);
+    if (matchingRun) {
+      setSelectedRunId(matchingRun.run_id);
+    }
+
+    clearDatasetIntent();
+  }, [datasetIntent, datasetRun, clearDatasetIntent]);
 
   const selectedRun =
     datasetRun?.runs.find((run) => run.run_id === selectedRunId) ??
@@ -113,6 +132,14 @@ export default function DatasetsScreen() {
                 {selectedSourceBadges.length > 0 ? (
                   <p className="muted">
                     {selectedSourceBadges.join(" | ")}
+                  </p>
+                ) : null}
+                {(selectedSourceContext.package_companion_files ?? 0) > 0 ? (
+                  <p className="muted">
+                    Vendor package handling: {selectedSourceContext.package_companion_files} companion file(s) were kept out of the dataset flow and handled through the main import file
+                    {selectedSourceContext.package_companion_examples && selectedSourceContext.package_companion_examples.length > 0
+                      ? " (" + selectedSourceContext.package_companion_examples.join(", ") + ")"
+                      : ""}.
                   </p>
                 ) : null}
                 {shouldRecommendGovernance(selectedRun) ? (
@@ -284,6 +311,9 @@ function summarizeDatasetSourceContext(sourceContext: DatasetSourceContext | und
   if (typeof sourceContext.message_count === "number") {
     parts.push(sourceContext.message_count + " message(s)");
   }
+  if ((sourceContext.package_companion_files ?? 0) > 0) {
+    parts.push(sourceContext.package_companion_files + " package companion file(s) handled");
+  }
   return parts.join(" | ");
 }
 
@@ -304,6 +334,9 @@ function summarizeDatasetSourceBadges(sourceContext: DatasetSourceContext | unde
   }
   if ((sourceContext.attachment_count ?? 0) > 0) {
     badges.push((sourceContext.attachment_count ?? 0) + " attachment reference(s)");
+  }
+  if ((sourceContext.package_companion_files ?? 0) > 0) {
+    badges.push(sourceContext.package_companion_files + " package companion file(s) handled");
   }
   return badges;
 }

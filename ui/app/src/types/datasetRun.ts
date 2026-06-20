@@ -10,6 +10,8 @@ export interface DatasetSourceContext {
   conversation_count?: number;
   message_count?: number;
   attachment_count?: number;
+  package_companion_files?: number;
+  package_companion_examples?: string[];
   topic_hints: string[];
 }
 

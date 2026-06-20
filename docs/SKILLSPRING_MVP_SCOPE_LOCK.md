@@ -21,6 +21,8 @@ The MVP only needs to prove one clear loop:
 5. Review dataset output
 6. Understand failures or partial imports without reading code
 
+Expected vendor-package companion files should be explained as normal handling, not as scary failures.
+
 If a feature does not make that loop clearer, more trustworthy, or more complete, it should not block MVP.
 
 ## Current support tiers
@@ -35,6 +37,8 @@ If a feature does not make that loop clearer, more trustworthy, or more complete
 - Claude via generic conversation parser
 - Gemini via generic conversation parser
 - Microsoft Copilot activity CSV where fixture and test coverage prove the recoverable shape
+
+Recognized vendor export folders may route through one main import file while companion files are skipped intentionally and described plainly in the UI.
 
 ### Explicit coming soon
 

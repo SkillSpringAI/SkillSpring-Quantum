@@ -4,6 +4,7 @@ import type {
   MarkdownArchiveTopic
 } from "../types/markdownArchive";
 import { revealDesktopPath } from "../services/pathBridge";
+import { useNavigation } from "../state/navigationContext";
 
 interface MarkdownArchiveBrowserProps {
   topics: MarkdownArchiveTopic[];
@@ -22,6 +23,7 @@ export default function MarkdownArchiveBrowser({
   onSelectFile,
   onRefresh
 }: MarkdownArchiveBrowserProps) {
+  const { openRetrievalInvestigation, openDatasetInvestigation } = useNavigation();
   const [filterText, setFilterText] = useState("");
   const [sortMode, setSortMode] = useState<ArchiveSortMode>("newest");
   const [activeTopic, setActiveTopic] = useState("");
@@ -36,7 +38,8 @@ export default function MarkdownArchiveBrowser({
           .filter((file) =>
             topicSelected && (
               file.name.toLowerCase().includes(normalizedFilter) ||
-              file.path.toLowerCase().includes(normalizedFilter)
+              file.path.toLowerCase().includes(normalizedFilter) ||
+              file.previewText.toLowerCase().includes(normalizedFilter)
             )
           )
           .sort((left, right) => compareArchiveFiles(left, right, sortMode));
@@ -77,6 +80,7 @@ export default function MarkdownArchiveBrowser({
   const selectedTopic = selectedFile
     ? topics.find((topic) => topic.files.some((file) => file.path === selectedFile.path)) ?? null
     : null;
+  const selectedContextBadges = selectedFile ? summarizeArchiveContextBadges(selectedFile) : [];
 
   return (
     <div className="panel large">
@@ -134,8 +138,8 @@ export default function MarkdownArchiveBrowser({
             </div>
             <p className="muted">
               {normalizedFilter
-                ? `${visibleTopics.reduce((sum, topic) => sum + topic.files.length, 0)} matching file(s)`
-                : `${topics.reduce((sum, topic) => sum + topic.files.length, 0)} archive file(s)`}
+                ? `${visibleTopics.reduce((sum, topic) => sum + topic.files.length, 0)} matching file(s) across readable archive content`
+                : `${topics.reduce((sum, topic) => sum + topic.files.length, 0)} archive file(s) across ${topics.length} topic folder(s)`}
             </p>
             {visibleTopics.map((topic) => (
               <div key={topic.path} className="markdown-topic-group">
@@ -154,6 +158,9 @@ export default function MarkdownArchiveBrowser({
                     >
                       <div>{file.name}</div>
                       <div className="muted">{new Date(file.modifiedAt).toLocaleString()}</div>
+                      {file.previewText ? (
+                        <div className="muted">{file.previewText}</div>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -168,6 +175,17 @@ export default function MarkdownArchiveBrowser({
             <h3>{selectedFile?.name ?? "Select a markdown file"}</h3>
             {selectedFile ? <code>{selectedFile.path}</code> : null}
             {selectedFile ? (
+              <div className="detail-box">
+                <strong>Archive Context</strong>
+                <p className="muted">
+                  {summarizeArchiveContext(selectedFile)}
+                </p>
+                {selectedContextBadges.length > 0 ? (
+                  <p className="muted">{selectedContextBadges.join(" | ")}</p>
+                ) : null}
+              </div>
+            ) : null}
+            {selectedFile ? (
               <div className="action-bar">
                 <button
                   className="primary-btn"
@@ -175,6 +193,38 @@ export default function MarkdownArchiveBrowser({
                   onClick={() => revealDesktopPath(selectedFile.path)}
                 >
                   Open Markdown File
+                </button>
+                <button
+                  className="secondary-btn"
+                  type="button"
+                  onClick={() =>
+                    openRetrievalInvestigation({
+                      filters: {
+                        text: selectedFile.title ?? "",
+                        vendor: selectedFile.source ?? "",
+                        topic: selectedFile.topic ?? selectedFile.rawTopic ?? "",
+                        status: "all",
+                        from: selectedFile.createdAt ? toDateInputValue(selectedFile.createdAt) : "",
+                        to: selectedFile.createdAt ? toDateInputValue(selectedFile.createdAt) : ""
+                      },
+                      suggestedName: selectedFile.topic ?? selectedFile.title ?? "Archive investigation"
+                    })
+                  }
+                >
+                  Find Related Import
+                </button>
+                <button
+                  className="secondary-btn"
+                  type="button"
+                  onClick={() =>
+                    openDatasetInvestigation({
+                      vendor: selectedFile.source,
+                      topic: selectedFile.topic ?? selectedFile.rawTopic,
+                      createdAt: selectedFile.createdAt
+                    })
+                  }
+                >
+                  Open Related Dataset
                 </button>
                 {selectedTopic ? (
                   <button
@@ -226,4 +276,73 @@ function newestTimestamp(files: MarkdownArchiveFile[]): number {
     const value = Date.parse(file.modifiedAt);
     return Number.isNaN(value) ? latest : Math.max(latest, value);
   }, 0);
+}
+
+function summarizeArchiveContext(file: MarkdownArchiveFile): string {
+  const parts: string[] = [];
+
+  if (file.title) {
+    parts.push(file.title);
+  }
+
+  if (file.source) {
+    parts.push(formatArchiveSourceLabel(file.source));
+  }
+
+  if (file.topic) {
+    parts.push("topic: " + file.topic);
+  }
+
+  if (file.createdAt) {
+    parts.push("conversation date: " + new Date(file.createdAt).toLocaleString());
+  }
+
+  return parts.join(" | ") || "Archive metadata is limited for this file.";
+}
+
+function summarizeArchiveContextBadges(file: MarkdownArchiveFile): string[] {
+  const badges: string[] = [];
+
+  if (file.rawTopic && file.rawTopic !== file.topic) {
+    badges.push("raw topic: " + file.rawTopic);
+  }
+
+  if (
+    typeof file.startIndex === "number" &&
+    typeof file.endIndex === "number"
+  ) {
+    badges.push("segment window: " + file.startIndex + "-" + file.endIndex);
+  }
+
+  if (file.conversationId) {
+    badges.push("conversation: " + file.conversationId);
+  }
+
+  return badges;
+}
+
+function formatArchiveSourceLabel(source: string): string {
+  switch (source) {
+    case "chatgpt":
+      return "ChatGPT";
+    case "grok":
+      return "Grok";
+    case "claude":
+      return "Claude";
+    case "gemini":
+      return "Gemini";
+    case "copilot":
+      return "Copilot";
+    default:
+      return source;
+  }
+}
+
+function toDateInputValue(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toISOString().slice(0, 10);
 }

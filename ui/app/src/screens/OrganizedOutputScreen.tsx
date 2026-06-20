@@ -49,6 +49,8 @@ export default function OrganizedOutputScreen() {
     refreshMarkdownArchive();
   }, []);
 
+  const archiveFileCount = topics.reduce((sum, topic) => sum + topic.files.length, 0);
+
   return (
     <section className="screen-grid">
       <ArchiveNotificationPanel
@@ -75,12 +77,22 @@ export default function OrganizedOutputScreen() {
             <p className="muted">
               This is the main place to read back what Quantum created from your imported conversations.
             </p>
+            <p className="muted">
+              {archiveFileCount} readable archive file(s) across {topics.length} topic folder(s). The latest file opens automatically so you can start reading right away.
+            </p>
             <ul className="list">
               <li>Readable markdown is grouped by topic so you can browse what was imported quickly.</li>
+              <li>You can search by topic, file name, path, or the readable preview text from each archive file.</li>
+              <li>Each selected file now shows archive context like source, topic, conversation date, and segment range when that metadata is available.</li>
               <li>Recent archive updates show which files were written, backed up, skipped, or replaced.</li>
               <li>These archive files come from the same imported conversation content used for datasets.</li>
               <li>When vendor exports included uploaded files or linked files, preserved attachments are summarized separately below.</li>
             </ul>
+            <div className="action-bar">
+              <button className="secondary-btn" type="button" onClick={() => revealDesktopPath("organized_output")}>
+                Open Output Folder
+              </button>
+            </div>
           </>
         )}
       </div>

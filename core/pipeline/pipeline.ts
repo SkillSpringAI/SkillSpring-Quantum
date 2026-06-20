@@ -17,12 +17,18 @@ import { writeArchiveNotification } from "./archiveNotifier.js";
 import { archiveGrokConversationAttachments } from "./grokAttachmentArchive.js";
 import { archiveGeminiConversationAttachments } from "./geminiAttachmentArchive.js";
 import { summarizeDetectedConversationImport } from "../imports/importMetadata.js";
+import { fileExists } from "../utils/fs.js";
 import programManifest from "../../config/programManifest.json" with { type: "json" };
 
 const PIPELINE_VERSION = programManifest.pipeline_version;
 const DATASET_VERSION = programManifest.dataset_version;
 const PROGRAM_VERSION = programManifest.program_version;
 const SEGMENT_WINDOW_SIZE = 4;
+
+interface PackageCompanionContext {
+  package_companion_files?: number;
+  package_companion_examples?: string[];
+}
 
 function parseCliArgs(argv: string[]): { filePath?: string; outputRoot: string } {
   const args = argv.slice(2);
@@ -121,6 +127,7 @@ export async function runConversationPipeline(
     const raw = await readConversationImportSource(filePath);
     const detected = detectAndParseConversationExport(raw);
     const importMetadata = summarizeDetectedConversationImport(detected);
+    const packageCompanionContext = await summarizePackageCompanionContext(filePath, detected.kind);
     const parsed = detected.parsed;
     const index = await loadIndex(outputRoot);
     const allSegments = [];
@@ -291,6 +298,8 @@ export async function runConversationPipeline(
         conversation_count: importMetadata?.conversationCount ?? parsed.conversations.length,
         message_count: importMetadata?.messageCount,
         attachment_count: importMetadata?.attachmentCount,
+        package_companion_files: packageCompanionContext.package_companion_files,
+        package_companion_examples: packageCompanionContext.package_companion_examples,
         topic_hints: importMetadata?.topicHints ?? []
       }
     );
@@ -376,6 +385,51 @@ async function readConversationImportSource(filePath: string): Promise<unknown> 
   return [".html", ".csv"].includes(path.extname(filePath).toLowerCase())
     ? rawText
     : JSON.parse(rawText) as unknown;
+}
+
+async function summarizePackageCompanionContext(
+  filePath: string,
+  detectedKind: string
+): Promise<PackageCompanionContext> {
+  const directory = path.dirname(filePath);
+
+  if (detectedKind === "gemini_activity_html") {
+    try {
+      const entries = await fs.readdir(directory, { withFileTypes: true });
+      const companionFiles = entries
+        .filter((entry) => entry.isFile())
+        .map((entry) => entry.name)
+        .filter((name) => path.join(directory, name) !== filePath)
+        .sort((left, right) => left.localeCompare(right));
+
+      if (companionFiles.length > 0) {
+        return {
+          package_companion_files: companionFiles.length,
+          package_companion_examples: companionFiles.slice(0, 3)
+        };
+      }
+    } catch {
+      return {};
+    }
+  }
+
+  if (detectedKind === "claude_export") {
+    const siblingUsersPath = path.join(directory, "users.json");
+    const siblingConversationsPath = path.join(directory, "conversations.json");
+    const normalizedFilePath = path.normalize(filePath).toLowerCase();
+
+    if (
+      normalizedFilePath === path.normalize(siblingConversationsPath).toLowerCase() &&
+      await fileExists(siblingUsersPath)
+    ) {
+      return {
+        package_companion_files: 1,
+        package_companion_examples: ["users.json"]
+      };
+    }
+  }
+
+  return {};
 }
 
 const isDirectRun =

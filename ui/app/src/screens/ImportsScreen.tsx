@@ -25,6 +25,11 @@ import { loadArchiveNotifications } from "../services/archiveNotificationsBridge
 import { revealDesktopPath } from "../services/pathBridge";
 import type { ImportHistoryFilters, ImportHistoryResult, ImportRunSummary } from "../types/importHistory";
 import { useNavigation } from "../state/navigationContext";
+import {
+  countPackageCompanionSkips,
+  countUnexpectedSkippedFiles,
+  runNeedsAttention
+} from "../utils/importTrust";
 
 function makeLogEntry(
   level: RunLogEntry["level"],
@@ -173,10 +178,12 @@ function summarizeRunOutcomeCounts(run: ImportRunSummary | null): string | null 
         result.metadata.supportTier === "mvp_compatibility_fallback"
     ).length;
 
+  const companionSkips = countPackageCompanionSkips(run);
+  const unexpectedSkips = countUnexpectedSkippedFiles(run);
   const parts = [
     run.filesImported + " imported",
     run.filesFailed + " failed",
-    run.unsupportedFilesSkipped + " skipped"
+    unexpectedSkips + " skipped"
   ];
 
   if (archivedOnly > 0) {
@@ -185,6 +192,10 @@ function summarizeRunOutcomeCounts(run: ImportRunSummary | null): string | null 
 
   if (recoveryPath > 0) {
     parts.push(recoveryPath + " recovery path");
+  }
+
+  if (companionSkips > 0) {
+    parts.push(companionSkips + " package companion file(s) handled");
   }
 
   return parts.join(" | ");
@@ -371,13 +382,8 @@ export default function ImportsScreen() {
   const latestRunOutcomeSummary = summarizeRunOutcomeCounts(latestRunForNextSteps ?? null);
   const hasConversationOutputs = (latestRunForNextSteps?.conversationFilesProcessed ?? 0) > 0;
   const hasDatasetOutputs = !!latestRunForNextSteps?.retrievalSummary;
-  const runNeedsDiagnostics =
-    !!latestRunForNextSteps &&
-    (
-      latestRunForNextSteps.filesFailed > 0 ||
-      latestRunForNextSteps.unsupportedFilesSkipped > 0 ||
-      latestRunForNextSteps.results.some((result) => result.status !== "imported")
-    );
+  const latestPackageCompanionSkips = countPackageCompanionSkips(latestRunForNextSteps ?? null);
+  const runNeedsDiagnostics = runNeedsAttention(latestRunForNextSteps ?? null);
 
   function nextStepSummary(run: ImportRunSummary): string {
     if (run.filesImported === 0) {
@@ -386,6 +392,10 @@ export default function ImportsScreen() {
 
     if (runNeedsDiagnostics) {
       return "The import finished, but there were skipped or failed files. Read the archive or datasets if they were produced, then check diagnostics for anything that needs attention.";
+    }
+
+    if (latestPackageCompanionSkips > 0) {
+      return "The import finished cleanly. Quantum handled the vendor package through its main import file and kept companion files out of the dataset flow automatically.";
     }
 
     if (hasConversationOutputs) {
@@ -454,6 +464,11 @@ export default function ImportsScreen() {
             <p className="muted">
               Latest run: {new Date(latestRunForNextSteps.runAt).toLocaleString()} | {latestRunOutcomeSummary}
             </p>
+            {latestPackageCompanionSkips > 0 ? (
+              <p className="muted">
+                Vendor package note: {latestPackageCompanionSkips} companion file(s) were expected and were handled through the main package import instead of being added as separate dataset sources.
+              </p>
+            ) : null}
             <div className="action-bar">
               {hasConversationOutputs ? (
                 <button className="primary-btn" type="button" onClick={() => setActiveScreen("organized-output")}>

@@ -4,6 +4,12 @@ import { loadImportRetrievalIndex } from "../services/importRetrievalIndexBridge
 import type { ImportRunFileResult, ImportRunSummary } from "../types/importHistory";
 import type { ImportRetrievalIndexResult } from "../types/importRetrievalIndex";
 import { useNavigation } from "../state/navigationContext";
+import {
+  countPackageCompanionSkips,
+  countUnexpectedSkippedFiles,
+  isPackageCompanionSkip,
+  runNeedsAttention
+} from "../utils/importTrust";
 
 export default function DashboardScreen() {
   const { setActiveScreen } = useNavigation();
@@ -18,16 +24,11 @@ export default function DashboardScreen() {
   }, []);
 
   const latestTrustBadges = summarizeLatestRunSignals(latestRun);
-  const runNeedsDiagnostics =
-    !!latestRun &&
-    (
-      latestRun.filesFailed > 0 ||
-      latestRun.unsupportedFilesSkipped > 0 ||
-      latestRun.results.some((result) => result.status !== "imported")
-    );
+  const runNeedsDiagnostics = runNeedsAttention(latestRun);
   const hasConversationOutputs = (latestRun?.conversationFilesProcessed ?? 0) > 0;
   const hasDatasetOutputs = !!latestRun?.retrievalSummary;
   const latestOutcomeSummary = latestRun ? summarizeRunOutcomeCounts(latestRun) : null;
+  const latestPackageCompanionSkips = countPackageCompanionSkips(latestRun);
 
   return (
     <section className="screen-grid">
@@ -132,6 +133,8 @@ export default function DashboardScreen() {
             <p className="muted">
               {runNeedsDiagnostics
                 ? "This run needs a quick follow-up check."
+                : latestPackageCompanionSkips > 0
+                  ? "This run handled a vendor export package cleanly and kept companion files out of the dataset flow."
                 : hasConversationOutputs
                   ? "This run is ready to review in the readable archive."
                   : "This run completed and is ready for output review."}
@@ -171,10 +174,12 @@ function summarizeRunOutcomeCounts(run: ImportRunSummary): string {
         result.metadata.supportTier === "mvp_compatibility_fallback"
     ).length;
 
+  const companionSkips = countPackageCompanionSkips(run);
+  const unexpectedSkips = countUnexpectedSkippedFiles(run);
   const parts = [
     run.filesImported + " imported",
     run.filesFailed + " failed",
-    run.unsupportedFilesSkipped + " skipped"
+    unexpectedSkips + " skipped"
   ];
 
   if (archivedOnly > 0) {
@@ -183,6 +188,10 @@ function summarizeRunOutcomeCounts(run: ImportRunSummary): string {
 
   if (recoveryPath > 0) {
     parts.push(recoveryPath + " recovery path");
+  }
+
+  if (companionSkips > 0) {
+    parts.push(companionSkips + " package companion file(s) handled");
   }
 
   return parts.join(" | ");
@@ -200,8 +209,12 @@ function summarizeLatestRunSignals(
   let preservedBlobFiles = 0;
   let missingBlobFiles = 0;
   let attachmentReferenceFiles = 0;
+  let packageCompanionFiles = 0;
 
   for (const result of run.results) {
+    if (isPackageCompanionSkip(result)) {
+      packageCompanionFiles += 1;
+    }
     collectResultSignals(result, {
       onExtractedText: () => {
         extractedTextFiles += 1;
@@ -241,6 +254,10 @@ function summarizeLatestRunSignals(
 
   if (missingBlobFiles > 0) {
     badges.push({ label: missingBlobFiles + " package missing blobs", tone: "warning" });
+  }
+
+  if (packageCompanionFiles > 0) {
+    badges.push({ label: packageCompanionFiles + " package companions handled", tone: "success" });
   }
 
   return badges;

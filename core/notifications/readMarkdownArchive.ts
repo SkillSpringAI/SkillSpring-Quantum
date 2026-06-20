@@ -9,6 +9,15 @@ interface MarkdownArchiveFile {
   topicFolder: string;
   sizeBytes: number;
   modifiedAt: string;
+  previewText: string;
+  source?: string;
+  title?: string;
+  createdAt?: string;
+  topic?: string;
+  rawTopic?: string;
+  conversationId?: string;
+  startIndex?: number;
+  endIndex?: number;
 }
 
 interface MarkdownArchiveTopic {
@@ -53,13 +62,23 @@ async function listMarkdownFiles(topicPath: string, topicFolder: string): Promis
 
     const filePath = path.join(topicPath, entry.name);
     const stats = await fs.stat(filePath);
+    const details = await readMarkdownFileDetails(filePath);
 
     files.push({
       name: entry.name,
       path: filePath,
       topicFolder,
       sizeBytes: stats.size,
-      modifiedAt: stats.mtime.toISOString()
+      modifiedAt: stats.mtime.toISOString(),
+      previewText: details.previewText,
+      source: details.source,
+      title: details.title,
+      createdAt: details.createdAt,
+      topic: details.topic,
+      rawTopic: details.rawTopic,
+      conversationId: details.conversationId,
+      startIndex: details.startIndex,
+      endIndex: details.endIndex
     });
   }
 
@@ -105,14 +124,18 @@ async function main(): Promise<void> {
   let selectedFile: MarkdownArchiveFile | null = null;
   let content = "";
   const attachmentSummaries = await readAttachmentArchiveSummaries(outputRoot);
+  const allFiles = topics.flatMap(topic => topic.files);
 
   if (requestedFile) {
-    const allFiles = topics.flatMap(topic => topic.files);
     selectedFile = allFiles.find(file => file.path === requestedFile) ?? null;
+  } else {
+    selectedFile = allFiles
+      .slice()
+      .sort((left, right) => right.modifiedAt.localeCompare(left.modifiedAt))[0] ?? null;
+  }
 
-    if (selectedFile) {
-      content = await fs.readFile(selectedFile.path, "utf-8");
-    }
+  if (selectedFile) {
+    content = await fs.readFile(selectedFile.path, "utf-8");
   }
 
   console.log(JSON.stringify({
@@ -122,6 +145,137 @@ async function main(): Promise<void> {
     content,
     attachmentSummaries
   }, null, 2));
+}
+
+async function readMarkdownFileDetails(filePath: string): Promise<{
+  previewText: string;
+  source?: string;
+  title?: string;
+  createdAt?: string;
+  topic?: string;
+  rawTopic?: string;
+  conversationId?: string;
+  startIndex?: number;
+  endIndex?: number;
+}> {
+  try {
+    const raw = await fs.readFile(filePath, "utf-8");
+    const metadata = extractMarkdownFrontmatter(raw);
+    return {
+      previewText: extractMarkdownPreview(raw),
+      source: metadata.source,
+      title: metadata.title,
+      createdAt: metadata.createdAt,
+      topic: metadata.topic,
+      rawTopic: metadata.rawTopic,
+      conversationId: metadata.conversationId,
+      startIndex: metadata.startIndex,
+      endIndex: metadata.endIndex
+    };
+  } catch {
+    return { previewText: "" };
+  }
+}
+
+function extractMarkdownPreview(raw: string): string {
+  const withoutFrontmatter = raw.startsWith("---")
+    ? raw.replace(/^---[\s\S]*?---\s*/u, "")
+    : raw;
+
+  return withoutFrontmatter
+    .replace(/^#+\s+/gm, "")
+    .replace(/`{3}[\s\S]*?`{3}/g, " ")
+    .replace(/\[(.*?)\]\((.*?)\)/g, "$1")
+    .replace(/[*_>`~-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 240);
+}
+
+function extractMarkdownFrontmatter(raw: string): {
+  source?: string;
+  title?: string;
+  createdAt?: string;
+  topic?: string;
+  rawTopic?: string;
+  conversationId?: string;
+  startIndex?: number;
+  endIndex?: number;
+} {
+  const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!match) {
+    return {};
+  }
+
+  const metadata: {
+    source?: string;
+    title?: string;
+    createdAt?: string;
+    topic?: string;
+    rawTopic?: string;
+    conversationId?: string;
+    startIndex?: number;
+    endIndex?: number;
+  } = {};
+
+  for (const line of match[1].split(/\r?\n/)) {
+    const separator = line.indexOf(":");
+    if (separator <= 0) {
+      continue;
+    }
+
+    const key = line.slice(0, separator).trim();
+    const value = line.slice(separator + 1).trim();
+
+    switch (key) {
+      case "source":
+        metadata.source = parseFrontmatterString(value);
+        break;
+      case "title":
+        metadata.title = parseFrontmatterString(value);
+        break;
+      case "createdAt":
+        metadata.createdAt = parseFrontmatterString(value);
+        break;
+      case "topic":
+        metadata.topic = parseFrontmatterString(value);
+        break;
+      case "rawTopic":
+        metadata.rawTopic = parseFrontmatterString(value);
+        break;
+      case "conversationId":
+      case "id":
+        metadata.conversationId = parseFrontmatterString(value);
+        break;
+      case "startIndex":
+        metadata.startIndex = parseFrontmatterNumber(value);
+        break;
+      case "endIndex":
+        metadata.endIndex = parseFrontmatterNumber(value);
+        break;
+      default:
+        break;
+    }
+  }
+
+  return metadata;
+}
+
+function parseFrontmatterString(value: string): string {
+  if (!value) {
+    return "";
+  }
+
+  try {
+    return JSON.parse(value) as string;
+  } catch {
+    return value;
+  }
+}
+
+function parseFrontmatterNumber(value: string): number | undefined {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 async function readAttachmentArchiveSummaries(outputRoot: string): Promise<AttachmentArchiveSummary[]> {

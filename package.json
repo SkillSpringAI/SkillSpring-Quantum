@@ -28,6 +28,7 @@
     "renderer:build": "vite build --config ui/app/vite.config.ts",
     "electron:dev": "npm run renderer:build && electron .",
     "test:parser": "tsx tests/parser/chatgpt-parser.test.ts",
+    "test:import:intake": "tsx tests/parser/claude-source-intake.test.ts && tsx tests/parser/copilot-source-intake.test.ts && tsx tests/parser/vendor-package-source-intake.test.ts",
     "test:import:history": "tsx tests/parser/import-history-filter.test.ts",
     "test:import:metadata": "tsx tests/parser/import-metadata.test.ts",
     "test:import:retrieval": "tsx tests/parser/import-retrieval-index.test.ts",
@@ -49,7 +50,7 @@
     "test:governance:fs": "tsx tests/governance/governance-fs.test.ts",
     "test:governance:write": "tsx tests/governance/governance-write-report.test.ts",
     "test:governance:validate": "tsx tests/governance/governance-validate-rule.test.ts",
-    "test:all": "npm run test:parser && npm run test:segmenter && npm run test:segmenter:drift && npm run test:markdown:time && npm run test:archive:notifications && npm run test:archive:markdown && npm run test:topic && npm run test:waste && npm run test:scorer && npm run test:filter && npm run test:curation && npm run test:fingerprint && npm run test:review && npm run test:review:decision && npm run test:paths && npm run test:governance:fs && npm run test:governance:write && npm run test:governance:validate"
+    "test:all": "npm run test:parser && npm run test:import:intake && npm run test:segmenter && npm run test:segmenter:drift && npm run test:markdown:time && npm run test:archive:notifications && npm run test:archive:markdown && npm run test:topic && npm run test:waste && npm run test:scorer && npm run test:filter && npm run test:curation && npm run test:fingerprint && npm run test:review && npm run test:review:decision && npm run test:paths && npm run test:governance:fs && npm run test:governance:write && npm run test:governance:validate"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

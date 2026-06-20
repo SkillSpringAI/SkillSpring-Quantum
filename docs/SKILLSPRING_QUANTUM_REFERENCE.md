@@ -30,10 +30,12 @@ This is narrower than the full internal parser and document-ingestion surface al
 - archive notification artifacts for human-readable markdown output events
 - source archive output for generic imported documents
 - import history manifests and latest import summaries
+- vendor-package hardening for Claude and Gemini export folders so one main import file can represent the package while companion files are handled intentionally
 - import history query utility for vendor/topic/text/date/status investigations
 - import retrieval index manifests for search-ready file-level records
 - segment retrieval index manifests for linked dataset segment lookup
 - latest dataset summary reader
+- dataset source-context handoff that now carries recovery-path status and package-companion handling into the datasets screen
 - desktop archive notification panel on Imports and Organized Output screens
 - desktop import history panel with recent-run browsing, full-history investigation search, direct retrieval handoff, and per-file output links
 - desktop retrieval screen with vendor/topic/date narrowing, linked segment inspection, and saved investigations
@@ -63,14 +65,13 @@ This is narrower than the full internal parser and document-ingestion surface al
 ## Current Gaps / Next Build Targets
 
 - harden the first user-facing major vendor set so the app promise and real behavior match
-- improve vendor-package labeling and per-file result clarity for recognized AI exports
 - enrich preserved attachment metadata with better preview and file labeling
 - surface preserved conversation attachments more clearly in desktop history and archive browsing
-- connect import summaries, archive browsing, and dataset browsing more tightly across screens
+- connect import summaries, archive browsing, and dataset browsing more tightly across screens, especially from archive browsing forward
 - improve review queue screen states for empty, missing, and failed queue files
 - add richer markdown archive filtering/search and file-open actions
 - add direct UI controls for curated promotion, purge restore, and folder merge flows
-- explain redaction and dataset outputs more clearly in the app
+- explain redaction and dataset outputs more clearly in the app where the remaining archive and dataset trust gaps still show up
 
 ## Internal Coverage Beyond MVP
 

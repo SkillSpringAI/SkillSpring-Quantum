@@ -21,6 +21,8 @@ export interface DatasetSourceContext {
   conversation_count?: number;
   message_count?: number;
   attachment_count?: number;
+  package_companion_files?: number;
+  package_companion_examples?: string[];
   topic_hints: string[];
 }
 
@@ -183,6 +185,8 @@ export async function exportDatasets(
       conversation_count: sourceContext?.conversation_count,
       message_count: sourceContext?.message_count,
       attachment_count: sourceContext?.attachment_count,
+      package_companion_files: sourceContext?.package_companion_files,
+      package_companion_examples: sourceContext?.package_companion_examples ?? [],
       topic_hints: sourceContext?.topic_hints ?? []
     },
     redaction_summary: {

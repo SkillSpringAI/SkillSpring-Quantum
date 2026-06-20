@@ -7,6 +7,11 @@ import type {
   ImportSupportTier
 } from "../types/importHistory";
 import { revealDesktopPath } from "../services/pathBridge";
+import {
+  countPackageCompanionSkips,
+  countUnexpectedSkippedFiles,
+  isPackageCompanionSkip
+} from "../utils/importTrust";
 
 interface ImportHistoryPanelProps {
   history: ImportHistoryResult | null;
@@ -81,10 +86,12 @@ function summarizeRunOutcomeCounts(run: ImportRunSummary): string {
         result.metadata.supportTier === "mvp_compatibility_fallback"
     ).length;
 
+  const companionSkips = countPackageCompanionSkips(run);
+  const unexpectedSkips = countUnexpectedSkippedFiles(run);
   const parts = [
     run.filesImported + " imported",
     run.filesFailed + " failed",
-    run.unsupportedFilesSkipped + " skipped"
+    unexpectedSkips + " skipped"
   ];
 
   if (archivedOnly > 0) {
@@ -93,6 +100,10 @@ function summarizeRunOutcomeCounts(run: ImportRunSummary): string {
 
   if (recoveryPath > 0) {
     parts.push(recoveryPath + " recovery path");
+  }
+
+  if (companionSkips > 0) {
+    parts.push(companionSkips + " package companion file(s) handled");
   }
 
   return parts.join(", ");
@@ -239,10 +250,15 @@ export default function ImportHistoryPanel({
     let preservedBlobFiles = 0;
     let missingBlobFiles = 0;
     let attachmentReferenceFiles = 0;
+    let packageCompanionFiles = 0;
 
     for (const result of run.results) {
       const metadata = result.metadata;
       const normalizedMessage = result.message.toLowerCase();
+
+      if (isPackageCompanionSkip(result)) {
+        packageCompanionFiles += 1;
+      }
 
       if (metadata?.sourceCategory === "document") {
         if (metadata.parseStatus === "text_extracted") {
@@ -289,6 +305,10 @@ export default function ImportHistoryPanel({
       badges.push({ label: missingBlobFiles + " blob-missing", tone: "warning" });
     }
 
+    if (packageCompanionFiles > 0) {
+      badges.push({ label: packageCompanionFiles + " package companions", tone: "success" });
+    }
+
     return badges;
   }
 
@@ -323,9 +343,17 @@ export default function ImportHistoryPanel({
       .slice(0, 3);
   }
 
-  function renderOutcomeBadges(metadata: ImportFileMetadata | undefined, message: string) {
+  function renderOutcomeBadges(
+    metadata: ImportFileMetadata | undefined,
+    message: string,
+    status: "imported" | "skipped" | "failed"
+  ) {
     const badges: Array<{ label: string; tone: "success" | "warning" | "neutral" }> = [];
     const normalizedMessage = message.toLowerCase();
+
+    if (status === "skipped" && normalizedMessage.includes("companion file for")) {
+      badges.push({ label: "package companion", tone: "success" });
+    }
 
     if (metadata?.sourceCategory === "conversation") {
       if (metadata.attachmentCount > 0) {
@@ -654,6 +682,11 @@ export default function ImportHistoryPanel({
                           Topic hints: {runForDetail.retrievalSummary.topicHints.join(", ")}
                         </p>
                       ) : null}
+                      {countPackageCompanionSkips(runForDetail) > 0 ? (
+                        <p className="muted">
+                          Vendor package handling: {countPackageCompanionSkips(runForDetail)} companion file(s) were expected and were kept out of the dataset flow by routing the package through its main import file.
+                        </p>
+                      ) : null}
                     </>
                   ) : null}
                   <div className="action-bar">
@@ -723,7 +756,7 @@ export default function ImportHistoryPanel({
                           </td>
                           <td>
                             <div>{result.path}</div>
-                            {renderOutcomeBadges(result.metadata, result.message)}
+                            {renderOutcomeBadges(result.metadata, result.message, result.status)}
                             {renderFileMetadata(result.metadata)}
                           </td>
                           <td>{result.message}</td>

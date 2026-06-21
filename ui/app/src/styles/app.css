@@ -506,13 +506,17 @@ select {
 
 .archive-event-list li {
   display: grid;
-  gap: 4px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
   padding: 10px 0;
   border-bottom: 1px solid var(--border);
+  align-items: center;
 }
 
 .archive-event-list small {
   color: var(--muted);
+  display: block;
+  margin-top: 4px;
 }
 
 .markdown-archive-grid {
@@ -549,6 +553,14 @@ select {
 
 .markdown-preview {
   max-height: 640px;
+}
+
+.archive-file-meta {
+  line-height: 1.4;
+}
+
+.archive-detail-grid {
+  margin-top: 12px;
 }
 
 .save-ok {

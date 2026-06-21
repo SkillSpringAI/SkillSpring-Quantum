@@ -11,24 +11,30 @@ import { loadArchiveNotifications } from "../services/archiveNotificationsBridge
 import { loadMarkdownArchive } from "../services/markdownArchiveBridge";
 import { revealDesktopPath } from "../services/pathBridge";
 import { useNavigation } from "../state/navigationContext";
+import { useSettings } from "../state/settingsContext";
 
 export default function OrganizedOutputScreen() {
   const { setActiveScreen } = useNavigation();
+  const { settings } = useSettings();
   const [latestArchive, setLatestArchive] = useState<ArchiveNotification | null>(null);
   const [archiveEvents, setArchiveEvents] = useState<ArchiveNotification[]>([]);
+  const [archiveEventsFile, setArchiveEventsFile] = useState("");
+  const [archiveLatestFile, setArchiveLatestFile] = useState("");
   const [topics, setTopics] = useState<MarkdownArchiveTopic[]>([]);
   const [selectedFile, setSelectedFile] = useState<MarkdownArchiveFile | null>(null);
   const [content, setContent] = useState("");
   const [attachmentSummaries, setAttachmentSummaries] = useState<AttachmentArchiveSummary[]>([]);
 
   async function refreshArchiveNotifications() {
-    const result = await loadArchiveNotifications("organized_output", 12);
+    const result = await loadArchiveNotifications(settings.outputRoot, 12);
     setLatestArchive(result.latest);
     setArchiveEvents(result.events);
+    setArchiveEventsFile(result.eventsFile);
+    setArchiveLatestFile(result.latestFile);
   }
 
   async function refreshMarkdownArchive(filePath?: string) {
-    const result = await loadMarkdownArchive("organized_output", filePath);
+    const result = await loadMarkdownArchive(settings.outputRoot, filePath);
     setTopics(result.topics);
     setSelectedFile(result.selectedFile);
     setContent(result.content);
@@ -45,9 +51,31 @@ export default function OrganizedOutputScreen() {
   }
 
   useEffect(() => {
+    setLatestArchive(null);
+    setArchiveEvents([]);
+    setArchiveEventsFile("");
+    setArchiveLatestFile("");
+    setTopics([]);
+    setSelectedFile(null);
+    setContent("");
+    setAttachmentSummaries([]);
     refreshArchiveNotifications();
     refreshMarkdownArchive();
-  }, []);
+  }, [settings.outputRoot]);
+
+  useEffect(() => {
+    if (selectedFile || topics.length === 0) return;
+    const allFiles = topics.flatMap((topic) => topic.files);
+    if (allFiles.length === 0) return;
+    const newest = allFiles.reduce((best, file) => {
+      const bestTime = Date.parse(best.modifiedAt);
+      const fileTime = Date.parse(file.modifiedAt);
+      return fileTime > bestTime ? file : best;
+    }, allFiles[0]);
+    if (newest) {
+      handleSelectFile(newest);
+    }
+  }, [topics]);
 
   const archiveFileCount = topics.reduce((sum, topic) => sum + topic.files.length, 0);
 
@@ -56,6 +84,8 @@ export default function OrganizedOutputScreen() {
       <ArchiveNotificationPanel
         latest={latestArchive}
         events={archiveEvents}
+        latestFilePath={archiveLatestFile}
+        eventsFilePath={archiveEventsFile}
         onRefresh={refreshAll}
       />
 
@@ -89,7 +119,7 @@ export default function OrganizedOutputScreen() {
               <li>When vendor exports included uploaded files or linked files, preserved attachments are summarized separately below.</li>
             </ul>
             <div className="action-bar">
-              <button className="secondary-btn" type="button" onClick={() => revealDesktopPath("organized_output")}>
+              <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(settings.outputRoot)}>
                 Open Output Folder
               </button>
             </div>

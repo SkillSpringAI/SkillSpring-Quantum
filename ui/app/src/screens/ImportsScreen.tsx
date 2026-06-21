@@ -25,6 +25,7 @@ import { loadArchiveNotifications } from "../services/archiveNotificationsBridge
 import { revealDesktopPath } from "../services/pathBridge";
 import type { ImportHistoryFilters, ImportHistoryResult, ImportRunSummary } from "../types/importHistory";
 import { useNavigation } from "../state/navigationContext";
+import { useSettings } from "../state/settingsContext";
 import {
   countPackageCompanionSkips,
   countUnexpectedSkippedFiles,
@@ -203,11 +204,12 @@ function summarizeRunOutcomeCounts(run: ImportRunSummary | null): string | null 
 
 export default function ImportsScreen() {
   const { openRetrievalInvestigation, setActiveScreen } = useNavigation();
+  const { settings, updateSettings } = useSettings();
   const [form, setForm] = useState<ImportJobForm>({
     mode: "single_file",
-    inputFile: "C:\\Users\\Laptop\\Desktop\\AI Exports\\claude\\conversation.json",
-    inputFolder: "C:\\Users\\Laptop\\Desktop\\AI Exports",
-    outputRoot: "organized_output"
+    inputFile: "",
+    inputFolder: "",
+    outputRoot: settings.outputRoot
   });
 
   const [runState, setRunState] = useState<RunState>("idle");
@@ -338,6 +340,7 @@ export default function ImportsScreen() {
     const nextPath = await chooseFolder();
     if (!nextPath) return;
     setForm((prev) => ({ ...prev, outputRoot: nextPath }));
+    updateSettings({ outputRoot: nextPath });
   }
 
   async function handleSubmit() {

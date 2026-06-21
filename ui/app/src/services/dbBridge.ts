@@ -12,9 +12,9 @@ import {
   readDbCollection
 } from "./desktopBridge";
 
-export async function listCollections(): Promise<DbCollection[]> {
+export async function listCollections(outputRoot = "organized_output"): Promise<DbCollection[]> {
   const response = await listDbCollections({
-    outputRoot: "organized_output"
+    outputRoot
   });
 
   if (!response.ok) {

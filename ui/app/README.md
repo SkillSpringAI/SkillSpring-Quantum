@@ -26,12 +26,15 @@ Current implemented desktop capabilities include:
 - inspect source paths before import
 - run general local import flows
 - review import history and file-level import results
+- persist a configurable output root through app settings
+- search full import history and reopen named retrieval investigations
 - open created archive, dataset, import, and DB paths from the UI
-- browse markdown archive output
+- browse markdown archive output with topic/source/date filtering, file-open actions, and archive-event handoff
 - browse tiered DB collections through a file-backed bridge
 - read latest dataset manifest summaries
+- review dataset trust context, redaction summaries, and current dataset previews in-app
 
-Some screens are still early and should continue moving from static placeholders to file-backed or IPC-backed data.
+Some advanced controls are still earlier than the core import/archive/dataset workflow. The main product value is now much more visible than it was in earlier placeholder-heavy snapshots, but there is still room to deepen dataset controls and trust handoff.
 
 ## Current priority
 
@@ -41,7 +44,7 @@ The current MVP working order is:
 2. make the import experience trustworthy
 3. broaden parser coverage beyond ChatGPT
 4. make archived output genuinely useful
-5. tighten the anonymized dataset workflow
+5. tighten the privacy-aware dataset workflow
 
 See [../../docs/SKILLSPRING_QUANTUM_MVP_DIRECTION.md](../../docs/SKILLSPRING_QUANTUM_MVP_DIRECTION.md) for the working anti-drift reference.
 

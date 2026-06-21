@@ -1,107 +1,98 @@
 # SkillSpring Quantum
 
-SkillSpring Quantum is a local-first desktop application and processing engine for turning AI conversation exports into structured, auditable knowledge assets.
+SkillSpring Quantum is a local-first desktop app and TypeScript processing engine for turning AI conversation exports into readable archives, privacy-aware datasets, and auditable local artifacts.
 
-It is designed to import local exports, preserve readable archived versions, and produce privacy-aware dataset artifacts from the same workflow.
+The current product shape is centered on one core promise:
 
-## First user-facing MVP scope
+1. inspect a recognizable AI export
+2. import it locally
+3. review readable archive output
+4. review privacy-aware dataset output
+5. understand trust, fallback handling, and failures without reading raw logs
 
-The first real user-facing iteration of SkillSpring Quantum is focused on a narrow, trustworthy AI-export workflow:
+## Current MVP shape
+
+The first user-facing MVP stays intentionally narrow:
 
 - import major AI conversation exports
-- produce readable local archives
+- preserve readable local archive output
 - produce inspectable privacy-aware dataset artifacts
-- explain failures and partial imports in plain English
+- explain partial imports, fallback recovery, and package-companion handling in plain English
 
-The user-facing workflow should stay simple:
-
-1. Choose an export file or export folder.
-2. Inspect what Quantum found.
-3. Run the import locally.
-4. Review readable archives and structured dataset output.
-5. Understand what succeeded, failed, or used fallback recovery.
-
-Other intake types such as Kimi, DeepSeek, Perplexity, generic JSON, PDFs, mixed local documents, and enterprise conversation systems remain useful expansion paths, but they are not the first user-facing MVP promise.
-
-For MVP discipline, broader document intake such as PDFs, CSVs, Excel files, and Word documents should stay out of the first public/user-facing scope unless actual user demand proves they are a higher priority than the major AI export workflow.
+This is not yet a general document-ingestion product, a parser zoo, or a governance-first workflow. Broader document intake and secondary vendor expansion still exist internally, but they are not the main release story.
 
 ## Current support tiers
 
 ### MVP first-class now
 
-- ChatGPT / OpenAI
-- Grok
+- ChatGPT / OpenAI export JSON
+- Grok export manifest JSON, including referenced attachment blob preservation when vendor blob folders are present
 
 ### MVP compatibility fallback now
 
-- Claude via generic conversation parsing
-- Gemini via generic conversation parsing
-- Microsoft Copilot only where recoverable conversation JSON is proven by fixture and test coverage
+- Claude-shaped conversation JSON where the threaded structure is recoverable
+- Gemini-shaped conversation JSON where the threaded structure is recoverable
+- Microsoft Copilot activity CSV only where the fixture-backed recoverable shape is proven
 
-### Explicitly deferred from first-class MVP support
+### Not yet first-class
 
 - named Claude adapter
 - named Gemini adapter
-- named Copilot adapter
+- named Copilot adapter beyond the current narrow CSV fallback path
 
-## Current purpose
+## What Quantum currently produces
 
-The system converts raw exported conversation data into:
+- human-readable markdown archives grouped by inferred topic
+- archive notifications and archive event logs
+- privacy-aware JSONL dataset artifacts
+- dataset manifests and current dataset snapshots
+- tiered local DB records for raw, processed, curated, and private-review material
+- import history, retrieval indexes, diagnostics, and related audit artifacts
 
-- human-readable archived markdown
-- topic-organized conversation output
-- privacy-aware dataset-ready JSONL records
-- diagnostics, manifests, and audit artifacts
-- tiered local data storage for raw, processed, curated, and private-review records
-- import history and file-level import result visibility
-- review, promotion, and governance workflows for higher-signal records
+## Current desktop capabilities
 
-## Current intake support
+The desktop app can currently:
 
-There is a difference between the user-facing MVP scope and current internal support.
+1. choose a file or folder, or enter a path directly
+2. inspect what Quantum found before import
+3. run a local import into a configurable output root
+4. review recent import history with per-file results and output links
+5. search prior imports by vendor, topic, text, date, and status
+6. browse readable archive output with topic, source, and date filters
+7. open archive files, archive event logs, topic folders, and preserved attachment locations from the UI
+8. jump from archive and import views into related retrieval and dataset investigations
+9. review dataset manifests, dataset trust context, redaction summaries, and current dataset previews inside the app
+10. inspect private-review and diagnostics paths when a run needs more caution
 
-### User-facing MVP intake
+## Use cases the project currently fits best
 
-- ChatGPT export JSON files
-- Grok export manifest JSON files with referenced attachment blob preservation when the blob folders are present
-- Claude- and Gemini-shaped conversation JSON only as compatibility fallback where conversational structure is recoverable
-- Microsoft Copilot conversation JSON only where recoverable shapes are actually proven
+- local review of exported AI conversations without uploading them to a third-party service
+- building readable topic-organized archives from ChatGPT and Grok exports
+- generating structured dataset artifacts from the same import run
+- tracing fallback recovery, attachment preservation, and package-companion handling across imports, archives, and datasets
+- investigating prior imports and linked dataset segments from one desktop workflow
 
-### Internal and experimental intake already present
+## Internal and experimental coverage beyond the MVP story
 
-- ChatGPT export JSON files
-- Grok export manifest JSON files with referenced attachment blob preservation when the blob folders are present
-- generic conversation JSON files, including third-party or manually extracted conversation records from tools like Claude, Gemini, DeepSeek, Kimi, and Perplexity
-- generic JSON documents
-- text-like local files such as `.txt`, `.md`, `.markdown`, `.csv`, and `.log`
-- PDF files with best-effort local text extraction plus intact archive fallback behavior
-- single-file or mixed-folder import flows through the desktop UI
+Quantum already contains broader internal coverage that is useful for development and future expansion:
 
-## Current desktop workflow
+- generic conversation JSON detection beyond named vendor packages
+- extracted conversation JSON recovery for DeepSeek-, Kimi-, and Perplexity-style shapes
+- generic JSON, text-like document, and PDF intake with archive-first fallback behavior
 
-A user can currently:
-
-1. Browse to a file or folder from the desktop app, or enter a path directly.
-2. Inspect what Quantum found before import.
-3. Run the import locally.
-4. Review recent import history and per-file results.
-5. Run a full-history investigation search across prior imports by vendor, topic, text, date, and status.
-6. Jump directly from an import-history investigation into Retrieval with the current filters and selected conversation file carried over.
-7. Narrow retrieval results across indexed import records and linked dataset segments.
-8. Save named retrieval investigations and reopen them later.
-9. Open created archive, import, dataset, and DB locations from the UI.
+Those paths should be treated as expansion assets, not as the primary release promise.
 
 ## Core pipeline
 
-Import -> Inspect -> Parse or Archive -> Store Tier0 -> Segment Conversations -> Export Human Archive -> Extract Datasets -> Route to Tiered DB -> Write Import History -> Review / Promote / Govern -> Log Diagnostics
+Inspect -> Import -> Parse or Archive -> Store Tier0 -> Segment Conversations -> Export Readable Archive -> Export Datasets -> Route Tiered DB Records -> Write Import History -> Write Diagnostics
 
-## Review and promotion
-- review queue for near-curated records
+## Review and governance workflows
+
+- review queue generation for near-curated records
 - manual approve/reject workflow for queue items
 - manifest-backed promotion from processed to curated
-- rule-based review and promotion controls
-- explicit rejection reasons
-- latest manifests plus historical manifest snapshots
+- rule-backed governance editing and validation
+- private-review separation for more sensitive dataset segments
 
 ## Current scripts
 
@@ -151,6 +142,16 @@ npm run imports:history:query -- --vendor claude --topic crypto --from 2026-02-0
 ### Read the latest dataset summary
 ```powershell
 node .\node_modules\tsx\dist\cli.mjs core\pipeline\readLatestDatasetRun.ts "organized_output"
+```
+
+### Read archive notifications
+```powershell
+node .\node_modules\tsx\dist\cli.mjs core\notifications\readArchiveNotifications.ts "organized_output"
+```
+
+### Read the markdown archive index
+```powershell
+node .\node_modules\tsx\dist\cli.mjs core\notifications\readMarkdownArchive.ts "organized_output"
 ```
 
 ### Build review queue

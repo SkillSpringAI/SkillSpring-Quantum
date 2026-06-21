@@ -3,6 +3,7 @@ import DbCollectionList from "../components/DbCollectionList";
 import DbRecordViewer from "../components/DbRecordViewer";
 import type { DbCollection, DbRecord } from "../types/db";
 import { listCollections, queryCollection } from "../services/dbBridge";
+import { useSettings } from "../state/settingsContext";
 
 const PAGE_SIZE = 25;
 
@@ -15,10 +16,19 @@ export default function DbBrowserScreen() {
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("Load a collection to inspect stored records.");
+  const { settings } = useSettings();
 
   useEffect(() => {
-    listCollections().then(setCollections);
-  }, []);
+    listCollections(settings.outputRoot).then((nextCollections) => {
+      setCollections(nextCollections);
+      setSelected(null);
+      setRecords([]);
+      setOffset(0);
+      setTotalRecords(0);
+      setHasMore(false);
+      setStatus("Load a collection to inspect stored records.");
+    });
+  }, [settings.outputRoot]);
 
   async function loadCollection(c: DbCollection, nextOffset: number) {
     setLoading(true);
@@ -27,7 +37,7 @@ export default function DbBrowserScreen() {
     );
 
     const result = await queryCollection({
-      outputRoot: "organized_output",
+      outputRoot: settings.outputRoot,
       tier: c.tier,
       collection: c.name,
       limit: PAGE_SIZE,

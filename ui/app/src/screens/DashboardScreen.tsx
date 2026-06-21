@@ -4,6 +4,7 @@ import { loadImportRetrievalIndex } from "../services/importRetrievalIndexBridge
 import type { ImportRunFileResult, ImportRunSummary } from "../types/importHistory";
 import type { ImportRetrievalIndexResult } from "../types/importRetrievalIndex";
 import { useNavigation } from "../state/navigationContext";
+import { useSettings } from "../state/settingsContext";
 import {
   countPackageCompanionSkips,
   countUnexpectedSkippedFiles,
@@ -13,15 +14,16 @@ import {
 
 export default function DashboardScreen() {
   const { setActiveScreen } = useNavigation();
+  const { settings } = useSettings();
   const [latestRun, setLatestRun] = useState<ImportRunSummary | null>(null);
   const [retrievalIndex, setRetrievalIndex] = useState<ImportRetrievalIndexResult | null>(null);
 
   useEffect(() => {
-    loadImportHistory("organized_output", 1).then((result) => {
+    loadImportHistory(settings.outputRoot, 1).then((result) => {
       setLatestRun(result.latest);
     });
-    loadImportRetrievalIndex("organized_output").then(setRetrievalIndex);
-  }, []);
+    loadImportRetrievalIndex(settings.outputRoot).then(setRetrievalIndex);
+  }, [settings.outputRoot]);
 
   const latestTrustBadges = summarizeLatestRunSignals(latestRun);
   const runNeedsDiagnostics = runNeedsAttention(latestRun);
@@ -130,6 +132,11 @@ export default function DashboardScreen() {
             <p className="muted">
               Imported {latestRun.filesImported} of {latestRun.filesDiscovered} file(s). {latestOutcomeSummary}
             </p>
+            {latestRun.retrievalSummary && latestRun.retrievalSummary.attachmentCount > 0 ? (
+              <p className="muted">
+                {latestRun.retrievalSummary.attachmentCount} attachment reference(s) across conversation imports. Check the archive or import history for preservation status.
+              </p>
+            ) : null}
             <p className="muted">
               {runNeedsDiagnostics
                 ? "This run needs a quick follow-up check."
@@ -152,7 +159,7 @@ export default function DashboardScreen() {
 
       <div className="panel">
         <h2>Main Flow</h2>
-        <p className="muted">Inspect export -> import locally -> read archive -> review datasets -> check diagnostics only when needed.</p>
+        <p className="muted">Inspect export → import locally → read archive → review datasets → check diagnostics only when needed.</p>
       </div>
     </section>
   );

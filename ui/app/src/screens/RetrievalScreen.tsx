@@ -24,10 +24,9 @@ import type {
   SegmentRetrievalIndexResult
 } from "../types/segmentRetrievalIndex";
 import { useNavigation } from "../state/navigationContext";
+import { useSettings } from "../state/settingsContext";
 
 type RetrievalFilters = RetrievalSavedViewFilters;
-
-const OUTPUT_ROOT = "organized_output";
 
 function formatEntryKindLabel(kind: string): string {
   switch (kind) {
@@ -50,6 +49,7 @@ function formatEntryKindLabel(kind: string): string {
 
 export default function RetrievalScreen() {
   const { retrievalIntent, clearRetrievalIntent, setActiveScreen } = useNavigation();
+  const { settings } = useSettings();
   const [indexResult, setIndexResult] = useState<ImportRetrievalIndexResult | null>(null);
   const [segmentIndexResult, setSegmentIndexResult] = useState<SegmentRetrievalIndexResult | null>(null);
   const [savedViewsResult, setSavedViewsResult] = useState<RetrievalSavedViewsResult | null>(null);
@@ -67,9 +67,9 @@ export default function RetrievalScreen() {
 
   async function refreshIndex() {
     const [result, segmentResult, viewsResult] = await Promise.all([
-      loadImportRetrievalIndex(OUTPUT_ROOT),
-      loadSegmentRetrievalIndex(OUTPUT_ROOT),
-      loadRetrievalSavedViews(OUTPUT_ROOT)
+      loadImportRetrievalIndex(settings.outputRoot),
+      loadSegmentRetrievalIndex(settings.outputRoot),
+      loadRetrievalSavedViews(settings.outputRoot)
     ]);
 
     setIndexResult(result);
@@ -100,7 +100,7 @@ export default function RetrievalScreen() {
     const normalizedName = savedViewName.trim();
     if (!normalizedName) return;
     const next = await storeRetrievalSavedView(
-      OUTPUT_ROOT,
+      settings.outputRoot,
       normalizedName,
       filters,
       selectedEntry
@@ -116,7 +116,7 @@ export default function RetrievalScreen() {
   }
 
   async function handleDeleteSavedView(id: string) {
-    const next = await removeRetrievalSavedView(OUTPUT_ROOT, id);
+    const next = await removeRetrievalSavedView(settings.outputRoot, id);
     setSavedViewsResult(next);
   }
 
@@ -156,7 +156,7 @@ export default function RetrievalScreen() {
 
   useEffect(() => {
     refreshIndex();
-  }, []);
+  }, [settings.outputRoot]);
 
   useEffect(() => {
     if (!retrievalIntent || !indexResult?.latest) {

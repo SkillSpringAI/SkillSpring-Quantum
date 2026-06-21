@@ -18,6 +18,7 @@ import {
   triggerRunDiagnostics
 } from "../services/diagnosticsBridge";
 import { useNavigation } from "../state/navigationContext";
+import { useSettings } from "../state/settingsContext";
 
 function buildDiagnosticsPaths(outputRoot = "organized_output") {
   return {
@@ -83,12 +84,13 @@ function describeBatchDelta(batchDelta: BatchDeltaSummary | null): string {
 
 export default function DiagnosticsScreen() {
   const { setActiveScreen } = useNavigation();
+  const { settings } = useSettings();
   const [latestRun, setLatestRun] = useState<LatestRunSummary | null>(null);
   const [batchAggregate, setBatchAggregate] = useState<BatchAggregateSummary | null>(null);
   const [batchDelta, setBatchDelta] = useState<BatchDeltaSummary | null>(null);
   const [recommendations, setRecommendations] = useState<DiagnosticsRecommendation[]>([]);
   const [status, setStatus] = useState("Ready.");
-  const diagnosticsPaths = buildDiagnosticsPaths("organized_output");
+  const diagnosticsPaths = buildDiagnosticsPaths(settings.outputRoot);
 
   useEffect(() => {
     async function loadAll() {
@@ -99,23 +101,23 @@ export default function DiagnosticsScreen() {
     }
 
     loadAll();
-  }, []);
+  }, [settings.outputRoot]);
 
   async function handleRunDiagnostics() {
     setStatus("Building latest-run diagnostics...");
-    const response = await triggerRunDiagnostics("organized_output");
+    const response = await triggerRunDiagnostics(settings.outputRoot);
     setStatus(response.ok ? (response.message ?? "Run diagnostics submitted.") : response.error);
   }
 
   async function handleBatchDiagnostics() {
     setStatus("Building batch health summary...");
-    const response = await triggerBatchDiagnostics("organized_output");
+    const response = await triggerBatchDiagnostics(settings.outputRoot);
     setStatus(response.ok ? (response.message ?? "Batch diagnostics submitted.") : response.error);
   }
 
   async function handleBatchDelta() {
     setStatus("Building batch comparison...");
-    const response = await triggerBatchDelta("organized_output");
+    const response = await triggerBatchDelta(settings.outputRoot);
     setStatus(response.ok ? (response.message ?? "Batch delta submitted.") : response.error);
   }
 

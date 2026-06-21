@@ -65,13 +65,12 @@ This is narrower than the full internal parser and document-ingestion surface al
 ## Current Gaps / Next Build Targets
 
 - harden the first user-facing major vendor set so the app promise and real behavior match
-- enrich preserved attachment metadata with better preview and file labeling
-- surface preserved conversation attachments more clearly in desktop history and archive browsing
-- connect import summaries, archive browsing, and dataset browsing more tightly across screens, especially from archive browsing forward
-- improve review queue screen states for empty, missing, and failed queue files
-- add richer markdown archive filtering/search and file-open actions
-- add direct UI controls for curated promotion, purge restore, and folder merge flows
-- explain redaction and dataset outputs more clearly in the app where the remaining archive and dataset trust gaps still show up
+- continue improving source-context trust handoff inside dataset browsing so recovery-path caution and vendor-package handling stay visible at the record-review layer
+- add stronger direct dataset export controls beyond file-open actions
+- connect import summaries, archive browsing, and dataset browsing even more tightly across screens, especially from archive browsing forward
+- surface preserved conversation attachments more clearly inside archive and dataset trust flows
+- add direct UI controls for curated promotion, purge restore, and folder merge flows when they become more central to user value
+- decide whether archive-only versus archive-plus-dataset import controls are worth exposing after the current dataset trust work settles
 
 ## Internal Coverage Beyond MVP
 
@@ -82,6 +81,18 @@ Quantum already contains internal or experimental coverage that is broader than 
 - generic JSON, text-like document, and PDF intake
 
 Those paths should be treated as expansion assets, not as the main story for the first general-user release.
+
+## Current Desktop Product Shape
+
+The desktop product now has a clearer end-to-end shape than earlier reference snapshots:
+
+- Settings can persist a configurable output root across the app
+- Imports can inspect sources, run local imports, and show recent import history with file-level outcomes
+- Retrieval can search prior imports and linked dataset segments, save named investigations, and reopen them later
+- Readable Archive browsing now supports topic/source/date filtering, in-app file navigation, archive-event file opening, and preserved-attachment handoff
+- Datasets now include source-context trust summaries, redaction/trust cards, and in-app previews of topic segments, prompt/response pairs, micro segments, and private-review records
+
+This means the current product is no longer just "pipeline wrappers plus file-open buttons." It now provides a more coherent local review workflow across imports, archives, and datasets.
 
 ## Adjacent Project Signals
 

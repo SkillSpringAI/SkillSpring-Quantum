@@ -669,6 +669,11 @@ export default function ImportHistoryPanel({
                       <p className="muted">
                         Sources: {runForDetail.retrievalSummary.vendorSources.join(", ")} | {runForDetail.retrievalSummary.conversationCount} conversation(s) | {runForDetail.retrievalSummary.messageCount} message(s)
                       </p>
+                      {runForDetail.retrievalSummary.attachmentCount > 0 ? (
+                        <p className="muted">
+                          {runForDetail.retrievalSummary.attachmentCount} attachment reference(s) across imported conversations. Check individual file results below for preservation status.
+                        </p>
+                      ) : null}
                       <p className="muted">
                         Readiness: {runForDetail.retrievalSummary.supportTiers.map(formatSupportTierLabel).join(", ")}
                       </p>

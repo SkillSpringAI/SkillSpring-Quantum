@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { loadLatestDatasetRun } from "../services/datasetRunBridge";
+import { queryCollection } from "../services/dbBridge";
 import { revealDesktopPath } from "../services/pathBridge";
 import type {
   DatasetRunResult,
   DatasetSourceContext,
   DatasetRedactionSummary
 } from "../types/datasetRun";
+import type { DbRecord, DbTier } from "../types/db";
 import { useNavigation } from "../state/navigationContext";
+import { useSettings } from "../state/settingsContext";
 import { findMatchingDatasetRun } from "../utils/datasetIntent";
 
 function buildDatasetArtifactPaths(outputRoot: string) {
@@ -28,15 +31,31 @@ export default function DatasetsScreen() {
     datasetIntent,
     clearDatasetIntent
   } = useNavigation();
+  const { settings } = useSettings();
   const [datasetRun, setDatasetRun] = useState<DatasetRunResult | null>(null);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [previewKind, setPreviewKind] = useState<DatasetPreviewKind>("topic_segments");
+  const [previewRecords, setPreviewRecords] = useState<DbRecord[]>([]);
+  const [previewOffset, setPreviewOffset] = useState(0);
+  const [previewHasMore, setPreviewHasMore] = useState(false);
+  const [previewTotal, setPreviewTotal] = useState(0);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewStatus, setPreviewStatus] = useState("Loading dataset preview...");
 
   useEffect(() => {
-    loadLatestDatasetRun("organized_output", 8).then((result) => {
+    loadLatestDatasetRun(settings.outputRoot, 8).then((result) => {
       setDatasetRun(result);
       setSelectedRunId(result.latest?.run_id ?? result.runs[0]?.run_id ?? null);
     });
-  }, []);
+  }, [settings.outputRoot]);
+
+  useEffect(() => {
+    if (!datasetRun) return;
+    const exists = datasetRun.runs.some((run) => run.run_id === selectedRunId);
+    if (!exists) {
+      setSelectedRunId(datasetRun.latest?.run_id ?? datasetRun.runs[0]?.run_id ?? null);
+    }
+  }, [datasetRun, selectedRunId]);
 
   useEffect(() => {
     if (!datasetIntent || !datasetRun?.runs.length) {
@@ -55,7 +74,7 @@ export default function DatasetsScreen() {
     datasetRun?.runs.find((run) => run.run_id === selectedRunId) ??
     datasetRun?.latest ??
     null;
-  const artifactPaths = buildDatasetArtifactPaths(datasetRun?.outputRoot ?? "organized_output");
+  const artifactPaths = buildDatasetArtifactPaths(datasetRun?.outputRoot ?? settings.outputRoot);
   const selectedManifestPath = selectedRun
     ? artifactPaths.manifestsRoot + "\\" + selectedRun.run_id + ".json"
     : datasetRun?.manifestPath ?? artifactPaths.manifestsRoot + "\\latest-dataset-run.json";
@@ -69,6 +88,46 @@ export default function DatasetsScreen() {
     selectedRedactionSummary,
     selectedRun?.private_review_segments ?? 0
   );
+  const selectedTrustHighlights = summarizeDatasetTrustHighlights(selectedRun);
+  const selectedRedactionHighlights = summarizeDatasetRedactionHighlights(
+    selectedRedactionSummary,
+    selectedRun?.private_review_segments ?? 0
+  );
+  const previewConfig = DATASET_PREVIEW_CONFIG[previewKind];
+
+  async function loadPreview(kind: DatasetPreviewKind, offset = 0) {
+    setPreviewLoading(true);
+    setPreviewStatus("Loading " + DATASET_PREVIEW_CONFIG[kind].label.toLowerCase() + "...");
+
+    const result = await queryCollection({
+      outputRoot: settings.outputRoot,
+      tier: DATASET_PREVIEW_CONFIG[kind].tier,
+      collection: DATASET_PREVIEW_CONFIG[kind].collection,
+      limit: 5,
+      offset
+    });
+
+    setPreviewRecords(result.records);
+    setPreviewOffset(result.offset ?? offset);
+    setPreviewHasMore(Boolean(result.hasMore));
+    setPreviewTotal(result.totalRecords ?? result.records.length);
+    setPreviewStatus(
+      result.records.length > 0
+        ? "Showing " +
+            DATASET_PREVIEW_CONFIG[kind].label.toLowerCase() +
+            " " +
+            ((result.offset ?? offset) + 1) +
+            " to " +
+            ((result.offset ?? offset) + result.records.length) +
+            "."
+        : "No " + DATASET_PREVIEW_CONFIG[kind].label.toLowerCase() + " available in the current dataset output."
+    );
+    setPreviewLoading(false);
+  }
+
+  useEffect(() => {
+    loadPreview(previewKind, 0);
+  }, [previewKind, settings.outputRoot]);
 
   return (
     <section className="screen-grid">
@@ -110,6 +169,17 @@ export default function DatasetsScreen() {
             {selectedSourceContext ? (
               <div className="detail-box">
                 <strong>Selected Import Context</strong>
+                {selectedTrustHighlights.length > 0 ? (
+                  <div className="stats-grid two-col">
+                    {selectedTrustHighlights.map((detail) => (
+                      <div key={detail.label} className="stat-card">
+                        <span className="label">{detail.label}</span>
+                        <strong>{detail.value}</strong>
+                        <p className="muted">{detail.note}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 <p className="muted">
                   Imported from: {selectedSourceContext.source_input_path ?? "Source path unavailable"}
                 </p>
@@ -233,6 +303,17 @@ export default function DatasetsScreen() {
         <h2>Dataset Notes</h2>
         {selectedRun ? (
           <>
+            {selectedRedactionHighlights.length > 0 ? (
+              <div className="stats-grid two-col">
+                {selectedRedactionHighlights.map((detail) => (
+                  <div key={detail.label} className="stat-card">
+                    <span className="label">{detail.label}</span>
+                    <strong>{detail.value}</strong>
+                    <p className="muted">{detail.note}</p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             <p className="muted">Selected dataset build: {selectedRun.run_id}</p>
             <p className="muted">Format version: {selectedRun.dataset_version}</p>
             <p className="muted">Filtered out during cleanup: {selectedRun.filtered_out_segments}</p>
@@ -273,6 +354,93 @@ export default function DatasetsScreen() {
         )}
       </div>
 
+      <div className="panel large">
+        <div className="panel-heading-row">
+          <h2>Dataset Preview</h2>
+          <button
+            className="secondary-btn"
+            type="button"
+            onClick={() => loadPreview(previewKind, previewOffset)}
+            disabled={previewLoading}
+          >
+            Refresh Preview
+          </button>
+        </div>
+        <p className="muted">
+          Preview current dataset records inside the app before opening raw files. This reflects the current output folder contents, which may be newer than the selected historical run summary.
+        </p>
+        <div className="action-bar">
+          {(
+            Object.keys(DATASET_PREVIEW_CONFIG) as DatasetPreviewKind[]
+          ).map((kind) => (
+            <button
+              key={kind}
+              className={previewKind === kind ? "primary-btn" : "secondary-btn"}
+              type="button"
+              onClick={() => {
+                setPreviewKind(kind);
+                setPreviewOffset(0);
+              }}
+            >
+              {DATASET_PREVIEW_CONFIG[kind].label}
+            </button>
+          ))}
+        </div>
+        <div className="detail-box">
+          <strong>{previewConfig.label}</strong>
+          <p className="muted">{previewConfig.description}</p>
+          <p className="muted">
+            Trust context: {selectedSourceSummary} | Privacy handling: {selectedRedactionExplanation}
+          </p>
+          {selectedSourceBadges.length > 0 ? (
+            <p className="muted">{selectedSourceBadges.join(" | ")}</p>
+          ) : null}
+          <p className="muted">{previewStatus}</p>
+        </div>
+        <div className="action-bar">
+          <button
+            className="secondary-btn"
+            type="button"
+            onClick={() => loadPreview(previewKind, Math.max(0, previewOffset - 5))}
+            disabled={previewLoading || previewOffset === 0}
+          >
+            Previous Page
+          </button>
+          <button
+            className="secondary-btn"
+            type="button"
+            onClick={() => loadPreview(previewKind, previewOffset + 5)}
+            disabled={previewLoading || !previewHasMore}
+          >
+            Next Page
+          </button>
+          <span className="muted">
+            {previewRecords.length > 0
+              ? `Showing ${previewOffset + 1}-${previewOffset + previewRecords.length}${previewTotal ? ` of ${previewTotal}` : ""}`
+              : "No preview records loaded"}
+          </span>
+        </div>
+        {previewRecords.length === 0 ? (
+          <p className="muted">
+            No records are available for this preview mode yet. Try another dataset type or run an import that produces dataset output.
+          </p>
+        ) : (
+          <div className="stats-grid two-col">
+            {previewRecords.map((record) => {
+              const preview = summarizePreviewRecord(previewKind, record.raw);
+              return (
+                <div key={record.id} className="stat-card">
+                  <span className="label">{preview.kicker}</span>
+                  <strong>{preview.title}</strong>
+                  <p className="muted">{preview.meta}</p>
+                  <div className="record-block">{preview.body}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       <div className="panel">
         <h2>How To Read This</h2>
         <ul className="list">
@@ -290,6 +458,42 @@ export default function DatasetsScreen() {
     </section>
   );
 }
+
+type DatasetPreviewKind =
+  | "topic_segments"
+  | "prompt_response_pairs"
+  | "micro_segments"
+  | "private_review";
+
+const DATASET_PREVIEW_CONFIG: Record<
+  DatasetPreviewKind,
+  { label: string; description: string; tier: DbTier; collection: string }
+> = {
+  topic_segments: {
+    label: "Topic Segments",
+    description: "Longer conversation chunks with signal and redaction context.",
+    tier: "tier1_processed",
+    collection: "topic_segments"
+  },
+  prompt_response_pairs: {
+    label: "Prompt/Response",
+    description: "Direct question and answer pairs for faster spot-checking.",
+    tier: "tier1_processed",
+    collection: "prompt_response_pairs"
+  },
+  micro_segments: {
+    label: "Micro Segments",
+    description: "Small message windows for quick scanning and retrieval checks.",
+    tier: "tier1_processed",
+    collection: "micro_segments"
+  },
+  private_review: {
+    label: "Private Review",
+    description: "Segments that need extra trust or privacy caution before normal reuse.",
+    tier: "tier3_private_review",
+    collection: "topic_segments"
+  }
+};
 
 function summarizeDatasetSourceContext(sourceContext: DatasetSourceContext | undefined): string {
   if (!sourceContext) {
@@ -341,6 +545,55 @@ function summarizeDatasetSourceBadges(sourceContext: DatasetSourceContext | unde
   return badges;
 }
 
+function summarizeDatasetTrustHighlights(
+  run: DatasetRunResult["runs"][number] | null
+): Array<{ label: string; value: string; note: string }> {
+  if (!run) {
+    return [];
+  }
+
+  const sourceContext = run.source_context;
+  const supportTier = sourceContext?.support_tier;
+  const highlights: Array<{ label: string; value: string; note: string }> = [
+    {
+      label: "Import Path",
+      value:
+        supportTier === "mvp_first_class"
+          ? "Ready-now path"
+          : supportTier === "mvp_compatibility_fallback"
+            ? "Recovery path"
+            : "Unlabeled path",
+      note:
+        supportTier === "mvp_compatibility_fallback"
+          ? "This dataset came through a fallback import route, so completeness deserves a closer spot-check."
+          : "This dataset came through the normal import path for the detected source."
+    },
+    {
+      label: "Vendor Source",
+      value: sourceContext?.vendor_sources.join(", ") || sourceContext?.detected_label || "Unknown",
+      note: "Use this to confirm the dataset still matches the export family you expected to import."
+    }
+  ];
+
+  if ((sourceContext?.attachment_count ?? 0) > 0) {
+    highlights.push({
+      label: "Attachment References",
+      value: String(sourceContext?.attachment_count ?? 0),
+      note: "The source export referenced uploaded or linked files. Check archive preservation if those matter for interpretation."
+    });
+  }
+
+  if ((sourceContext?.package_companion_files ?? 0) > 0) {
+    highlights.push({
+      label: "Companion Files",
+      value: String(sourceContext?.package_companion_files ?? 0),
+      note: "Extra package files were recognized and kept out of dataset generation so the main export file stayed authoritative."
+    });
+  }
+
+  return highlights;
+}
+
 function formatDatasetRunLabel(run: DatasetRunResult["runs"][number]): string {
   const stamp = run.run_id.replace(/^run-/, "").replace(/-/g, ":");
   const source = run.source_context?.vendor_sources[0] ?? run.source_context?.detected_label ?? "dataset";
@@ -357,6 +610,55 @@ function shouldRecommendGovernance(run: DatasetRunResult["runs"][number] | null)
     run.private_review_segments > 0 ||
     run.source_context?.support_tier === "mvp_compatibility_fallback"
   );
+}
+
+function summarizeDatasetRedactionHighlights(
+  redactionSummary: DatasetRedactionSummary | undefined,
+  privateReviewSegments: number
+): Array<{ label: string; value: string; note: string }> {
+  const highlights: Array<{ label: string; value: string; note: string }> = [];
+  const totalRedactions = redactionSummary?.total_redactions ?? 0;
+  const affectedSegments = redactionSummary?.affected_segments ?? 0;
+
+  highlights.push({
+    label: "Redacted Segments",
+    value: String(affectedSegments),
+    note:
+      affectedSegments > 0
+        ? "These segments had common sensitive patterns removed before dataset records were written."
+        : "No counted email, phone, URL, or address patterns were redacted in this dataset run."
+  });
+
+  highlights.push({
+    label: "Total Redactions",
+    value: String(totalRedactions),
+    note:
+      totalRedactions > 0
+        ? "This is the total number of counted redaction events across all affected segments."
+        : "Nothing in the counted redaction categories needed masking in the generated dataset."
+  });
+
+  const topType = redactionSummary
+    ? Object.entries(redactionSummary.redaction_types).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]
+    : null;
+  highlights.push({
+    label: "Most Common Mask",
+    value: topType ? formatRedactionFlagLabel(topType[0], topType[1]) : "None counted",
+    note: topType
+      ? "This was the most frequently redacted sensitive pattern in the selected dataset run."
+      : "No counted redaction category dominated this run."
+  });
+
+  highlights.push({
+    label: "Private Review Hold",
+    value: String(privateReviewSegments),
+    note:
+      privateReviewSegments > 0
+        ? "These segments were held aside for extra caution, even if their redaction count alone did not fully explain the risk."
+        : "No segments were separated into private review for extra trust or privacy checking."
+  });
+
+  return highlights;
 }
 
 function summarizeRedactionExplanation(
@@ -403,4 +705,80 @@ function formatRedactionFlagLabel(flag: string, count: number): string {
     default:
       return count + " " + flag;
   }
+}
+
+function summarizePreviewRecord(
+  kind: DatasetPreviewKind,
+  raw: unknown
+): { kicker: string; title: string; meta: string; body: string } {
+  const record = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+
+  if (kind === "prompt_response_pairs") {
+    const prompt = readString(record.prompt);
+    const response = readString(record.response);
+    return {
+      kicker: "Prompt/Response",
+      title: readString(record.title) || readString(record.topic) || "Untitled pair",
+      meta: [
+        readString(record.signal_tier),
+        readString(record.created_at) ? new Date(readString(record.created_at) as string).toLocaleString() : "",
+        "conversation " + (readString(record.conversation_id) || "unknown")
+      ].filter(Boolean).join(" | "),
+      body: "Prompt: " + truncateText(prompt, 220) + "\n\nResponse: " + truncateText(response, 260)
+    };
+  }
+
+  if (kind === "micro_segments") {
+    const messages = Array.isArray(record.messages)
+      ? record.messages
+          .map((message) => {
+            if (!message || typeof message !== "object") return "";
+            const value = message as Record<string, unknown>;
+            return "[" + (readString(value.role) || "unknown") + "] " + (readString(value.text) || "");
+          })
+          .filter(Boolean)
+      : [];
+
+    return {
+      kicker: "Micro Segment",
+      title: readString(record.title) || readString(record.topic) || "Untitled micro segment",
+      meta: [
+        readString(record.signal_tier),
+        "sequence " + (typeof record.sequence_index === "number" ? record.sequence_index : "?"),
+        "conversation " + (readString(record.conversation_id) || "unknown")
+      ].filter(Boolean).join(" | "),
+      body: truncateText(messages.join("\n\n"), 420)
+    };
+  }
+
+  const redactionCount =
+    typeof record.redaction_count === "number" ? String(record.redaction_count) + " redaction(s)" : "";
+  const signalScore =
+    typeof record.signal_score === "number" ? "score " + record.signal_score : "";
+
+  return {
+    kicker: kind === "private_review" ? "Private Review Segment" : "Topic Segment",
+    title: readString(record.title) || readString(record.topic) || "Untitled segment",
+    meta: [
+      readString(record.signal_tier),
+      signalScore,
+      redactionCount,
+      typeof record.message_count === "number" ? record.message_count + " message(s)" : "",
+      "conversation " + (readString(record.conversation_id) || "unknown")
+    ].filter(Boolean).join(" | "),
+    body: truncateText(readString(record.text), 420)
+  };
+}
+
+function readString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function truncateText(value: string, max = 240): string {
+  const normalized = value.trim();
+  if (!normalized) {
+    return "No preview text available.";
+  }
+
+  return normalized.length > max ? normalized.slice(0, max).trimEnd() + "..." : normalized;
 }

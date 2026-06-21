@@ -27,7 +27,18 @@ export default function MarkdownArchiveBrowser({
   const [filterText, setFilterText] = useState("");
   const [sortMode, setSortMode] = useState<ArchiveSortMode>("newest");
   const [activeTopic, setActiveTopic] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const normalizedFilter = filterText.trim().toLowerCase();
+
+  const allSources = useMemo(
+    () => [...new Set(topics.flatMap((topic) => topic.files.map((file) => file.source).filter(Boolean)))].sort(),
+    [topics]
+  );
+
+  const fromTime = dateFrom ? Date.parse(dateFrom + "T00:00:00") : NaN;
+  const toTime = dateTo ? Date.parse(dateTo + "T23:59:59") : NaN;
 
   const visibleTopics = useMemo(() => {
     const filteredTopics = topics
@@ -35,16 +46,28 @@ export default function MarkdownArchiveBrowser({
         const topicSelected = !activeTopic || topic.name === activeTopic;
         const topicMatches = topic.name.toLowerCase().includes(normalizedFilter);
         const files = topic.files
-          .filter((file) =>
-            topicSelected && (
+          .filter((file) => {
+            if (!topicSelected) return false;
+            if (sourceFilter && file.source !== sourceFilter) return false;
+            if (!Number.isNaN(fromTime) || !Number.isNaN(toTime)) {
+              const fileTime = file.createdAt
+                ? Date.parse(file.createdAt)
+                : file.modifiedAt
+                  ? Date.parse(file.modifiedAt)
+                  : NaN;
+              if (!Number.isNaN(fromTime) && !Number.isNaN(fileTime) && fileTime < fromTime) return false;
+              if (!Number.isNaN(toTime) && !Number.isNaN(fileTime) && fileTime > toTime) return false;
+            }
+            if (!normalizedFilter) return true;
+            return (
               file.name.toLowerCase().includes(normalizedFilter) ||
               file.path.toLowerCase().includes(normalizedFilter) ||
               file.previewText.toLowerCase().includes(normalizedFilter)
-            )
-          )
+            );
+          })
           .sort((left, right) => compareArchiveFiles(left, right, sortMode));
 
-        if (topicMatches && files.length === 0) {
+        if (topicMatches && files.length === 0 && !sourceFilter && !dateFrom && !dateTo) {
           return {
             ...topic,
             fileCount: topic.files.length,
@@ -59,10 +82,7 @@ export default function MarkdownArchiveBrowser({
         };
       })
       .filter((topic) => {
-        if (activeTopic && topic.name !== activeTopic) {
-          return false;
-        }
-
+        if (activeTopic && topic.name !== activeTopic) return false;
         return topic.files.length > 0 || topic.name.toLowerCase().includes(normalizedFilter);
       });
 
@@ -75,12 +95,38 @@ export default function MarkdownArchiveBrowser({
       const rightNewest = newestTimestamp(right.files);
       return sortMode === "oldest" ? leftNewest - rightNewest : rightNewest - leftNewest;
     });
-  }, [activeTopic, normalizedFilter, sortMode, topics]);
+  }, [activeTopic, normalizedFilter, sortMode, topics, sourceFilter, dateFrom, dateTo, fromTime, toTime]);
+
+  const activeFilterCount = [
+    normalizedFilter,
+    activeTopic,
+    sourceFilter,
+    dateFrom,
+    dateTo
+  ].filter(Boolean).length;
+
+  function clearFilters() {
+    setFilterText("");
+    setActiveTopic("");
+    setSourceFilter("");
+    setDateFrom("");
+    setDateTo("");
+  }
 
   const selectedTopic = selectedFile
     ? topics.find((topic) => topic.files.some((file) => file.path === selectedFile.path)) ?? null
     : null;
   const selectedContextBadges = selectedFile ? summarizeArchiveContextBadges(selectedFile) : [];
+  const visibleFiles = visibleTopics.flatMap((topic) => topic.files);
+  const selectedIndex = selectedFile
+    ? visibleFiles.findIndex((file) => file.path === selectedFile.path)
+    : -1;
+  const previousFile = selectedIndex > 0 ? visibleFiles[selectedIndex - 1] : null;
+  const nextFile =
+    selectedIndex >= 0 && selectedIndex < visibleFiles.length - 1
+      ? visibleFiles[selectedIndex + 1]
+      : null;
+  const selectedFileDetails = selectedFile ? summarizeArchiveFileDetails(selectedFile) : [];
 
   return (
     <div className="panel large">
@@ -135,9 +181,49 @@ export default function MarkdownArchiveBrowser({
                     ))}
                 </select>
               </label>
+              <label className="form-label tight">
+                Source
+                <select
+                  value={sourceFilter}
+                  onChange={(event) => setSourceFilter(event.target.value)}
+                >
+                  <option value="">All sources</option>
+                  {allSources.map((source) => (
+                    <option key={source} value={source}>
+                      {formatArchiveSourceLabel(source)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="form-label tight">
+                From
+                <input
+                  className="text-input"
+                  type="date"
+                  value={dateFrom}
+                  onChange={(event) => setDateFrom(event.target.value)}
+                />
+              </label>
+              <label className="form-label tight">
+                To
+                <input
+                  className="text-input"
+                  type="date"
+                  value={dateTo}
+                  onChange={(event) => setDateTo(event.target.value)}
+                />
+              </label>
+            </div>
+            <div className="retrieval-filter-toolbar">
+              <span className="muted">
+                {activeFilterCount > 0 ? `${activeFilterCount} active filter(s)` : "No active filters"}
+              </span>
+              <button className="secondary-btn chip-btn" type="button" onClick={clearFilters}>
+                Clear Filters
+              </button>
             </div>
             <p className="muted">
-              {normalizedFilter
+              {activeFilterCount > 0
                 ? `${visibleTopics.reduce((sum, topic) => sum + topic.files.length, 0)} matching file(s) across readable archive content`
                 : `${topics.reduce((sum, topic) => sum + topic.files.length, 0)} archive file(s) across ${topics.length} topic folder(s)`}
             </p>
@@ -157,7 +243,7 @@ export default function MarkdownArchiveBrowser({
                       onClick={() => onSelectFile(file)}
                     >
                       <div>{file.name}</div>
-                      <div className="muted">{new Date(file.modifiedAt).toLocaleString()}</div>
+                      <div className="muted archive-file-meta">{formatArchiveFileMeta(file)}</div>
                       {file.previewText ? (
                         <div className="muted">{file.previewText}</div>
                       ) : null}
@@ -183,10 +269,36 @@ export default function MarkdownArchiveBrowser({
                 {selectedContextBadges.length > 0 ? (
                   <p className="muted">{selectedContextBadges.join(" | ")}</p>
                 ) : null}
+                {selectedFileDetails.length > 0 ? (
+                  <div className="stats-grid two-col archive-detail-grid">
+                    {selectedFileDetails.map((detail) => (
+                      <div key={detail.label} className="stat-card">
+                        <span className="label">{detail.label}</span>
+                        <strong>{detail.value}</strong>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ) : null}
             {selectedFile ? (
               <div className="action-bar">
+                <button
+                  className="secondary-btn"
+                  type="button"
+                  onClick={() => previousFile && onSelectFile(previousFile)}
+                  disabled={!previousFile}
+                >
+                  Previous File
+                </button>
+                <button
+                  className="secondary-btn"
+                  type="button"
+                  onClick={() => nextFile && onSelectFile(nextFile)}
+                  disabled={!nextFile}
+                >
+                  Next File
+                </button>
                 <button
                   className="primary-btn"
                   type="button"
@@ -236,6 +348,11 @@ export default function MarkdownArchiveBrowser({
                   </button>
                 ) : null}
               </div>
+            ) : null}
+            {selectedFile && visibleFiles.length > 0 ? (
+              <p className="muted">
+                Viewing file {selectedIndex + 1} of {visibleFiles.length} in the current archive result set.
+              </p>
             ) : null}
             {selectedFile ? (
               <p className="muted">
@@ -336,6 +453,52 @@ function formatArchiveSourceLabel(source: string): string {
     default:
       return source;
   }
+}
+
+function formatArchiveFileMeta(file: MarkdownArchiveFile): string {
+  const parts = [
+    file.source ? formatArchiveSourceLabel(file.source) : null,
+    file.topic ?? file.rawTopic ?? null,
+    file.createdAt ? new Date(file.createdAt).toLocaleDateString() : null,
+    new Date(file.modifiedAt).toLocaleString()
+  ].filter(Boolean);
+
+  return parts.join(" | ");
+}
+
+function summarizeArchiveFileDetails(file: MarkdownArchiveFile): Array<{ label: string; value: string }> {
+  const details: Array<{ label: string; value: string }> = [
+    { label: "Source", value: file.source ? formatArchiveSourceLabel(file.source) : "Unknown" },
+    { label: "Topic", value: file.topic ?? file.rawTopic ?? "Unknown" },
+    { label: "Modified", value: new Date(file.modifiedAt).toLocaleString() },
+    { label: "Size", value: formatBytes(file.sizeBytes) }
+  ];
+
+  if (file.createdAt) {
+    details.push({ label: "Conversation Date", value: new Date(file.createdAt).toLocaleString() });
+  }
+
+  if (typeof file.startIndex === "number" && typeof file.endIndex === "number") {
+    details.push({ label: "Segment Window", value: file.startIndex + " to " + file.endIndex });
+  }
+
+  return details;
+}
+
+function formatBytes(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) {
+    return "0 B";
+  }
+
+  if (value < 1024) {
+    return value + " B";
+  }
+
+  if (value < 1024 * 1024) {
+    return (value / 1024).toFixed(1) + " KB";
+  }
+
+  return (value / (1024 * 1024)).toFixed(1) + " MB";
 }
 
 function toDateInputValue(value: string): string {

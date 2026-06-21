@@ -4,6 +4,8 @@ export interface DatasetInvestigationIntent {
   vendor?: string;
   topic?: string;
   createdAt?: string;
+  archiveTitle?: string;
+  archivePath?: string;
 }
 
 export function findMatchingDatasetRun(

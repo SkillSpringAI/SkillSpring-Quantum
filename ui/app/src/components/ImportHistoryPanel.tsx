@@ -26,6 +26,27 @@ interface ImportHistoryPanelProps {
   searchBusy?: boolean;
 }
 
+function formatVendorLabel(vendor: string): string {
+  switch (vendor.toLowerCase()) {
+    case "chatgpt":
+      return "ChatGPT";
+    case "claude":
+      return "Claude";
+    case "gemini":
+      return "Gemini";
+    case "grok":
+      return "Grok";
+    case "copilot":
+      return "Microsoft Copilot";
+    default:
+      return vendor;
+  }
+}
+
+function formatVendorList(vendors: string[]): string {
+  return vendors.map((vendor) => formatVendorLabel(vendor)).join(", ");
+}
+
 function findLatestArchiveArtifactPath(run: ImportRunSummary | null): string | null {
   if (!run) {
     return null;
@@ -70,6 +91,46 @@ function findLatestDatasetArtifactPath(run: ImportRunSummary | null): string | n
   return fallback?.path ?? null;
 }
 
+function findLatestDiagnosticsArtifactPath(run: ImportRunSummary | null): string | null {
+  if (!run) {
+    return null;
+  }
+
+  const preferred = run.artifacts.find((artifact) => artifact.label === "Latest diagnostics");
+  if (preferred) {
+    return preferred.path;
+  }
+
+  const fallback = run.artifacts.find((artifact) => artifact.label.toLowerCase().includes("diagnostics"));
+  return fallback?.path ?? null;
+}
+
+function findAttachmentManifestArtifactPath(run: ImportRunSummary | null): string | null {
+  if (!run) {
+    return null;
+  }
+
+  const match = run.artifacts.find((artifact) => {
+    const label = artifact.label.toLowerCase();
+    return label.includes("attachment manifest");
+  });
+
+  return match?.path ?? null;
+}
+
+function findAttachmentArchiveArtifactPath(run: ImportRunSummary | null): string | null {
+  if (!run) {
+    return null;
+  }
+
+  const match = run.artifacts.find((artifact) => {
+    const label = artifact.label.toLowerCase();
+    return label.includes("attachments archive");
+  });
+
+  return match?.path ?? null;
+}
+
 function summarizeRunOutcomeCounts(run: ImportRunSummary): string {
   const archivedOnly =
     run.archivedOnlyFiles ??
@@ -107,6 +168,71 @@ function summarizeRunOutcomeCounts(run: ImportRunSummary): string {
   }
 
   return parts.join(", ");
+}
+
+function summarizeRunRecoveryGuidance(run: ImportRunSummary | null): string[] {
+  if (!run) {
+    return [];
+  }
+
+  const steps: string[] = [];
+  const failedFiles = run.results.filter((result) => result.status === "failed").length;
+  const unexpectedSkips = countUnexpectedSkippedFiles(run);
+  const recoveryPathFiles =
+    run.recoveryPathFiles ??
+    run.results.filter(
+      (result) =>
+        result.metadata?.sourceCategory === "conversation" &&
+        result.metadata.supportTier === "mvp_compatibility_fallback"
+    ).length;
+
+  if (failedFiles > 0) {
+    steps.push("Open diagnostics first, then compare the failed file messages below so you can tell whether the import broke before archive or dataset output finished.");
+  }
+
+  if (unexpectedSkips > 0) {
+    steps.push("If you plan to retry this source, re-inspect the folder first and confirm the main vendor export file is present instead of retrying the same skipped mix unchanged.");
+  }
+
+  if (recoveryPathFiles > 0) {
+    steps.push("Recovery-path conversations should be spot-checked in the archive or datasets before you treat every record as complete.");
+  }
+
+  if (run.filesImported === 0) {
+    steps.push("This run produced no imported files, so the next useful step is source cleanup or choosing a different vendor export file rather than rerunning immediately.");
+  }
+
+  if (steps.length === 0 && countPackageCompanionSkips(run) > 0) {
+    steps.push("Only package companion files were skipped, which is expected for recognized vendor export bundles.");
+  }
+
+  return steps;
+}
+
+function summarizeResultRecoveryHint(result: ImportRunSummary["results"][number]): string | null {
+  const normalizedMessage = result.message.toLowerCase();
+
+  if (result.status === "failed") {
+    return "Check diagnostics for the failing run before retrying this file.";
+  }
+
+  if (isPackageCompanionSkip(result)) {
+    return "No action needed. This file was handled through the package's main import file.";
+  }
+
+  if (result.status === "skipped") {
+    return "Re-inspect the source path and confirm this file belongs to a supported import shape before retrying.";
+  }
+
+  if (normalizedMessage.includes("referenced blob(s) missing") || normalizedMessage.includes("linked file(s) missing")) {
+    return "Review the attachment manifest or archive to verify which referenced files were missing from the export package.";
+  }
+
+  if (result.metadata?.sourceCategory === "conversation" && result.metadata.supportTier === "mvp_compatibility_fallback") {
+    return "Spot-check archive or dataset output because this conversation came through a recovery path.";
+  }
+
+  return null;
 }
 
 export default function ImportHistoryPanel({
@@ -400,7 +526,7 @@ export default function ImportHistoryPanel({
             {metadata.detectedLabel} | {metadata.conversationCount} conversation(s) | {metadata.messageCount} message(s)
           </div>
           <div>Support: {formatSupportTierLabel(metadata.supportTier)}</div>
-          <div>Vendors: {metadata.vendorSources.join(", ")}</div>
+          <div>Vendors: {formatVendorList(metadata.vendorSources)}</div>
           {range ? <div>Date range: {range}</div> : null}
           {metadata.topicHints.length > 0 ? <div>Topics: {metadata.topicHints.join(", ")}</div> : null}
         </div>
@@ -487,6 +613,10 @@ export default function ImportHistoryPanel({
   const runForDetail = filteredSelectedRun ?? (filteredRuns.length === 1 ? filteredRuns[0] : null);
   const latestArchiveArtifactPath = findLatestArchiveArtifactPath(runForDetail);
   const latestDatasetArtifactPath = findLatestDatasetArtifactPath(runForDetail);
+  const latestDiagnosticsArtifactPath = findLatestDiagnosticsArtifactPath(runForDetail);
+  const latestAttachmentManifestPath = findAttachmentManifestArtifactPath(runForDetail);
+  const latestAttachmentArchivePath = findAttachmentArchiveArtifactPath(runForDetail);
+  const recoveryGuidance = summarizeRunRecoveryGuidance(runForDetail);
   const visibleResults = runForDetail
     ? runForDetail.results.filter((result) => {
         if (filters.status !== "all" && result.status !== filters.status) {
@@ -660,6 +790,16 @@ export default function ImportHistoryPanel({
                   <p className="muted">
                     Imported {runForDetail.filesImported} of {runForDetail.filesDiscovered} file(s) | {summarizeRunOutcomeCounts(runForDetail)}
                   </p>
+                  {recoveryGuidance.length > 0 ? (
+                    <div className="muted">
+                      <div><strong>Recovery checks</strong></div>
+                      <ul>
+                        {recoveryGuidance.map((step) => (
+                          <li key={step}>{step}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                   {renderSignalBadges(summarizeRunSignals(runForDetail))}
                   <p className="muted">
                     Conversation imports: {runForDetail.conversationFilesProcessed} | Document imports: {runForDetail.genericDocumentsProcessed} | PDF imports: {runForDetail.pdfFilesArchived}
@@ -667,11 +807,11 @@ export default function ImportHistoryPanel({
                   {runForDetail.retrievalSummary ? (
                     <>
                       <p className="muted">
-                        Sources: {runForDetail.retrievalSummary.vendorSources.join(", ")} | {runForDetail.retrievalSummary.conversationCount} conversation(s) | {runForDetail.retrievalSummary.messageCount} message(s)
+                        Sources: {formatVendorList(runForDetail.retrievalSummary.vendorSources)} | {runForDetail.retrievalSummary.conversationCount} conversation(s) | {runForDetail.retrievalSummary.messageCount} message(s)
                       </p>
                       {runForDetail.retrievalSummary.attachmentCount > 0 ? (
                         <p className="muted">
-                          {runForDetail.retrievalSummary.attachmentCount} attachment reference(s) across imported conversations. Check individual file results below for preservation status.
+                          {runForDetail.retrievalSummary.attachmentCount} attachment reference(s) across imported conversations. Use the attachment archive actions below to verify what was preserved versus missing.
                         </p>
                       ) : null}
                       <p className="muted">
@@ -722,6 +862,33 @@ export default function ImportHistoryPanel({
                         Open Latest Dataset File
                       </button>
                     ) : null}
+                    {latestDiagnosticsArtifactPath ? (
+                      <button
+                        className="secondary-btn"
+                        type="button"
+                        onClick={() => handleOpenPath(latestDiagnosticsArtifactPath)}
+                      >
+                        Open Latest Diagnostics
+                      </button>
+                    ) : null}
+                    {latestAttachmentArchivePath ? (
+                      <button
+                        className="secondary-btn"
+                        type="button"
+                        onClick={() => handleOpenPath(latestAttachmentArchivePath)}
+                      >
+                        Open Attachments Archive
+                      </button>
+                    ) : null}
+                    {latestAttachmentManifestPath ? (
+                      <button
+                        className="secondary-btn"
+                        type="button"
+                        onClick={() => handleOpenPath(latestAttachmentManifestPath)}
+                      >
+                        Open Attachment Manifest
+                      </button>
+                    ) : null}
                     {runForDetail.artifacts.length > 0 ? (
                       <>
                       {runForDetail.artifacts.slice(0, 6).map((artifact) => (
@@ -751,7 +918,10 @@ export default function ImportHistoryPanel({
                       </tr>
                     </thead>
                     <tbody>
-                      {visibleResults.map((result) => (
+                      {visibleResults.map((result) => {
+                        const recoveryHint = summarizeResultRecoveryHint(result);
+
+                        return (
                       <tr key={result.path + result.kind}>
                           <td>{formatResultStatusLabel(result.status, result.metadata)}</td>
                           <td>
@@ -763,6 +933,9 @@ export default function ImportHistoryPanel({
                             <div>{result.path}</div>
                             {renderOutcomeBadges(result.metadata, result.message, result.status)}
                             {renderFileMetadata(result.metadata)}
+                            {recoveryHint ? (
+                              <div className="muted">{recoveryHint}</div>
+                            ) : null}
                           </td>
                           <td>{result.message}</td>
                           <td>
@@ -794,7 +967,8 @@ export default function ImportHistoryPanel({
                             )}
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

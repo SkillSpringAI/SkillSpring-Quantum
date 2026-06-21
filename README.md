@@ -58,11 +58,12 @@ The desktop app can currently:
 3. run a local import into a configurable output root
 4. review recent import history with per-file results and output links
 5. search prior imports by vendor, topic, text, date, and status
-6. browse readable archive output with topic, source, and date filters
-7. open archive files, archive event logs, topic folders, and preserved attachment locations from the UI
-8. jump from archive and import views into related retrieval and dataset investigations
-9. review dataset manifests, dataset trust context, redaction summaries, and current dataset previews inside the app
-10. inspect private-review and diagnostics paths when a run needs more caution
+6. get plain-English recovery guidance for failed, skipped, and fallback imports before retrying
+7. browse readable archive output with topic, source, and date filters
+8. open archive files, archive event logs, topic folders, and preserved attachment locations from the UI
+9. jump from archive and import views into related retrieval and dataset investigations
+10. review dataset manifests, dataset trust context, redaction summaries, current dataset previews, and current-versus-historical handoff controls inside the app
+11. inspect private-review and diagnostics paths when a run needs more caution
 
 ## Use cases the project currently fits best
 
@@ -70,6 +71,7 @@ The desktop app can currently:
 - building readable topic-organized archives from ChatGPT and Grok exports
 - generating structured dataset artifacts from the same import run
 - tracing fallback recovery, attachment preservation, and package-companion handling across imports, archives, and datasets
+- following archive context into the matching dataset view without losing vendor/topic trust clues
 - investigating prior imports and linked dataset segments from one desktop workflow
 
 ## Internal and experimental coverage beyond the MVP story

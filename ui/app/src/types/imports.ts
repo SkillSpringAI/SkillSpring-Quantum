@@ -18,6 +18,7 @@ export interface ImportJobForm {
 export interface ImportSourceEntry {
   path: string;
   kind: "chatgpt_export" | "conversation_json" | "gemini_activity_html" | "json_document" | "text_document" | "pdf_document" | "unsupported";
+  displayLabel: string;
   supported: boolean;
   supportTier: ImportSupportTier;
   reason: string;

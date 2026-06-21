@@ -44,7 +44,12 @@ function makeLogEntry(
   };
 }
 
-function formatSourceEntryKindLabel(kind: ImportSourceSummary["sampleFiles"][number]["kind"]): string {
+function formatSourceEntryKindLabel(entry: ImportSourceSummary["sampleFiles"][number]): string {
+  if (entry.displayLabel?.trim()) {
+    return entry.displayLabel;
+  }
+
+  const kind = entry.kind;
   switch (kind) {
     case "chatgpt_export":
       return "ChatGPT export";
@@ -202,6 +207,79 @@ function summarizeRunOutcomeCounts(run: ImportRunSummary | null): string | null 
   return parts.join(" | ");
 }
 
+function buildRecoveryGuidance(run: ImportRunSummary | null): string[] {
+  if (!run) {
+    return [];
+  }
+
+  const steps: string[] = [];
+  const unexpectedSkips = countUnexpectedSkippedFiles(run);
+  const failedFiles = run.results.filter((result) => result.status === "failed").length;
+  const recoveryPathFiles =
+    run.recoveryPathFiles ??
+    run.results.filter(
+      (result) =>
+        result.metadata?.sourceCategory === "conversation" &&
+        result.metadata.supportTier === "mvp_compatibility_fallback"
+    ).length;
+
+  if (failedFiles > 0) {
+    steps.push("Open Diagnostics first, then check the failed file messages in Import History to see whether the export shape broke before archive and dataset output finished.");
+  }
+
+  if (unexpectedSkips > 0) {
+    steps.push("Re-inspect the source path before retrying so you can confirm which files were outside the recognized import set and whether the main export file is missing.");
+  }
+
+  if (recoveryPathFiles > 0) {
+    steps.push("Spot-check the readable archive and one dataset preview because recovery-path imports are useful, but they deserve a quick completeness check before you trust them like first-class exports.");
+  }
+
+  if (run.filesImported === 0) {
+    steps.push("Do not keep rerunning the same path unchanged. Inspect it first, then either clean the export package up or switch to the vendor’s main export file.");
+  }
+
+  if (steps.length === 0 && countPackageCompanionSkips(run) > 0) {
+    steps.push("Package companion files were handled automatically, so you can keep moving with the archive and dataset review instead of troubleshooting those skipped files.");
+  }
+
+  return steps;
+}
+
+function buildPostRunStatusMessage(run: ImportRunSummary | null, fallbackMessage: string): string {
+  if (!run) {
+    return fallbackMessage;
+  }
+
+  const unexpectedSkips = countUnexpectedSkippedFiles(run);
+  const failedFiles = run.results.filter((result) => result.status === "failed").length;
+  const recoveryPathFiles =
+    run.recoveryPathFiles ??
+    run.results.filter(
+      (result) =>
+        result.metadata?.sourceCategory === "conversation" &&
+        result.metadata.supportTier === "mvp_compatibility_fallback"
+    ).length;
+
+  if (run.filesImported === 0) {
+    return "Import finished without usable outputs. Re-inspect the source path and open diagnostics before retrying.";
+  }
+
+  if (failedFiles > 0 || unexpectedSkips > 0) {
+    return "Import finished with issues. Review the archive or datasets if they were produced, then open diagnostics and import history before retrying.";
+  }
+
+  if (recoveryPathFiles > 0) {
+    return "Import finished through a recovery path. Spot-check the archive and dataset context before treating the run like a first-class export.";
+  }
+
+  if (countPackageCompanionSkips(run) > 0) {
+    return "Import finished cleanly. Vendor package companion files were handled automatically, so you can move straight into archive and dataset review.";
+  }
+
+  return "Import finished cleanly. Open the readable archive first, then use datasets if you want structured output.";
+}
+
 export default function ImportsScreen() {
   const { openRetrievalInvestigation, setActiveScreen } = useNavigation();
   const { settings, updateSettings } = useSettings();
@@ -238,6 +316,7 @@ export default function ImportsScreen() {
       if (!current) return result.latest;
       return result.runs.find((run) => run.runAt === current.runAt) ?? result.latest;
     });
+    return result;
   }
 
   async function runHistorySearch(filters: ImportHistoryFilters) {
@@ -354,14 +433,14 @@ export default function ImportsScreen() {
     const result = await submitImportJob(form);
 
     if (result.ok) {
+      const refreshedHistory = await refreshImportHistory();
       setRunState("success");
-      setStatusMessage(result.message);
+      setStatusMessage(buildPostRunStatusMessage(refreshedHistory.latest, result.message));
       setLogEntries((prev) => [
-        makeLogEntry("success", result.message),
+        makeLogEntry("success", buildPostRunStatusMessage(refreshedHistory.latest, result.message)),
         ...prev
       ]);
       await refreshArchiveNotifications();
-      await refreshImportHistory();
       await refreshSourceSummary();
       return;
     }
@@ -387,6 +466,7 @@ export default function ImportsScreen() {
   const hasDatasetOutputs = !!latestRunForNextSteps?.retrievalSummary;
   const latestPackageCompanionSkips = countPackageCompanionSkips(latestRunForNextSteps ?? null);
   const runNeedsDiagnostics = runNeedsAttention(latestRunForNextSteps ?? null);
+  const recoveryGuidance = buildRecoveryGuidance(latestRunForNextSteps ?? null);
 
   function nextStepSummary(run: ImportRunSummary): string {
     if (run.filesImported === 0) {
@@ -438,7 +518,7 @@ export default function ImportsScreen() {
         </p>
         <ul>
           <li>ChatGPT and Grok are the clearest ready-now conversation import paths.</li>
-          <li>Claude-style JSON, Gemini My Activity HTML, and proven Copilot activity CSV exports can still import through recovery paths when their structure is intact.</li>
+          <li>Claude exports, Gemini My Activity HTML, and proven Microsoft Copilot activity CSV exports can still import through recovery paths when their structure is intact.</li>
           <li>Quantum inspects a file or folder first, then tells you what it can import, archive, or skip before the run starts.</li>
           <li>Conversation imports produce both a readable archive and privacy-aware dataset records in the same local run.</li>
           <li>Keep one stable output folder for related imports so history, search, and datasets stay connected.</li>
@@ -532,6 +612,50 @@ export default function ImportsScreen() {
         )}
       </div>
 
+      <div className="panel">
+        <h2>Recovery Guidance</h2>
+        {!latestRunForNextSteps ? (
+          <p className="muted">
+            After your first import, Quantum will explain whether you can move straight to archive and datasets or whether a failed, skipped, or recovery-path result needs a quick check first.
+          </p>
+        ) : recoveryGuidance.length === 0 ? (
+          <p className="muted">
+            This run does not need special recovery steps. You can keep moving into archive review and dataset review.
+          </p>
+        ) : (
+          <>
+            <p className="muted">
+              Use these checks before retrying an import or treating every record in this run as fully reliable.
+            </p>
+            <ul>
+              {recoveryGuidance.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ul>
+            <div className="action-bar">
+              <button className="secondary-btn" type="button" onClick={refreshSourceSummary}>
+                Re-Inspect Current Path
+              </button>
+              {runNeedsDiagnostics ? (
+                <button className="secondary-btn" type="button" onClick={() => setActiveScreen("diagnostics")}>
+                  Open Diagnostics
+                </button>
+              ) : null}
+              {hasConversationOutputs ? (
+                <button className="secondary-btn" type="button" onClick={() => setActiveScreen("organized-output")}>
+                  Review Archive
+                </button>
+              ) : null}
+              {hasDatasetOutputs ? (
+                <button className="secondary-btn" type="button" onClick={() => setActiveScreen("datasets")}>
+                  Review Dataset Context
+                </button>
+              ) : null}
+            </div>
+          </>
+        )}
+      </div>
+
       <ImportHistoryPanel
         history={importHistory}
         selectedRun={selectedRun}
@@ -614,7 +738,7 @@ export default function ImportsScreen() {
                   <tbody>
                     {sourceSummary.sampleFiles.map((entry) => (
                       <tr key={entry.path} className={sourceEntryRowClassName(entry.kind)}>
-                        <td>{formatSourceEntryKindLabel(entry.kind)}</td>
+                        <td>{formatSourceEntryKindLabel(entry)}</td>
                         <td>{formatSupportTierLabel(entry.supportTier)}</td>
                         <td>{entry.path}</td>
                         <td>{entry.reason}</td>

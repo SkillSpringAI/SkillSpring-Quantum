@@ -10,6 +10,7 @@ assert.equal(summary.totalFiles, 1, "Expected one Claude fixture file");
 assert.equal(summary.supportedFiles, 1, "Expected Claude fixture to be supported");
 assert.equal(summary.countsByKind.conversation_json, 1, "Expected Claude export to be classified as a conversation import");
 assert.equal(summary.sampleFiles[0]?.supportTier, "mvp_compatibility_fallback", "Expected Claude export to be fallback tier");
+assert.equal(summary.sampleFiles[0]?.displayLabel, "Claude export", "Expected Claude export label to stay vendor-specific");
 assert.ok(
   summary.sampleFiles[0]?.reason.includes("Claude export"),
   "Expected Claude export reason to mention Claude export"

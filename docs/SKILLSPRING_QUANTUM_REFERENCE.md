@@ -38,8 +38,11 @@ This is narrower than the full internal parser and document-ingestion surface al
 - dataset source-context handoff that now carries recovery-path status and package-companion handling into the datasets screen
 - desktop archive notification panel on Imports and Organized Output screens
 - desktop import history panel with recent-run browsing, full-history investigation search, direct retrieval handoff, and per-file output links
+- clearer vendor-specific intake labeling across source inspection and import history for ChatGPT, Grok, Claude, Gemini, and proven Copilot fallback paths
+- recovery guidance across imports and import history so failed, skipped, and fallback runs explain the next useful checks in plain English
 - desktop retrieval screen with vendor/topic/date narrowing, linked segment inspection, and saved investigations
 - desktop markdown archive browser grouped by inferred topic folder
+- archive-to-dataset handoff from selected markdown files into matched dataset context
 - governance rule loading, validation, editing, and write reports
 - tiered database storage for raw, processed, curated, and private-review records
 - privacy-aware versioned dataset records derived from segmented conversation content
@@ -65,9 +68,9 @@ This is narrower than the full internal parser and document-ingestion surface al
 ## Current Gaps / Next Build Targets
 
 - harden the first user-facing major vendor set so the app promise and real behavior match
-- continue improving source-context trust handoff inside dataset browsing so recovery-path caution and vendor-package handling stay visible at the record-review layer
-- add stronger direct dataset export controls beyond file-open actions
-- connect import summaries, archive browsing, and dataset browsing even more tightly across screens, especially from archive browsing forward
+- carry archive-selected trust context deeper into dataset review and preview layers so users can tell exactly what came from the archive handoff versus the latest current bundle
+- decide whether dataset-side historical preview should eventually read versioned run files directly instead of always reflecting the latest current bundle
+- connect import summaries, archive browsing, and dataset browsing even more tightly across screens, especially around stable historical versus rolling-current dataset scope
 - surface preserved conversation attachments more clearly inside archive and dataset trust flows
 - add direct UI controls for curated promotion, purge restore, and folder merge flows when they become more central to user value
 - decide whether archive-only versus archive-plus-dataset import controls are worth exposing after the current dataset trust work settles
@@ -88,9 +91,10 @@ The desktop product now has a clearer end-to-end shape than earlier reference sn
 
 - Settings can persist a configurable output root across the app
 - Imports can inspect sources, run local imports, and show recent import history with file-level outcomes
+- Imports and import history now explain recovery-path, failed, and skipped outcomes with concrete next-step guidance
 - Retrieval can search prior imports and linked dataset segments, save named investigations, and reopen them later
-- Readable Archive browsing now supports topic/source/date filtering, in-app file navigation, archive-event file opening, and preserved-attachment handoff
-- Datasets now include source-context trust summaries, redaction/trust cards, and in-app previews of topic segments, prompt/response pairs, micro segments, and private-review records
+- Readable Archive browsing now supports topic/source/date filtering, in-app file navigation, archive-event file opening, preserved-attachment handoff, and direct dataset-context handoff from selected archive files
+- Datasets now include source-context trust summaries, redaction/trust cards, in-app previews of topic segments, prompt/response pairs, micro segments, and private-review records, plus current-bundle versus historical-run handoff controls
 
 This means the current product is no longer just "pipeline wrappers plus file-open buttons." It now provides a more coherent local review workflow across imports, archives, and datasets.
 

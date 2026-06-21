@@ -44,6 +44,7 @@ export type ImportSourceKind =
 export interface ImportSourceEntry {
   path: string;
   kind: ImportSourceKind;
+  displayLabel: string;
   supported: boolean;
   supportTier: ImportSupportTier;
   reason: string;
@@ -875,6 +876,7 @@ async function classifyImportFile(
     return {
       path: filePath,
       kind: "unsupported",
+      displayLabel: "Vendor package companion file",
       supported: false,
       supportTier: "unsupported",
       reason: companionReason
@@ -887,6 +889,7 @@ async function classifyImportFile(
     return {
       path: filePath,
       kind: "pdf_document",
+      displayLabel: "PDF document",
       supported: true,
       supportTier: "experimental_expansion",
       reason: "Archive the PDF and attempt local text extraction when available."
@@ -904,6 +907,7 @@ async function classifyImportFile(
           return {
             path: filePath,
             kind: "conversation_json",
+            displayLabel: "Microsoft Copilot activity export",
             supported: true,
             supportTier,
             reason: "Recognized as a Microsoft Copilot activity export and will be recovered through compatibility fallback parsing."
@@ -917,6 +921,7 @@ async function classifyImportFile(
     return {
       path: filePath,
       kind: "text_document",
+      displayLabel: "Text document",
       supported: true,
       supportTier: "experimental_expansion",
       reason: "Archive the text file and add a source-document dataset record."
@@ -933,6 +938,7 @@ async function classifyImportFile(
         return {
           path: filePath,
           kind: "chatgpt_export",
+          displayLabel: "ChatGPT export",
           supported: true,
           supportTier: "mvp_first_class",
           reason: "Recognized as a ChatGPT export and will be imported as conversations."
@@ -949,6 +955,7 @@ async function classifyImportFile(
         return {
           path: filePath,
           kind: "conversation_json",
+          displayLabel: buildConversationImportDisplayLabel(detected.kind, vendorSources),
           supported: true,
           supportTier,
           reason:
@@ -963,6 +970,7 @@ async function classifyImportFile(
       return {
         path: filePath,
         kind: "json_document",
+        displayLabel: "JSON document",
         supported: true,
         supportTier: "experimental_expansion",
         reason: "Archive the JSON file and add a source-document dataset record."
@@ -971,6 +979,7 @@ async function classifyImportFile(
       return {
         path: filePath,
         kind: "text_document",
+        displayLabel: "Text document",
         supported: true,
         supportTier: "experimental_expansion",
         reason: "Treat as raw text, archive it, and add a source-document dataset record."
@@ -986,6 +995,7 @@ async function classifyImportFile(
         return {
           path: filePath,
           kind: "gemini_activity_html",
+          displayLabel: "Gemini My Activity export",
           supported: true,
           supportTier: "mvp_compatibility_fallback",
           reason: "Recognized as Gemini My Activity HTML and will be recovered through compatibility fallback parsing."
@@ -999,10 +1009,27 @@ async function classifyImportFile(
   return {
     path: filePath,
     kind: "unsupported",
+    displayLabel: "Unsupported file",
     supported: false,
     supportTier: "unsupported",
     reason: "Skip this file because it is outside the current recognized import set."
   };
+}
+
+function buildConversationImportDisplayLabel(
+  detectedKind: "grok_export" | "claude_export" | "generic_conversation",
+  vendorSources: ConversationImportMetadata["vendorSources"]
+): string {
+  if (detectedKind === "grok_export") {
+    return "Grok export";
+  }
+
+  if (detectedKind === "claude_export") {
+    return "Claude export";
+  }
+
+  const vendorLabel = vendorSources.length > 0 ? formatVendorSourceList(vendorSources) : "Recovered";
+  return vendorLabel + " conversation JSON";
 }
 
 function uniqueConversationSources(

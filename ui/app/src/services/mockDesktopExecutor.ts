@@ -203,6 +203,7 @@ export async function executeMockDesktopCommand(
         countsByKind: {
           chatgpt_export: 0,
           conversation_json: 0,
+          gemini_activity_html: 0,
           json_document: 0,
           text_document: 0,
           pdf_document: 0,

@@ -332,11 +332,13 @@ export default function MarkdownArchiveBrowser({
                     openDatasetInvestigation({
                       vendor: selectedFile.source,
                       topic: selectedFile.topic ?? selectedFile.rawTopic,
-                      createdAt: selectedFile.createdAt
+                      createdAt: selectedFile.createdAt,
+                      archiveTitle: selectedFile.title ?? selectedFile.name,
+                      archivePath: selectedFile.path
                     })
                   }
                 >
-                  Open Related Dataset
+                  Open Related Dataset Context
                 </button>
                 {selectedTopic ? (
                   <button

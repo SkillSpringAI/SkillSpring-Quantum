@@ -10,6 +10,11 @@ assert.equal(summary.totalFiles, 1, "Expected one Copilot fixture file");
 assert.equal(summary.supportedFiles, 1, "Expected Copilot fixture to be supported");
 assert.equal(summary.countsByKind.conversation_json, 1, "Expected Copilot CSV to be classified as a conversation import");
 assert.equal(summary.sampleFiles[0]?.supportTier, "mvp_compatibility_fallback", "Expected Copilot CSV to be fallback tier");
+assert.equal(
+  summary.sampleFiles[0]?.displayLabel,
+  "Microsoft Copilot activity export",
+  "Expected Copilot CSV label to stay vendor-specific"
+);
 assert.ok(
   summary.sampleFiles[0]?.reason.includes("Microsoft Copilot activity export"),
   "Expected Copilot CSV reason to mention Copilot activity export"

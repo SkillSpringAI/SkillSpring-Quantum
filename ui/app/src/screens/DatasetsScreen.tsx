@@ -15,10 +15,15 @@ import { findMatchingDatasetRun } from "../utils/datasetIntent";
 function buildDatasetArtifactPaths(outputRoot: string) {
   return {
     dbRoot: outputRoot + "\\db",
+    datasetsRoot: outputRoot + "\\datasets",
+    currentRoot: outputRoot + "\\datasets\\current",
     manifestsRoot: outputRoot + "\\datasets\\manifests",
-    currentTopicSegments: outputRoot + "\\datasets\\current\\topic_segments.current.jsonl",
-    currentPromptResponse: outputRoot + "\\datasets\\current\\prompt_response_pairs.current.jsonl",
-    currentMicroSegments: outputRoot + "\\datasets\\current\\micro_segments.current.jsonl",
+    topicSegmentsVersionRoot: outputRoot + "\\datasets\\topic_segments",
+    promptResponseVersionRoot: outputRoot + "\\datasets\\prompt_response_pairs",
+    microSegmentsVersionRoot: outputRoot + "\\datasets\\micro_segments",
+    currentTopicSegments: outputRoot + "\\datasets\\current\\topic_segments.jsonl",
+    currentPromptResponse: outputRoot + "\\datasets\\current\\prompt_response_pairs.jsonl",
+    currentMicroSegments: outputRoot + "\\datasets\\current\\micro_segments.jsonl",
     currentPrivateReview: outputRoot + "\\db\\tier3_private_review\\topic_segments_private_review.jsonl",
     diagnostics: outputRoot + "\\diagnostics\\latest-run.json"
   };
@@ -41,6 +46,13 @@ export default function DatasetsScreen() {
   const [previewTotal, setPreviewTotal] = useState(0);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewStatus, setPreviewStatus] = useState("Loading dataset preview...");
+  const [archiveHandoffSummary, setArchiveHandoffSummary] = useState<{
+    archiveTitle: string;
+    archivePath?: string;
+    vendor?: string;
+    topic?: string;
+    matchedRunId?: string;
+  } | null>(null);
 
   useEffect(() => {
     loadLatestDatasetRun(settings.outputRoot, 8).then((result) => {
@@ -67,6 +79,14 @@ export default function DatasetsScreen() {
       setSelectedRunId(matchingRun.run_id);
     }
 
+    setArchiveHandoffSummary({
+      archiveTitle: datasetIntent.archiveTitle ?? "Archive handoff",
+      archivePath: datasetIntent.archivePath,
+      vendor: datasetIntent.vendor,
+      topic: datasetIntent.topic,
+      matchedRunId: matchingRun?.run_id
+    });
+
     clearDatasetIntent();
   }, [datasetIntent, datasetRun, clearDatasetIntent]);
 
@@ -78,11 +98,49 @@ export default function DatasetsScreen() {
   const selectedManifestPath = selectedRun
     ? artifactPaths.manifestsRoot + "\\" + selectedRun.run_id + ".json"
     : datasetRun?.manifestPath ?? artifactPaths.manifestsRoot + "\\latest-dataset-run.json";
+  const selectedVersionedPaths = selectedRun
+    ? {
+        topicSegments:
+          artifactPaths.topicSegmentsVersionRoot +
+          "\\" +
+          selectedRun.dataset_version +
+          "\\data.jsonl",
+        promptResponse:
+          artifactPaths.promptResponseVersionRoot +
+          "\\" +
+          selectedRun.dataset_version +
+          "\\data.jsonl",
+        microSegments:
+          artifactPaths.microSegmentsVersionRoot +
+          "\\" +
+          selectedRun.dataset_version +
+          "\\data.jsonl",
+        topicSegmentsFolder:
+          artifactPaths.topicSegmentsVersionRoot +
+          "\\" +
+          selectedRun.dataset_version,
+        promptResponseFolder:
+          artifactPaths.promptResponseVersionRoot +
+          "\\" +
+          selectedRun.dataset_version,
+        microSegmentsFolder:
+          artifactPaths.microSegmentsVersionRoot +
+          "\\" +
+          selectedRun.dataset_version
+      }
+    : null;
   const selectedSourceContext = selectedRun?.source_context;
+  const selectedAttachmentTrust = buildAttachmentTrustPaths(
+    datasetRun?.outputRoot ?? settings.outputRoot,
+    selectedSourceContext?.vendor_sources ?? []
+  );
   const selectedSourceSummary = summarizeDatasetSourceContext(selectedSourceContext);
   const selectedSourceBadges = summarizeDatasetSourceBadges(selectedSourceContext);
   const selectedSourceNeedsAttention = selectedSourceContext?.support_tier === "mvp_compatibility_fallback";
   const selectedSourceTopics = selectedSourceContext?.topic_hints.slice(0, 4) ?? [];
+  const previewUsesHistoricalRun =
+    Boolean(selectedRun && datasetRun?.latest) &&
+    selectedRun?.run_id !== datasetRun?.latest?.run_id;
   const selectedRedactionSummary = selectedRun?.redaction_summary;
   const selectedRedactionExplanation = summarizeRedactionExplanation(
     selectedRedactionSummary,
@@ -149,6 +207,34 @@ export default function DatasetsScreen() {
             <p className="muted">
               These files are the structured dataset outputs generated from imported conversation runs in this output folder.
             </p>
+            {archiveHandoffSummary ? (
+              <div className="detail-box">
+                <strong>Archive Handoff</strong>
+                <p className="muted">
+                  Arrived from archive file: {archiveHandoffSummary.archiveTitle}
+                </p>
+                <p className="muted">
+                  Matched dataset run: {archiveHandoffSummary.matchedRunId ?? "No specific run match found, showing best available dataset run."}
+                </p>
+                <p className="muted">
+                  Handoff context:
+                  {" "}{[
+                    archiveHandoffSummary.vendor ? "vendor " + archiveHandoffSummary.vendor : "",
+                    archiveHandoffSummary.topic ? "topic " + archiveHandoffSummary.topic : ""
+                  ].filter(Boolean).join(" | ") || "limited archive metadata"}
+                </p>
+                <div className="action-bar">
+                  {archiveHandoffSummary.archivePath ? (
+                    <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(archiveHandoffSummary.archivePath ?? "")}>
+                      Reopen Archive File
+                    </button>
+                  ) : null}
+                  <button className="secondary-btn" type="button" onClick={() => setArchiveHandoffSummary(null)}>
+                    Clear Handoff
+                  </button>
+                </div>
+              </div>
+            ) : null}
             {datasetRun && datasetRun.runs.length > 1 ? (
               <div className="detail-box">
                 <strong>Recent Dataset Runs</strong>
@@ -246,11 +332,29 @@ export default function DatasetsScreen() {
                       }
                     >
                       Find Imported Files
-                    </button>
-                  ) : null}
-                  {selectedSourceNeedsAttention ? (
-                    <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(artifactPaths.diagnostics)}>
-                      Open Latest Diagnostics
+                      </button>
+                    ) : null}
+                    {selectedAttachmentTrust && (selectedSourceContext.attachment_count ?? 0) > 0 ? (
+                      <>
+                        <button
+                          className="secondary-btn"
+                          type="button"
+                          onClick={() => revealDesktopPath(selectedAttachmentTrust.archiveRoot)}
+                        >
+                          Open Preserved Attachments
+                        </button>
+                        <button
+                          className="secondary-btn"
+                          type="button"
+                          onClick={() => revealDesktopPath(selectedAttachmentTrust.manifestPath)}
+                        >
+                          Open Attachment Manifest
+                        </button>
+                      </>
+                    ) : null}
+                    {selectedSourceNeedsAttention ? (
+                      <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(artifactPaths.diagnostics)}>
+                        Open Latest Diagnostics
                     </button>
                   ) : null}
                 </div>
@@ -285,14 +389,11 @@ export default function DatasetsScreen() {
               <button className="primary-btn" type="button" onClick={() => revealDesktopPath(selectedManifestPath)}>
                 Open Selected Dataset Summary
               </button>
-              <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(artifactPaths.currentTopicSegments)}>
-                Open Current Topic Segments
+              <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(artifactPaths.currentRoot)}>
+                Open Current Dataset Bundle
               </button>
-              <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(artifactPaths.currentPromptResponse)}>
-                Open Current Prompt/Response
-              </button>
-              <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(artifactPaths.currentMicroSegments)}>
-                Open Current Micro Segments
+              <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(artifactPaths.manifestsRoot)}>
+                Open Dataset Summaries Folder
               </button>
             </div>
           </>
@@ -355,6 +456,88 @@ export default function DatasetsScreen() {
       </div>
 
       <div className="panel large">
+        <h2>Dataset Outputs</h2>
+        {selectedRun ? (
+          <>
+            <p className="muted">
+              Use this section when you want to choose the right dataset artifact quickly. Current outputs are the rolling latest files, while selected run outputs reflect the historical build shown above.
+            </p>
+            <div className="detail-box">
+              <strong>Quick Handoff</strong>
+              <p className="muted">
+                Use the current bundle when another tool should read the latest accumulated dataset files. Use the selected run summary and version folders when you need a stable historical snapshot instead.
+              </p>
+              {previewUsesHistoricalRun ? (
+                <p className="muted">
+                  You are inspecting an older dataset run summary right now. The preview below still reflects the latest current bundle in this output folder, not this historical snapshot.
+                </p>
+              ) : null}
+              <div className="action-bar">
+                <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(artifactPaths.currentRoot)}>
+                  Open Current Bundle Folder
+                </button>
+                {previewUsesHistoricalRun && datasetRun?.latest ? (
+                  <button className="secondary-btn" type="button" onClick={() => setSelectedRunId(datasetRun.latest?.run_id ?? null)}>
+                    Switch To Latest Run
+                  </button>
+                ) : null}
+                {selectedVersionedPaths ? (
+                  <>
+                    <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(selectedVersionedPaths.topicSegmentsFolder)}>
+                      Open Topic Run Folder
+                    </button>
+                    <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(selectedVersionedPaths.promptResponseFolder)}>
+                      Open Pair Run Folder
+                    </button>
+                    <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(selectedVersionedPaths.microSegmentsFolder)}>
+                      Open Micro Run Folder
+                    </button>
+                  </>
+                ) : null}
+                <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(selectedManifestPath)}>
+                  Open Selected Run Summary
+                </button>
+              </div>
+            </div>
+            <div className="stats-grid two-col">
+              {buildDatasetOutputCards(
+                artifactPaths,
+                selectedVersionedPaths,
+                selectedSourceNeedsAttention
+              ).map((card) => (
+                <div key={card.label} className="stat-card">
+                  <span className="label">{card.label}</span>
+                  <strong>{card.title}</strong>
+                  <p className="muted">{card.note}</p>
+                  <p className="muted">{card.trustNote}</p>
+                  <div className="action-bar">
+                    <button className="primary-btn" type="button" onClick={() => revealDesktopPath(card.currentPath)}>
+                      Open Current File
+                    </button>
+                    {card.versionedPath ? (
+                      <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(card.versionedPath)}>
+                        Open Selected Run File
+                      </button>
+                    ) : null}
+                    <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(card.folderPath)}>
+                      Open Run Folder
+                    </button>
+                    <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(card.currentFolderPath)}>
+                      Open Current Folder
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="muted">
+            Dataset output controls appear after a dataset-producing import is available.
+          </p>
+        )}
+      </div>
+
+      <div className="panel large">
         <div className="panel-heading-row">
           <h2>Dataset Preview</h2>
           <button
@@ -369,6 +552,24 @@ export default function DatasetsScreen() {
         <p className="muted">
           Preview current dataset records inside the app before opening raw files. This reflects the current output folder contents, which may be newer than the selected historical run summary.
         </p>
+        <div className="detail-box">
+          <strong>Preview Scope</strong>
+          <p className="muted">
+            Selected run summary: {selectedRun ? selectedRun.run_id : "No run selected"}
+          </p>
+          <p className="muted">
+            Preview source: {datasetRun?.latest ? datasetRun.latest.run_id : "Current dataset bundle unavailable"}
+          </p>
+          {previewUsesHistoricalRun ? (
+            <p className="muted">
+              These preview cards are showing the latest accumulated dataset files, so use the selected run summary and run-folder actions above if you need a stable historical handoff.
+            </p>
+          ) : (
+            <p className="muted">
+              The selected run summary and the in-app preview are aligned to the same latest dataset bundle.
+            </p>
+          )}
+        </div>
         <div className="action-bar">
           {(
             Object.keys(DATASET_PREVIEW_CONFIG) as DatasetPreviewKind[]
@@ -447,6 +648,7 @@ export default function DatasetsScreen() {
           <li>Start with Selected Import Context when you want to know where this dataset came from and whether it used a recovery path.</li>
           <li>Use Recent Dataset Runs when you want to compare the latest dataset with an earlier import in the same output folder.</li>
           <li>The selected dataset summary is per run, while the current dataset files reflect the latest accumulated current outputs.</li>
+          <li>Use Dataset Outputs when you want to choose between the rolling current file and the versioned artifact for the selected historical run.</li>
           <li>Privacy handling summarizes which common sensitive patterns were redacted before dataset records were written.</li>
           <li>Governance is available under More Tools for power users, but it should not block normal importing or dataset review.</li>
           <li>Open topic segments when you want the clearest topic-organized view of imported conversations.</li>
@@ -494,6 +696,92 @@ const DATASET_PREVIEW_CONFIG: Record<
     collection: "topic_segments"
   }
 };
+
+function buildDatasetOutputCards(
+  artifactPaths: ReturnType<typeof buildDatasetArtifactPaths>,
+  selectedVersionedPaths: {
+    topicSegments: string;
+    promptResponse: string;
+    microSegments: string;
+  } | null,
+  selectedSourceNeedsAttention: boolean
+): Array<{
+  label: string;
+  title: string;
+  note: string;
+  trustNote: string;
+  currentPath: string;
+  versionedPath?: string;
+  currentFolderPath: string;
+  folderPath: string;
+}> {
+  return [
+    {
+      label: "Topic Segments",
+      title: "Best for context-rich dataset review",
+      note: "Choose this when you want the clearest topic-organized conversation chunks.",
+      trustNote: selectedSourceNeedsAttention
+        ? "Selected run used a recovery path, so this is a good first file to spot-check for completeness."
+        : "This is usually the best first file when you want to validate overall dataset quality.",
+      currentPath: artifactPaths.currentTopicSegments,
+      currentFolderPath: artifactPaths.currentRoot,
+      versionedPath: selectedVersionedPaths?.topicSegments,
+      folderPath: selectedVersionedPaths?.topicSegmentsFolder ?? artifactPaths.topicSegmentsVersionRoot
+    },
+    {
+      label: "Prompt/Response Pairs",
+      title: "Best for quick QA-style review",
+      note: "Choose this when you want compact question-and-answer examples instead of longer threaded context.",
+      trustNote: "This view is easiest for fast manual checks, but it shows less surrounding conversation context than topic segments.",
+      currentPath: artifactPaths.currentPromptResponse,
+      currentFolderPath: artifactPaths.currentRoot,
+      versionedPath: selectedVersionedPaths?.promptResponse,
+      folderPath: selectedVersionedPaths?.promptResponseFolder ?? artifactPaths.promptResponseVersionRoot
+    },
+    {
+      label: "Micro Segments",
+      title: "Best for spot checks and retrieval",
+      note: "Choose this when you want smaller windows for search, lightweight review, or downstream retrieval use.",
+      trustNote: "Micro segments are compact and useful for search-oriented tasks, but they intentionally trade away some broader thread context.",
+      currentPath: artifactPaths.currentMicroSegments,
+      currentFolderPath: artifactPaths.currentRoot,
+      versionedPath: selectedVersionedPaths?.microSegments,
+      folderPath: selectedVersionedPaths?.microSegmentsFolder ?? artifactPaths.microSegmentsVersionRoot
+    },
+    {
+      label: "Private Review",
+      title: "Best for the most sensitive records",
+      note: "Choose this when you want the records that were separated for extra trust or privacy caution.",
+      trustNote: "Treat this as the highest-caution dataset surface before normal reuse or promotion decisions.",
+      currentPath: artifactPaths.currentPrivateReview,
+      currentFolderPath: artifactPaths.dbRoot,
+      folderPath: artifactPaths.dbRoot
+    }
+  ];
+}
+
+function buildAttachmentTrustPaths(
+  outputRoot: string,
+  vendors: string[]
+): { manifestPath: string; archiveRoot: string } | null {
+  const normalized = vendors.map((vendor) => vendor.toLowerCase());
+
+  if (normalized.includes("grok")) {
+    return {
+      manifestPath: outputRoot + "\\db\\manifests\\latest-grok-attachment-archive.json",
+      archiveRoot: outputRoot + "\\source_archive\\grok_attachments"
+    };
+  }
+
+  if (normalized.includes("gemini")) {
+    return {
+      manifestPath: outputRoot + "\\db\\manifests\\latest-gemini-attachment-archive.json",
+      archiveRoot: outputRoot + "\\source_archive\\gemini_attachments"
+    };
+  }
+
+  return null;
+}
 
 function summarizeDatasetSourceContext(sourceContext: DatasetSourceContext | undefined): string {
   if (!sourceContext) {

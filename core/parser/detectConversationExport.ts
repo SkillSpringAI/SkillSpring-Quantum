@@ -1,4 +1,6 @@
 import type { ParseResult } from "./types.js";
+import { parseClaudeExport, isClaudeExportShape } from "./claude.js";
+import { parseGeminiExport, isGeminiExportShape } from "./gemini.js";
 import { parseChatGPTExport } from "./chatgpt.js";
 import { parseCopilotActivityCsv } from "./copilotActivityCsv.js";
 import { parseGeminiActivityHtml } from "./geminiActivityHtml.js";
@@ -9,6 +11,7 @@ export type ConversationParserKind =
   | "chatgpt_export"
   | "grok_export"
   | "claude_export"
+  | "gemini_export"
   | "copilot_activity_csv"
   | "gemini_activity_html"
   | "generic_conversation"
@@ -83,18 +86,33 @@ export function detectAndParseConversationExport(raw: unknown): DetectedConversa
     };
   }
 
-  const generic = parseGenericConversationExport(raw);
-  if (generic.conversations.length > 0 && looksLikeClaudeExport(raw, generic)) {
+  const claude = parseClaudeExport(raw);
+  if (claude.conversations.length > 0) {
     return {
       kind: "claude_export",
       label: "Claude export",
-      parsed: generic,
+      parsed: claude,
       diagnostics: {
         ...diagnostics,
         matchedPath: diagnostics.matchedPath ?? "[0].chat_messages"
       }
     };
   }
+
+  const gemini = parseGeminiExport(raw);
+  if (gemini.conversations.length > 0) {
+    return {
+      kind: "gemini_export",
+      label: "Gemini export",
+      parsed: gemini,
+      diagnostics: {
+        ...diagnostics,
+        matchedPath: diagnostics.matchedPath ?? "messages"
+      }
+    };
+  }
+
+  const generic = parseGenericConversationExport(raw);
 
   if (generic.conversations.length > 0) {
     return {
@@ -145,44 +163,14 @@ export function inspectConversationExportShape(raw: unknown): ConversationDetect
 
   return {
     topLevelKeys,
-    matchedPath: candidateContainers[0] ?? null,
+    matchedPath: isClaudeExportShape(raw)
+      ? "[0].chat_messages"
+      : isGeminiExportShape(raw)
+        ? "messages"
+      : candidateContainers[0] ?? null,
     candidateContainers,
     candidateMessageKeys
   };
-}
-
-function looksLikeClaudeExport(raw: unknown, parsed: ParseResult): boolean {
-  if (!Array.isArray(raw) || parsed.conversations.length === 0) {
-    return false;
-  }
-
-  const sample = raw[0];
-  if (!sample || typeof sample !== "object") {
-    return false;
-  }
-
-  const record = sample as Record<string, unknown>;
-  if (
-    typeof record.uuid !== "string" ||
-    !Array.isArray(record.chat_messages) ||
-    !record.account ||
-    typeof record.account !== "object" ||
-    (!("name" in record) && !("summary" in record))
-  ) {
-    return false;
-  }
-
-  const firstMessage = record.chat_messages[0];
-  if (!firstMessage || typeof firstMessage !== "object") {
-    return false;
-  }
-
-  const firstMessageRecord = firstMessage as Record<string, unknown>;
-  return (
-    typeof firstMessageRecord.sender === "string" &&
-    "attachments" in firstMessageRecord &&
-    "files" in firstMessageRecord
-  );
 }
 
 function findContainerPaths(raw: unknown): string[] {

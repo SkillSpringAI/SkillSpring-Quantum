@@ -1,6 +1,7 @@
 import assert from "node:assert";
 import { readFile } from "node:fs/promises";
 import claudeFixture from "../fixtures/sample-claude-conversation.json" with { type: "json" };
+import geminiFixture from "../fixtures/sample-gemini-conversation.json" with { type: "json" };
 import chatgptFixture from "../fixtures/sample-chatgpt-conversation.json" with { type: "json" };
 import genericFixture from "../fixtures/sample-generic-conversation.json" with { type: "json" };
 import grokFixture from "../fixtures/sample-grok-export.json" with { type: "json" };
@@ -30,6 +31,13 @@ assert.equal(detectedClaude.parsed.conversations.length, 1, "Expected parsed Cla
 assert.equal(detectedClaude.parsed.conversations[0].source, "claude", "Expected Claude source");
 assert.equal(detectedClaude.parsed.conversations[0].messages[0].attachments?.length, 2, "Expected Claude attachment refs to parse");
 assert.equal(detectedClaude.diagnostics.matchedPath, "[0].chat_messages", "Expected Claude diagnostics path");
+
+const detectedGemini = detectAndParseConversationExport(geminiFixture);
+assert.equal(detectedGemini.kind, "gemini_export", "Expected Gemini fixture to detect as gemini_export");
+assert.equal(detectedGemini.label, "Gemini export", "Expected Gemini export label");
+assert.equal(detectedGemini.parsed.conversations.length, 1, "Expected parsed Gemini conversation");
+assert.equal(detectedGemini.parsed.conversations[0].source, "gemini", "Expected Gemini source");
+assert.equal(detectedGemini.diagnostics.matchedPath, "messages", "Expected Gemini diagnostics path");
 
 const copilotFixture = await readFile(new URL("../fixtures/sample-copilot-activity.csv", import.meta.url), "utf-8");
 const detectedCopilot = detectAndParseConversationExport(copilotFixture);

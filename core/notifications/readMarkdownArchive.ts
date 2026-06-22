@@ -18,6 +18,22 @@ interface MarkdownArchiveFile {
   conversationId?: string;
   startIndex?: number;
   endIndex?: number;
+  supportTier?: "mvp_first_class" | "compatibility_fallback" | "unknown";
+  hasAttachmentReferences?: boolean;
+  hasPreservedAttachments?: boolean;
+  hasMissingAttachments?: boolean;
+  attachments?: MarkdownArchiveAttachment[];
+}
+
+interface MarkdownArchiveAttachment {
+  id: string;
+  label: string;
+  mimeType?: string;
+  archivePath?: string;
+  previewPath?: string;
+  resolvedArchivePath?: string;
+  resolvedPreviewPath?: string;
+  status: "preserved" | "preview_only" | "referenced_only";
 }
 
 interface MarkdownArchiveTopic {
@@ -53,7 +69,7 @@ function isTopicFolder(name: string): boolean {
   return /^\d{4}-\d{2}_/.test(name);
 }
 
-async function listMarkdownFiles(topicPath: string, topicFolder: string): Promise<MarkdownArchiveFile[]> {
+async function listMarkdownFiles(outputRoot: string, topicPath: string, topicFolder: string): Promise<MarkdownArchiveFile[]> {
   const entries = await fs.readdir(topicPath, { withFileTypes: true });
   const files: MarkdownArchiveFile[] = [];
 
@@ -62,7 +78,7 @@ async function listMarkdownFiles(topicPath: string, topicFolder: string): Promis
 
     const filePath = path.join(topicPath, entry.name);
     const stats = await fs.stat(filePath);
-    const details = await readMarkdownFileDetails(filePath);
+    const details = await readMarkdownFileDetails(outputRoot, filePath);
 
     files.push({
       name: entry.name,
@@ -78,7 +94,9 @@ async function listMarkdownFiles(topicPath: string, topicFolder: string): Promis
       rawTopic: details.rawTopic,
       conversationId: details.conversationId,
       startIndex: details.startIndex,
-      endIndex: details.endIndex
+      endIndex: details.endIndex,
+      hasAttachmentReferences: details.attachmentReferenceCount > 0,
+      attachments: details.attachments
     });
   }
 
@@ -107,7 +125,7 @@ async function main(): Promise<void> {
     if (!entry.isDirectory() || !isTopicFolder(entry.name)) continue;
 
     const topicPath = path.join(outputRoot, entry.name);
-    const files = await listMarkdownFiles(topicPath, entry.name);
+    const files = await listMarkdownFiles(outputRoot, topicPath, entry.name);
 
     if (files.length === 0) continue;
 
@@ -124,7 +142,11 @@ async function main(): Promise<void> {
   let selectedFile: MarkdownArchiveFile | null = null;
   let content = "";
   const attachmentSummaries = await readAttachmentArchiveSummaries(outputRoot);
-  const allFiles = topics.flatMap(topic => topic.files);
+  const topicsWithTrust = topics.map((topic) => ({
+    ...topic,
+    files: topic.files.map((file) => addTrustSignals(file, attachmentSummaries))
+  }));
+  const allFiles = topicsWithTrust.flatMap((topic) => topic.files);
 
   if (requestedFile) {
     selectedFile = allFiles.find(file => file.path === requestedFile) ?? null;
@@ -140,14 +162,14 @@ async function main(): Promise<void> {
 
   console.log(JSON.stringify({
     outputRoot,
-    topics,
+    topics: topicsWithTrust,
     selectedFile,
     content,
     attachmentSummaries
   }, null, 2));
 }
 
-async function readMarkdownFileDetails(filePath: string): Promise<{
+async function readMarkdownFileDetails(outputRoot: string, filePath: string): Promise<{
   previewText: string;
   source?: string;
   title?: string;
@@ -157,10 +179,13 @@ async function readMarkdownFileDetails(filePath: string): Promise<{
   conversationId?: string;
   startIndex?: number;
   endIndex?: number;
+  attachmentReferenceCount: number;
+  attachments: MarkdownArchiveAttachment[];
 }> {
   try {
     const raw = await fs.readFile(filePath, "utf-8");
     const metadata = extractMarkdownFrontmatter(raw);
+    const attachments = extractMarkdownAttachments(raw, outputRoot);
     return {
       previewText: extractMarkdownPreview(raw),
       source: metadata.source,
@@ -170,10 +195,12 @@ async function readMarkdownFileDetails(filePath: string): Promise<{
       rawTopic: metadata.rawTopic,
       conversationId: metadata.conversationId,
       startIndex: metadata.startIndex,
-      endIndex: metadata.endIndex
+      endIndex: metadata.endIndex,
+      attachmentReferenceCount: attachments.length,
+      attachments
     };
   } catch {
-    return { previewText: "" };
+    return { previewText: "", attachmentReferenceCount: 0, attachments: [] };
   }
 }
 
@@ -276,6 +303,120 @@ function parseFrontmatterString(value: string): string {
 function parseFrontmatterNumber(value: string): number | undefined {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function extractMarkdownAttachments(raw: string, outputRoot: string): MarkdownArchiveAttachment[] {
+  const lines = raw.split(/\r?\n/);
+  const attachments: MarkdownArchiveAttachment[] = [];
+  let inAttachmentSection = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (trimmed === "Attachments:") {
+      inAttachmentSection = true;
+      continue;
+    }
+
+    if (!inAttachmentSection) {
+      continue;
+    }
+
+    if (trimmed.startsWith("- ")) {
+      const attachment = parseAttachmentLine(trimmed, outputRoot);
+      if (attachment) {
+        attachments.push(attachment);
+      }
+      continue;
+    }
+
+    if (trimmed === "") {
+      continue;
+    }
+
+    inAttachmentSection = false;
+  }
+
+  return attachments;
+}
+
+function parseAttachmentLine(line: string, outputRoot: string): MarkdownArchiveAttachment | null {
+  const archiveMatch = line.match(/archive:\s*`([^`]+)`/i);
+  const previewMatch = line.match(/preview:\s*`([^`]+)`/i);
+  const idMatches = [...line.matchAll(/`([^`]+)`/g)].map((match) => match[1]);
+  const mimeMatch = line.match(/\(([^)]+\/[^)]+)\)/);
+
+  const archivePath = archiveMatch?.[1];
+  const previewPath = previewMatch?.[1];
+  const id =
+    idMatches.find((value) => value !== archivePath && value !== previewPath) ??
+    archivePath ??
+    previewPath;
+
+  if (!id) {
+    return null;
+  }
+
+  const label = line
+    .replace(/^- /, "")
+    .replace(/`[^`]+`/g, "")
+    .replace(/\([^)]+\)/g, "")
+    .replace(/archive:\s*$/i, "")
+    .replace(/preview:\s*$/i, "")
+    .replace(/\s*archive:\s*.*$/i, "")
+    .replace(/\s*preview:\s*.*$/i, "")
+    .trim() || id;
+
+  const resolvedArchivePath = archivePath ? path.join(outputRoot, archivePath.replace(/\//g, path.sep)) : undefined;
+  const resolvedPreviewPath = previewPath ? path.join(outputRoot, previewPath.replace(/\//g, path.sep)) : undefined;
+
+  return {
+    id,
+    label,
+    mimeType: mimeMatch?.[1],
+    archivePath,
+    previewPath,
+    resolvedArchivePath,
+    resolvedPreviewPath,
+    status: archivePath ? "preserved" : previewPath ? "preview_only" : "referenced_only"
+  };
+}
+
+function addTrustSignals(
+  file: MarkdownArchiveFile,
+  attachmentSummaries: AttachmentArchiveSummary[]
+): MarkdownArchiveFile {
+  const attachmentSummary =
+    file.source === "grok" || file.source === "gemini"
+      ? attachmentSummaries.find((summary) => summary.vendor === file.source)
+      : null;
+
+  return {
+    ...file,
+    supportTier: determineSupportTier(file.source),
+    hasPreservedAttachments:
+      !!file.hasAttachmentReferences &&
+      (attachmentSummary?.attachmentsArchived ?? 0) > 0,
+    hasMissingAttachments:
+      !!file.hasAttachmentReferences &&
+      (attachmentSummary?.attachmentsMissing ?? 0) > 0
+  };
+}
+
+function determineSupportTier(
+  source?: string
+): "mvp_first_class" | "compatibility_fallback" | "unknown" {
+  switch (source) {
+    case "chatgpt":
+    case "claude":
+    case "copilot":
+    case "grok":
+      return "mvp_first_class";
+    case "gemini":
+      return "compatibility_fallback";
+    default:
+      return "unknown";
+  }
 }
 
 async function readAttachmentArchiveSummaries(outputRoot: string): Promise<AttachmentArchiveSummary[]> {

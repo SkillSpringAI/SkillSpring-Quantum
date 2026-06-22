@@ -37,7 +37,10 @@ try {
       "",
       "# Docker Ports",
       "",
-      "Readable archive."
+      "Readable archive.",
+      "",
+      "Attachments:",
+      "- notes.txt `attachment-1`"
     ].join("\n"),
     "utf-8"
   );
@@ -84,9 +87,56 @@ try {
   assert.equal(result.selectedFile.startIndex, 0);
   assert.equal(result.selectedFile.endIndex, 2);
   assert.match(result.selectedFile.previewText, /Readable archive/);
+  assert.equal(result.selectedFile.supportTier, "mvp_first_class");
+  assert.equal(result.selectedFile.hasAttachmentReferences, true);
+  assert.equal(result.selectedFile.hasPreservedAttachments, false);
+  assert.equal(result.selectedFile.hasMissingAttachments, false);
+  assert.equal(result.selectedFile.attachments.length, 1);
+  assert.equal(result.selectedFile.attachments[0].label, "notes.txt");
+  assert.equal(result.selectedFile.attachments[0].status, "referenced_only");
   assert.equal(result.attachmentSummaries.length, 1);
   assert.equal(result.attachmentSummaries[0].vendor, "gemini");
   assert.equal(result.attachmentSummaries[0].attachmentsArchived, 2);
+
+  const geminiMarkdownPath = path.join(newerTopicDir, "2025-02-02_gemini_exports_part_0.md");
+  await writeFile(
+    geminiMarkdownPath,
+    [
+      "---",
+      "source: gemini",
+      'title: "Gemini Export"',
+      'createdAt: "2025-02-02T10:00:00.000Z"',
+      'topic: "ai exports"',
+      "---",
+      "",
+      "# Gemini Export",
+      "",
+      "Attachments:",
+      "- file.pdf `attachment-2` archive: `source_archive/gemini_attachments/file.pdf`"
+    ].join("\n"),
+    "utf-8"
+  );
+
+  const { stdout: geminiStdout } = await execFileAsync(
+    process.execPath,
+    [
+      "node_modules/tsx/dist/cli.mjs",
+      "core/notifications/readMarkdownArchive.ts",
+      outputRoot,
+      geminiMarkdownPath
+    ],
+    { cwd: process.cwd() }
+  );
+
+  const geminiResult = JSON.parse(geminiStdout);
+  assert.equal(geminiResult.selectedFile.supportTier, "compatibility_fallback");
+  assert.equal(geminiResult.selectedFile.hasAttachmentReferences, true);
+  assert.equal(geminiResult.selectedFile.hasPreservedAttachments, true);
+  assert.equal(geminiResult.selectedFile.hasMissingAttachments, true);
+  assert.equal(geminiResult.selectedFile.attachments.length, 1);
+  assert.equal(geminiResult.selectedFile.attachments[0].archivePath, "source_archive/gemini_attachments/file.pdf");
+  assert.ok(geminiResult.selectedFile.attachments[0].resolvedArchivePath.endsWith(path.join("source_archive", "gemini_attachments", "file.pdf")));
+  assert.equal(geminiResult.selectedFile.attachments[0].status, "preserved");
 
   const { stdout: defaultStdout } = await execFileAsync(
     process.execPath,
@@ -99,8 +149,8 @@ try {
   );
 
   const defaultResult = JSON.parse(defaultStdout);
-  assert.equal(defaultResult.selectedFile.path, newerMarkdownPath, "Expected latest markdown file to auto-select by default");
-  assert.match(defaultResult.content, /Latest readable archive/);
+  assert.equal(defaultResult.selectedFile.path, geminiMarkdownPath, "Expected latest markdown file to auto-select by default");
+  assert.match(defaultResult.content, /Gemini Export/);
 
   console.log("markdown-archive-reader.test.ts passed");
 } finally {

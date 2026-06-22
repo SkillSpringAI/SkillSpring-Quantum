@@ -89,21 +89,53 @@ Trust does not require exposing every internal control mechanism.
 
 The application should prioritize understandable outcomes over visible governance complexity.
 
-## Safe By Design, Not Governance Heavy
+## Governance as Quiet Product Infrastructure
 
-Quantum should be safe and auditable.
+Governance is part of the product, but it should operate at the correct layer.
 
-However, safety should not require users to navigate a large policy system.
-
-The preferred model is:
+For general users, governance should normally appear as:
 
 - sensible defaults
+- deterministic and privacy-aware processing
 - visible import results
 - traceable outputs
-- diagnostics when needed
-- clear explanations of redaction and processing
+- plain-language explanations
+- useful recovery options
+- diagnostics only when needed
 
-Advanced governance remains valuable, but should not become a barrier to ordinary use.
+The underlying mechanisms may include rules, manifests, audit artifacts, review states, database tiers, validation, and diagnostic evidence. Those mechanisms remain important for power users, enterprise use, maintainers, and future automation. They should not become concepts that ordinary users must learn before importing an export.
+
+Governance therefore has two visible surfaces.
+
+### General-user surface
+
+The user sees what happened, why it happened, what was created, what was skipped or changed, and what they can do next.
+
+### Advanced and internal surface
+
+Power users, maintainers, enterprise operators, and future local assistants may inspect governance rules, diagnostics, manifests, review records, tiered storage, and other evidence directly.
+
+The ordinary workflow should remain simple. Advanced governance should be deliberately entered through settings, Advanced Tools, contextual troubleshooting, or an explicit user request.
+
+## Agent-Assisted Explanation
+
+A future local or lightweight assistant may act as an interpreter between the user and Quantum's internal assurance layer.
+
+For example, a user may ask:
+
+> What happened to my export? I cannot find the archive or datasets.
+
+The assistant should inspect the relevant import history, manifests, diagnostics, output paths, support-tier information, and governance artifacts, then answer in plain language:
+
+- what Quantum detected
+- what completed
+- what failed or was skipped
+- where outputs were written
+- why an output may be missing
+- what the user can check or do next
+- which evidence supports the explanation
+
+The assistant should not invent a diagnosis or bypass Quantum's evidence. Its role is to translate verified internal state into understandable options.
 
 ## MVP Discipline
 
@@ -148,9 +180,9 @@ Examples:
 - search and filtering
 - result visibility
 
-### Dormant Capability
+### Advanced and Internal Capability
 
-Features that may become important later but should not dictate MVP priorities.
+Features that support power users, enterprise operation, maintainers, deeper assurance, and future agent-assisted troubleshooting without defining the ordinary MVP journey.
 
 Examples:
 
@@ -158,9 +190,11 @@ Examples:
 - promotion workflows
 - governance editors
 - advanced policy systems
+- tiered database inspection
+- detailed diagnostics
 - broader ingestion infrastructure
 
-Dormant capabilities should be preserved but do not need to be expanded before the MVP workflow is complete.
+These capabilities should be preserved and tested where they protect data integrity or explain outcomes. They should not receive major expansion work before the ordinary import-to-archive-to-dataset workflow is complete unless they directly unblock that workflow.
 
 ## Success Criteria
 

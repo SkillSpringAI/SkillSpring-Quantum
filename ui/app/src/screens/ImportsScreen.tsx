@@ -7,6 +7,7 @@ import ArchiveNotificationPanel from "../components/ArchiveNotificationPanel";
 import type {
   ImportJobForm,
   ImportSourceSummary,
+  ImportSourceVendorSummary,
   RunLogEntry,
   RunState,
   ImportSupportTier
@@ -118,6 +119,23 @@ function notePriority(note: string): number {
   }
 
   return 3;
+}
+
+function formatVendorSummaryLabel(vendor: ImportSourceVendorSummary["vendor"]): string {
+  switch (vendor) {
+    case "chatgpt":
+      return "ChatGPT";
+    case "grok":
+      return "Grok";
+    case "claude":
+      return "Claude";
+    case "gemini":
+      return "Gemini";
+    case "copilot":
+      return "Microsoft Copilot";
+    default:
+      return "Recovered JSON";
+  }
 }
 
 function findLatestArchiveArtifactPath(run: ImportRunSummary | null): string | null {
@@ -517,8 +535,8 @@ export default function ImportsScreen() {
           MVP focus: inspect recognizable AI exports, import them locally, open a readable archive, and review the dataset output without leaving the app.
         </p>
         <ul>
-          <li>ChatGPT and Grok are the clearest ready-now conversation import paths.</li>
-          <li>Claude exports, Gemini My Activity HTML, and proven Microsoft Copilot activity CSV exports can still import through recovery paths when their structure is intact.</li>
+          <li>ChatGPT, Grok, and Claude are the clearest ready-now conversation import paths.</li>
+          <li>Gemini export JSON and the proven Microsoft Copilot activity CSV shape are now ready-now paths, while Gemini My Activity HTML still uses a narrower recovery route when users rely on that export path.</li>
           <li>Quantum inspects a file or folder first, then tells you what it can import, archive, or skip before the run starts.</li>
           <li>Conversation imports produce both a readable archive and privacy-aware dataset records in the same local run.</li>
           <li>Keep one stable output folder for related imports so history, search, and datasets stay connected.</li>
@@ -723,6 +741,26 @@ export default function ImportsScreen() {
                   </li>
                 ))}
               </ul>
+            ) : null}
+            {sourceSummary.vendorSummaries.length > 0 ? (
+              <>
+                <p className="muted">
+                  Vendor readiness shows which detected exports are inside the strongest MVP lane versus which ones still need recovery-path caution.
+                </p>
+                <div className="stats-grid two-col">
+                  {sourceSummary.vendorSummaries.map((summary) => (
+                    <div key={summary.vendor} className="stat-card">
+                      <span className="label">{formatVendorSummaryLabel(summary.vendor)}</span>
+                      <strong>{formatSupportTierLabel(summary.supportTier)}</strong>
+                      <p className="muted">
+                        {summary.detectedFiles} main import file(s) detected
+                        {summary.companionFiles > 0 ? ` | ${summary.companionFiles} companion file(s)` : ""}
+                      </p>
+                      <p className="muted">{summary.recommendation}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : null}
             {sourceSummary.sampleFiles.length > 0 ? (
               <div className="table-wrap">

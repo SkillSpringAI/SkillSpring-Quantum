@@ -19,26 +19,32 @@ The first user-facing MVP stays intentionally narrow:
 - produce inspectable privacy-aware dataset artifacts
 - explain partial imports, fallback recovery, and package-companion handling in plain English
 
-This is not yet a general document-ingestion product, a parser zoo, or a governance-first workflow. Broader document intake and secondary vendor expansion still exist internally, but they are not the main release story.
+This is not yet a general document-ingestion product or a parser zoo. Governance remains part of Quantum's internal operating discipline, but ordinary users should experience it through sensible defaults, traceable results, plain-language explanations, and recovery options rather than policy machinery.
+
+The product hierarchy is:
+
+1. import, readable archive, and privacy-aware dataset are the primary user product
+2. retrieval supports that product
+3. diagnostics and internal governance explain, verify, and recover that product
+4. advanced governance, review, curation, and tiered-storage controls remain available through deliberate advanced access
 
 ## Current support tiers
 
 ### MVP first-class now
 
 - ChatGPT / OpenAI export JSON
+- Claude export JSON
+- Gemini export JSON
 - Grok export manifest JSON, including referenced attachment blob preservation when vendor blob folders are present
+- Microsoft Copilot activity CSV for the proven fixture-backed export shape
 
 ### MVP compatibility fallback now
 
-- Claude-shaped conversation JSON where the threaded structure is recoverable
-- Gemini-shaped conversation JSON where the threaded structure is recoverable
-- Microsoft Copilot activity CSV only where the fixture-backed recoverable shape is proven
+- Gemini My Activity HTML where the export structure is recoverable
 
 ### Not yet first-class
 
-- named Claude adapter
-- named Gemini adapter
-- named Copilot adapter beyond the current narrow CSV fallback path
+- no major AI export vendor in the current MVP set remains fallback-only
 
 ## What Quantum currently produces
 
@@ -68,7 +74,7 @@ The desktop app can currently:
 ## Use cases the project currently fits best
 
 - local review of exported AI conversations without uploading them to a third-party service
-- building readable topic-organized archives from ChatGPT and Grok exports
+- building readable topic-organized archives from ChatGPT, Claude, Gemini, and Grok exports
 - generating structured dataset artifacts from the same import run
 - tracing fallback recovery, attachment preservation, and package-companion handling across imports, archives, and datasets
 - following archive context into the matching dataset view without losing vendor/topic trust clues
@@ -88,13 +94,18 @@ Those paths should be treated as expansion assets, not as the primary release pr
 
 Inspect -> Import -> Parse or Archive -> Store Tier0 -> Segment Conversations -> Export Readable Archive -> Export Datasets -> Route Tiered DB Records -> Write Import History -> Write Diagnostics
 
-## Review and governance workflows
+## Advanced internal assurance workflows
+
+Quantum also contains internal and power-user workflows that support assurance, diagnosis, review, and later enterprise use:
 
 - review queue generation for near-curated records
 - manual approve/reject workflow for queue items
 - manifest-backed promotion from processed to curated
 - rule-backed governance editing and validation
 - private-review separation for more sensitive dataset segments
+- diagnostics and artifacts that may later be interpreted by a local assistant in plain language
+
+These workflows do not define the ordinary MVP journey. They should be reached deliberately through Advanced Tools, settings, contextual troubleshooting, or a future local assistant acting on the user's request.
 
 ## Current scripts
 
@@ -186,4 +197,5 @@ npm run purge:restore -- "organized_output\purge\some_folder\some_file.md" "orga
 - working product direction: [docs/SKILLSPRING_QUANTUM_MVP_DIRECTION.md](docs/SKILLSPRING_QUANTUM_MVP_DIRECTION.md)
 - implementation/status reference: [docs/SKILLSPRING_QUANTUM_REFERENCE.md](docs/SKILLSPRING_QUANTUM_REFERENCE.md)
 - anti-drift scope lock: [docs/SKILLSPRING_MVP_SCOPE_LOCK.md](docs/SKILLSPRING_MVP_SCOPE_LOCK.md)
+- checkable MVP roadmap: [docs/SKILLSPRING_QUANTUM_MVP_ROADMAP.md](docs/SKILLSPRING_QUANTUM_MVP_ROADMAP.md)
 

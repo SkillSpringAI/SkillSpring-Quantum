@@ -359,6 +359,15 @@ export async function exportDatasets(
   await appendJsonl(paths.currentPromptResponsePairsFile, promptResponseLines);
   await appendJsonl(paths.currentMicroSegmentsFile, microSegmentLines);
 
+  await ensureDir(path.dirname(paths.runTopicSegmentsFile));
+  await writeTextFile(paths.runTopicSegmentsFile, topicSegmentLines.join("\n") + (topicSegmentLines.length > 0 ? "\n" : ""));
+  await writeTextFile(paths.runPromptResponsePairsFile, promptResponseLines.join("\n") + (promptResponseLines.length > 0 ? "\n" : ""));
+  await writeTextFile(paths.runMicroSegmentsFile, microSegmentLines.join("\n") + (microSegmentLines.length > 0 ? "\n" : ""));
+  await writeTextFile(
+    paths.runPrivateReviewFile,
+    privateReviewTopicRecords.map((record) => toJsonlLine(record)).join("\n") + (privateReviewTopicRecords.length > 0 ? "\n" : "")
+  );
+
   const processedTopicWrite = await writeTierRecords(dbRoot, "tier1_processed", "topic_segments", processedTopicRecords);
   const processedPairWrite = await writeTierRecords(dbRoot, "tier1_processed", "prompt_response_pairs", processedPairRecords);
   const processedMicroWrite = await writeTierRecords(dbRoot, "tier1_processed", "micro_segments", processedMicroRecords);

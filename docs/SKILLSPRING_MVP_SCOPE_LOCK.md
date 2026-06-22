@@ -8,7 +8,9 @@ SkillSpring Quantum should first be explained as:
 
 > Import major AI conversation exports, turn them into readable local archives, and produce inspectable privacy-aware dataset artifacts.
 
-The MVP is not a generic document-ingestion platform. It is not a browser-extension-first product. It is not a governance editor. It is not a parser zoo.
+The MVP is not a generic document-ingestion platform. It is not a browser-extension-first product. It is not a governance-console-first product. It is not a parser zoo.
+
+Governance remains part of the product's internal assurance layer. It should protect, explain, and recover the ordinary workflow without becoming a prerequisite for using it.
 
 ## Workflow to prove
 
@@ -23,28 +25,29 @@ The MVP only needs to prove one clear loop:
 
 Expected vendor-package companion files should be explained as normal handling, not as scary failures.
 
-If a feature does not make that loop clearer, more trustworthy, or more complete, it should not block MVP.
+If a feature does not make that loop clearer, more trustworthy, more recoverable, or more complete, it should not block MVP.
+
+Ordinary users should receive plain-language outcomes. Detailed governance rules, tiered records, review controls, manifests, and diagnostics should remain available through deliberate Advanced Tools access, contextual troubleshooting, or future agent-assisted explanation.
 
 ## Current support tiers
 
 ### MVP first-class now
 
 - ChatGPT / OpenAI
+- Claude
+- Gemini
 - Grok
+- Microsoft Copilot activity CSV where the fixture-backed export shape is proven
 
 ### MVP compatibility fallback now
 
-- Claude via generic conversation parser
-- Gemini via generic conversation parser
-- Microsoft Copilot activity CSV where fixture and test coverage prove the recoverable shape
+- Gemini My Activity HTML via a narrower recovery path
 
 Recognized vendor export folders may route through one main import file while companion files are skipped intentionally and described plainly in the UI.
 
 ### Explicit coming soon
 
-- Claude adapter
-- Gemini adapter
-- Copilot adapter beyond the current CSV fallback path
+- no remaining major AI-export vendor in the current MVP set is blocked on fallback-only handling
 
 ## Public readiness rule
 
@@ -92,19 +95,25 @@ Avoid:
 ### Stage 1: AI Export MVP
 
 - ChatGPT
+- Claude
+- Gemini
 - Grok
 
-with fallback recovery for Claude and Gemini until named adapters exist
+with fallback recovery still available for Gemini My Activity HTML where needed
 
 Goal: prove the workflow.
 
 ### Stage 1.5: First-class vendor completion
 
-- Claude adapter
-- Gemini adapter
-- Copilot adapter beyond the current CSV fallback path
+Completed for the current MVP vendor set, with first-class handling now in place for:
 
-Goal: expand from a polished two-vendor MVP into a true five-vendor first-class promise.
+- ChatGPT
+- Claude
+- Gemini export JSON
+- Grok
+- Microsoft Copilot activity CSV for the proven tested shape
+
+Goal: keep the product promise honest about exact export shapes while continuing to harden those paths.
 
 ### Stage 2: AI Export Expansion
 

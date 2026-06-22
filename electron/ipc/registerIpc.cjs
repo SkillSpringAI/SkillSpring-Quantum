@@ -178,6 +178,17 @@ function registerIpc() {
     return result.ok ? ok(result, "Dataset summary loaded.") : fail(result, "Failed to load dataset summary.");
   });
 
+  ipcMain.handle("datasets:preview", async (_event, payload = {}) => {
+    const result = await runTsx("core/pipeline/readDatasetPreview.ts", [
+      payload.outputRoot || "organized_output",
+      payload.runId || "",
+      payload.kind || "topic_segments",
+      String(payload.limit || 25),
+      String(payload.offset || 0)
+    ]);
+    return result.ok ? ok(result, "Dataset preview loaded.") : fail(result, "Failed to load dataset preview.");
+  });
+
   ipcMain.handle("datasets:segmentRetrievalIndex", async (_event, payload = {}) => {
     const result = await runTsx("core/pipeline/readSegmentRetrievalIndex.ts", [
       payload.outputRoot || "organized_output"

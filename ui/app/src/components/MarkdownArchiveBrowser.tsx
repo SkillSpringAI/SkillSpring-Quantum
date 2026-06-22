@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import type {
+  AttachmentArchiveSummary,
+  MarkdownArchiveAttachment,
   MarkdownArchiveFile,
   MarkdownArchiveTopic
 } from "../types/markdownArchive";
@@ -10,16 +12,20 @@ interface MarkdownArchiveBrowserProps {
   topics: MarkdownArchiveTopic[];
   selectedFile: MarkdownArchiveFile | null;
   content: string;
+  attachmentSummaries: AttachmentArchiveSummary[];
   onSelectFile: (file: MarkdownArchiveFile) => void;
   onRefresh: () => void;
 }
 
 type ArchiveSortMode = "newest" | "oldest" | "topic";
+type ArchiveTrustFilter = "" | "mvp_first_class" | "compatibility_fallback" | "missing_attachments";
+type ArchiveAttachmentFilter = "" | "with_attachments" | "preserved" | "missing";
 
 export default function MarkdownArchiveBrowser({
   topics,
   selectedFile,
   content,
+  attachmentSummaries,
   onSelectFile,
   onRefresh
 }: MarkdownArchiveBrowserProps) {
@@ -28,6 +34,8 @@ export default function MarkdownArchiveBrowser({
   const [sortMode, setSortMode] = useState<ArchiveSortMode>("newest");
   const [activeTopic, setActiveTopic] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
+  const [trustFilter, setTrustFilter] = useState<ArchiveTrustFilter>("");
+  const [attachmentFilter, setAttachmentFilter] = useState<ArchiveAttachmentFilter>("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const normalizedFilter = filterText.trim().toLowerCase();
@@ -49,6 +57,12 @@ export default function MarkdownArchiveBrowser({
           .filter((file) => {
             if (!topicSelected) return false;
             if (sourceFilter && file.source !== sourceFilter) return false;
+            if (trustFilter === "mvp_first_class" && file.supportTier !== "mvp_first_class") return false;
+            if (trustFilter === "compatibility_fallback" && file.supportTier !== "compatibility_fallback") return false;
+            if (trustFilter === "missing_attachments" && !file.hasMissingAttachments) return false;
+            if (attachmentFilter === "with_attachments" && !file.hasAttachmentReferences) return false;
+            if (attachmentFilter === "preserved" && !file.hasPreservedAttachments) return false;
+            if (attachmentFilter === "missing" && !file.hasMissingAttachments) return false;
             if (!Number.isNaN(fromTime) || !Number.isNaN(toTime)) {
               const fileTime = file.createdAt
                 ? Date.parse(file.createdAt)
@@ -67,7 +81,15 @@ export default function MarkdownArchiveBrowser({
           })
           .sort((left, right) => compareArchiveFiles(left, right, sortMode));
 
-        if (topicMatches && files.length === 0 && !sourceFilter && !dateFrom && !dateTo) {
+        if (
+          topicMatches &&
+          files.length === 0 &&
+          !sourceFilter &&
+          !trustFilter &&
+          !attachmentFilter &&
+          !dateFrom &&
+          !dateTo
+        ) {
           return {
             ...topic,
             fileCount: topic.files.length,
@@ -95,12 +117,26 @@ export default function MarkdownArchiveBrowser({
       const rightNewest = newestTimestamp(right.files);
       return sortMode === "oldest" ? leftNewest - rightNewest : rightNewest - leftNewest;
     });
-  }, [activeTopic, normalizedFilter, sortMode, topics, sourceFilter, dateFrom, dateTo, fromTime, toTime]);
+  }, [
+    activeTopic,
+    normalizedFilter,
+    sortMode,
+    topics,
+    sourceFilter,
+    trustFilter,
+    attachmentFilter,
+    dateFrom,
+    dateTo,
+    fromTime,
+    toTime
+  ]);
 
   const activeFilterCount = [
     normalizedFilter,
     activeTopic,
     sourceFilter,
+    trustFilter,
+    attachmentFilter,
     dateFrom,
     dateTo
   ].filter(Boolean).length;
@@ -109,6 +145,8 @@ export default function MarkdownArchiveBrowser({
     setFilterText("");
     setActiveTopic("");
     setSourceFilter("");
+    setTrustFilter("");
+    setAttachmentFilter("");
     setDateFrom("");
     setDateTo("");
   }
@@ -127,6 +165,18 @@ export default function MarkdownArchiveBrowser({
       ? visibleFiles[selectedIndex + 1]
       : null;
   const selectedFileDetails = selectedFile ? summarizeArchiveFileDetails(selectedFile) : [];
+  const selectedAttachmentSummary =
+    selectedFile?.source === "grok" || selectedFile?.source === "gemini"
+      ? attachmentSummaries.find((summary) => summary.vendor === selectedFile.source)
+      : null;
+  const selectedFileAttachments = selectedFile?.attachments ?? [];
+  const selectedPreservedAttachmentPaths = selectedFileAttachments
+    .map((attachment) => attachment.resolvedArchivePath)
+    .filter((value): value is string => Boolean(value));
+
+  async function openAllPreservedAttachments() {
+    await Promise.all(selectedPreservedAttachmentPaths.map((targetPath) => revealDesktopPath(targetPath)));
+  }
 
   return (
     <div className="panel large">
@@ -193,6 +243,30 @@ export default function MarkdownArchiveBrowser({
                       {formatArchiveSourceLabel(source)}
                     </option>
                   ))}
+                </select>
+              </label>
+              <label className="form-label tight">
+                Trust
+                <select
+                  value={trustFilter}
+                  onChange={(event) => setTrustFilter(event.target.value as ArchiveTrustFilter)}
+                >
+                  <option value="">All trust states</option>
+                  <option value="mvp_first_class">MVP first-class</option>
+                  <option value="compatibility_fallback">Compatibility fallback</option>
+                  <option value="missing_attachments">Missing attachment risk</option>
+                </select>
+              </label>
+              <label className="form-label tight">
+                Attachments
+                <select
+                  value={attachmentFilter}
+                  onChange={(event) => setAttachmentFilter(event.target.value as ArchiveAttachmentFilter)}
+                >
+                  <option value="">All attachment states</option>
+                  <option value="with_attachments">References attachments</option>
+                  <option value="preserved">Preserved evidence</option>
+                  <option value="missing">Missing preservation risk</option>
                 </select>
               </label>
               <label className="form-label tight">
@@ -277,6 +351,80 @@ export default function MarkdownArchiveBrowser({
                         <strong>{detail.value}</strong>
                       </div>
                     ))}
+                  </div>
+                ) : null}
+                {selectedAttachmentSummary ? (
+                  <div className="detail-box">
+                    <strong>Attachment Preservation</strong>
+                    <p className="muted">
+                      {selectedAttachmentSummary.attachmentsArchived} preserved | {selectedAttachmentSummary.attachmentsMissing} missing | {selectedAttachmentSummary.attachmentsReferenced} referenced for this vendor export family in the current output folder.
+                    </p>
+                    <div className="action-bar">
+                      <button
+                        className="secondary-btn"
+                        type="button"
+                        onClick={() => revealDesktopPath(selectedAttachmentSummary.archiveRoot)}
+                      >
+                        Open Preserved Files
+                      </button>
+                      <button
+                        className="secondary-btn"
+                        type="button"
+                        onClick={() => revealDesktopPath(selectedAttachmentSummary.manifestPath)}
+                      >
+                        Open Preservation Manifest
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+                {selectedFileAttachments.length > 0 ? (
+                  <div className="detail-box">
+                    <strong>Referenced Attachments In This File</strong>
+                    <p className="muted">
+                      {selectedFileAttachments.length} attachment reference(s) were parsed from this markdown file.
+                    </p>
+                    {selectedPreservedAttachmentPaths.length > 0 ? (
+                      <div className="action-bar">
+                        <button
+                          className="secondary-btn"
+                          type="button"
+                          onClick={() => openAllPreservedAttachments()}
+                        >
+                          Open All Preserved Attachments
+                        </button>
+                      </div>
+                    ) : null}
+                    <div className="stats-grid two-col archive-detail-grid">
+                      {selectedFileAttachments.map((attachment) => (
+                        <div key={attachment.id + attachment.label} className="stat-card">
+                          <span className="label">{attachment.label}</span>
+                          <strong>{formatAttachmentStatusLabel(attachment)}</strong>
+                          <p className="muted">
+                            {attachment.mimeType ?? attachment.id}
+                          </p>
+                          <div className="action-bar">
+                            {attachment.resolvedArchivePath ? (
+                              <button
+                                className="secondary-btn"
+                                type="button"
+                                onClick={() => revealDesktopPath(attachment.resolvedArchivePath!)}
+                              >
+                                Open Preserved File
+                              </button>
+                            ) : null}
+                            {!attachment.resolvedArchivePath && attachment.resolvedPreviewPath ? (
+                              <button
+                                className="secondary-btn"
+                                type="button"
+                                onClick={() => revealDesktopPath(attachment.resolvedPreviewPath!)}
+                              >
+                                Open Preview File
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ) : null}
               </div>
@@ -422,6 +570,12 @@ function summarizeArchiveContext(file: MarkdownArchiveFile): string {
 function summarizeArchiveContextBadges(file: MarkdownArchiveFile): string[] {
   const badges: string[] = [];
 
+  if (file.supportTier === "mvp_first_class") {
+    badges.push("mvp first-class");
+  } else if (file.supportTier === "compatibility_fallback") {
+    badges.push("compatibility fallback");
+  }
+
   if (file.rawTopic && file.rawTopic !== file.topic) {
     badges.push("raw topic: " + file.rawTopic);
   }
@@ -435,6 +589,18 @@ function summarizeArchiveContextBadges(file: MarkdownArchiveFile): string[] {
 
   if (file.conversationId) {
     badges.push("conversation: " + file.conversationId);
+  }
+
+  if (file.hasAttachmentReferences) {
+    badges.push("attachments referenced");
+  }
+
+  if (file.hasPreservedAttachments) {
+    badges.push("preserved attachment evidence");
+  }
+
+  if (file.hasMissingAttachments) {
+    badges.push("missing attachment risk");
   }
 
   return badges;
@@ -460,7 +626,15 @@ function formatArchiveSourceLabel(source: string): string {
 function formatArchiveFileMeta(file: MarkdownArchiveFile): string {
   const parts = [
     file.source ? formatArchiveSourceLabel(file.source) : null,
+    formatSupportTierLabel(file.supportTier),
     file.topic ?? file.rawTopic ?? null,
+    file.hasMissingAttachments
+      ? "missing attachment risk"
+      : file.hasPreservedAttachments
+        ? "preserved attachments"
+        : file.hasAttachmentReferences
+          ? "attachments referenced"
+          : null,
     file.createdAt ? new Date(file.createdAt).toLocaleDateString() : null,
     new Date(file.modifiedAt).toLocaleString()
   ].filter(Boolean);
@@ -471,6 +645,7 @@ function formatArchiveFileMeta(file: MarkdownArchiveFile): string {
 function summarizeArchiveFileDetails(file: MarkdownArchiveFile): Array<{ label: string; value: string }> {
   const details: Array<{ label: string; value: string }> = [
     { label: "Source", value: file.source ? formatArchiveSourceLabel(file.source) : "Unknown" },
+    { label: "Trust Tier", value: formatSupportTierLabel(file.supportTier) ?? "Unknown" },
     { label: "Topic", value: file.topic ?? file.rawTopic ?? "Unknown" },
     { label: "Modified", value: new Date(file.modifiedAt).toLocaleString() },
     { label: "Size", value: formatBytes(file.sizeBytes) }
@@ -484,7 +659,44 @@ function summarizeArchiveFileDetails(file: MarkdownArchiveFile): Array<{ label: 
     details.push({ label: "Segment Window", value: file.startIndex + " to " + file.endIndex });
   }
 
+  if (file.hasAttachmentReferences) {
+    details.push({
+      label: "Attachment Trust",
+      value: file.hasMissingAttachments
+        ? "Missing preservation risk"
+        : file.hasPreservedAttachments
+          ? "Preserved evidence detected"
+          : "References found"
+    });
+  }
+
   return details;
+}
+
+function formatSupportTierLabel(
+  supportTier?: MarkdownArchiveFile["supportTier"]
+): string | null {
+  switch (supportTier) {
+    case "mvp_first_class":
+      return "MVP first-class";
+    case "compatibility_fallback":
+      return "Compatibility fallback";
+    case "unknown":
+      return "Unknown trust tier";
+    default:
+      return null;
+  }
+}
+
+function formatAttachmentStatusLabel(attachment: MarkdownArchiveAttachment): string {
+  switch (attachment.status) {
+    case "preserved":
+      return "Preserved";
+    case "preview_only":
+      return "Preview only";
+    default:
+      return "Referenced only";
+  }
 }
 
 function formatBytes(value: number): string {

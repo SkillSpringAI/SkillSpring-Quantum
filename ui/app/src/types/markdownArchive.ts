@@ -1,3 +1,14 @@
+export interface MarkdownArchiveAttachment {
+  id: string;
+  label: string;
+  mimeType?: string;
+  archivePath?: string;
+  previewPath?: string;
+  resolvedArchivePath?: string;
+  resolvedPreviewPath?: string;
+  status: "preserved" | "preview_only" | "referenced_only";
+}
+
 export interface MarkdownArchiveFile {
   name: string;
   path: string;
@@ -13,6 +24,11 @@ export interface MarkdownArchiveFile {
   conversationId?: string;
   startIndex?: number;
   endIndex?: number;
+  supportTier?: "mvp_first_class" | "compatibility_fallback" | "unknown";
+  hasAttachmentReferences?: boolean;
+  hasPreservedAttachments?: boolean;
+  hasMissingAttachments?: boolean;
+  attachments?: MarkdownArchiveAttachment[];
 }
 
 export interface MarkdownArchiveTopic {

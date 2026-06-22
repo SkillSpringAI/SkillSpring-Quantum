@@ -42,6 +42,9 @@ try {
     claudeUsersEntry?.reason.includes("Companion file for Claude export"),
     "Expected Claude users.json to explain that it is a package companion file"
   );
+  assert.equal(claudeSummary.vendorSummaries[0]?.vendor, "claude");
+  assert.equal(claudeSummary.vendorSummaries[0]?.detectedFiles, 1);
+  assert.equal(claudeSummary.vendorSummaries[0]?.companionFiles, 1);
 
   const geminiFixturePath = fileURLToPath(new URL("../fixtures/sample-gemini-activity.html", import.meta.url));
   const geminiFolder = path.join(tempRoot, "gemini-export");
@@ -73,6 +76,9 @@ try {
     geminiCompanionEntry?.reason.includes("Companion file for Gemini My Activity export"),
     "Expected Gemini companion file to explain that it is part of the export package"
   );
+  assert.equal(geminiSummary.vendorSummaries[0]?.vendor, "gemini");
+  assert.equal(geminiSummary.vendorSummaries[0]?.detectedFiles, 1);
+  assert.equal(geminiSummary.vendorSummaries[0]?.companionFiles, 1);
 } finally {
   await fs.rm(tempRoot, { recursive: true, force: true });
 }

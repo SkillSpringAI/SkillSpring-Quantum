@@ -22,7 +22,8 @@ import type {
   SaveRetrievalViewPayload,
   DeleteRetrievalViewPayload,
   OpenPathPayload,
-  DatasetLatestRunPayload
+  DatasetLatestRunPayload,
+  DatasetPreviewPayload
 } from "../types/bridge";
 import { executeMockDesktopCommand } from "./mockDesktopExecutor";
 
@@ -147,6 +148,15 @@ export async function readSegmentRetrievalIndex(
 ): Promise<DesktopCommandResponse> {
   return invokeDesktopCommand<DatasetLatestRunPayload, Record<string, unknown>>({
     command: "datasets.segmentRetrievalIndex",
+    payload
+  });
+}
+
+export async function readDatasetPreview(
+  payload: DatasetPreviewPayload
+): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<DatasetPreviewPayload, Record<string, unknown>>({
+    command: "datasets.preview",
     payload
   });
 }

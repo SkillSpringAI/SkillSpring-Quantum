@@ -54,9 +54,9 @@ Quantum must reliably handle the major AI export sources it claims to support an
 
 Priority items:
 
-- stable first-class import handling for ChatGPT and Grok export packages
-- honest compatibility fallback handling for Claude and Gemini-shaped conversation JSON
-- honest compatibility fallback handling for proven Microsoft Copilot activity CSV exports
+- stable first-class import handling for ChatGPT, Claude, Gemini, and Grok export packages
+- stable first-class import handling for the proven Microsoft Copilot activity CSV export shape
+- honest compatibility fallback handling for Gemini My Activity HTML where users rely on that export route
 - vendor detection and routing that is easy to understand in the app
 - attachment preservation where vendor exports include uploaded files or blob references
 - source-level manifests for imported, skipped, archived-only, and failed files
@@ -130,7 +130,23 @@ Why this matters:
 
 Many tools can organize files. Fewer can produce reusable, privacy-aware datasets locally in the same workflow.
 
-### 6. Defer adjacent ingestion and advanced workflow controls until the above are solid
+### 6. Keep governance useful, layered, and subordinate to the ordinary workflow
+
+Governance remains part of Quantum's product integrity, but its default surface should be outcomes rather than machinery.
+
+Priority items:
+
+- maintain deterministic rules, manifests, diagnostics, and audit artifacts where they protect or explain the import workflow
+- present ordinary users with plain-language results and recovery actions
+- keep governance editors, tiered database inspection, review queues, and promotion controls behind deliberate Advanced Tools access
+- design diagnostic artifacts so a future local assistant can interpret them without bypassing evidence
+- ensure any assistant explanation identifies what happened, why, where outputs are, and what can be done next
+
+Why this matters:
+
+General users need trustworthy outcomes. Power users and enterprise operators may need the underlying evidence. Quantum should support both without forcing one audience to use the other's interface.
+
+### 7. Defer adjacent ingestion and advanced workflow expansion until the above are solid
 
 These matter, but they are not the first MVP priority for general users.
 
@@ -154,7 +170,7 @@ Use this as the practical sequence unless a clear blocking dependency changes it
 
 1. Import inspection, import history, and import result visibility for major AI exports
 2. Full-history investigation search and retrieval-ready visibility across imported runs
-3. Support-tier labeling and vendor-package hardening for ChatGPT, Grok, and current fallback vendors
+3. Support-tier labeling and vendor-package hardening for ChatGPT, Claude, Gemini, Grok, and the proven Copilot CSV path
 4. Attachment preservation and preview usability for vendor exports
 5. Archive search and open actions, with the trust/handoff language from imports and datasets kept consistent
 6. Defer generic document and broader ingestion work until the AI export loop is clearly strong
@@ -163,9 +179,10 @@ Use this as the practical sequence unless a clear blocking dependency changes it
 
 Avoid spending the next major blocks of work on:
 
-- new governance complexity without direct user-facing import/archive/dataset benefit
+- new governance complexity without direct import integrity, explanation, recovery, archive, or dataset benefit
 - cosmetic screens that do not improve the intake-to-output loop
 - automation around curation/promotion before general users can easily import and browse results
+- exposing internal governance vocabulary where a concrete explanation such as imported, skipped, redacted, missing, or failed would be clearer
 - abstractions for future federation/orchestration before the local product loop is strong
 - adding many edge-case formats before the major AI export sources are complete and trustworthy
 

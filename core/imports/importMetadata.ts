@@ -181,11 +181,17 @@ export function classifyConversationSupportTier(
   kind: ConversationParserKind,
   vendorSources: Conversation["source"][]
 ): ImportSupportTier {
-  if (kind === "chatgpt_export" || kind === "grok_export") {
+  if (
+    kind === "chatgpt_export" ||
+    kind === "grok_export" ||
+    kind === "claude_export" ||
+    kind === "gemini_export" ||
+    kind === "copilot_activity_csv"
+  ) {
     return "mvp_first_class";
   }
 
-  if (kind === "claude_export" || kind === "gemini_activity_html") {
+  if (kind === "gemini_activity_html") {
     return "mvp_compatibility_fallback";
   }
 
@@ -219,6 +225,10 @@ function buildConversationImportDisplayLabel(
 
   if (kind === "claude_export") {
     return "Claude export";
+  }
+
+  if (kind === "gemini_export") {
+    return "Gemini export";
   }
 
   if (kind === "gemini_activity_html") {

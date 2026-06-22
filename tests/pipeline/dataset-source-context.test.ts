@@ -43,7 +43,7 @@ try {
     source_input_path: "C:\\Exports\\claude\\conversations.json",
     detected_kind: "claude_export",
     detected_label: "Claude export",
-    support_tier: "mvp_compatibility_fallback",
+    support_tier: "mvp_first_class",
     vendor_sources: ["claude"],
     conversation_count: 1,
     message_count: 2,
@@ -56,7 +56,7 @@ try {
   assert.equal(summary.source_context.pipeline_run_id, "pipeline-run-123");
   assert.equal(summary.source_context.source_input_path, "C:\\Exports\\claude\\conversations.json");
   assert.equal(summary.source_context.detected_label, "Claude export");
-  assert.equal(summary.source_context.support_tier, "mvp_compatibility_fallback");
+  assert.equal(summary.source_context.support_tier, "mvp_first_class");
   assert.deepEqual(summary.source_context.vendor_sources, ["claude"]);
   assert.equal(summary.source_context.package_companion_files, 1);
   assert.deepEqual(summary.source_context.package_companion_examples, ["users.json"]);

@@ -8,6 +8,7 @@ export type DesktopCommandName =
   | "retrieval.savedViews.save"
   | "retrieval.savedViews.delete"
   | "datasets.latestRun"
+  | "datasets.preview"
   | "datasets.segmentRetrievalIndex"
   | "shell.openPath"
   | "dialog.pickFile"
@@ -192,4 +193,12 @@ export interface OpenPathPayload {
 export interface DatasetLatestRunPayload {
   outputRoot: string;
   limit?: number;
+}
+
+export interface DatasetPreviewPayload {
+  outputRoot: string;
+  runId: string;
+  kind: "topic_segments" | "prompt_response_pairs" | "micro_segments" | "private_review";
+  limit?: number;
+  offset?: number;
 }

@@ -28,7 +28,7 @@ const runs: DatasetRunResult["runs"] = [
     source_context: {
       pipeline_run_id: "pipeline-2",
       detected_label: "Gemini export",
-      support_tier: "mvp_compatibility_fallback",
+      support_tier: "mvp_first_class",
       vendor_sources: ["gemini"],
       topic_hints: ["product roadmap"]
     },

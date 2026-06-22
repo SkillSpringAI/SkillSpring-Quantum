@@ -7,15 +7,21 @@ SkillSpring Quantum is a local-first Electron + Vite + React desktop application
 The first user-facing MVP should be framed around a narrow AI-export workflow:
 
 - ChatGPT / OpenAI
+- Claude
+- Gemini
 - Grok
+- Microsoft Copilot activity CSV for the proven tested export shape
 
-Compatibility fallback can still recover some Claude- and Gemini-shaped conversation JSON, and now also proven Microsoft Copilot activity CSV exports, but that should not be described as the same thing as first-class vendor support.
+Compatibility fallback can still recover Gemini My Activity HTML, but that should not be described as the same thing as first-class vendor support.
 
 This is narrower than the full internal parser and document-ingestion surface already present in the codebase. The distinction matters. Current internal coverage helps development, fixture work, and future expansion, but the product promise for early users should stay centered on a clear export-to-archive-to-dataset workflow for recognizable vendors.
 
 ## Implemented Spine
 
 - ChatGPT export parsing and raw conversation normalization
+- named Claude export detection and parser path
+- named Gemini export detection and parser path
+- named Microsoft Copilot activity CSV detection and parser path
 - generic conversation export detection across ChatGPT, Grok manifests, and conversation-shaped JSON
 - parser coverage for Claude-shaped, Gemini-shaped, DeepSeek-shaped, Kimi-shaped, and Perplexity-shaped extracted conversation JSON
 - Grok vendor export parsing through root manifest JSON files
@@ -31,6 +37,9 @@ This is narrower than the full internal parser and document-ingestion surface al
 - source archive output for generic imported documents
 - import history manifests and latest import summaries
 - vendor-package hardening for Claude and Gemini export folders so one main import file can represent the package while companion files are handled intentionally
+- Claude now promoted to MVP first-class trust labeling across source inspection, import metadata, import results, and dataset source context
+- Gemini export JSON now promoted to MVP first-class trust labeling while Gemini My Activity HTML remains a narrower fallback route
+- Microsoft Copilot activity CSV now promoted to MVP first-class trust labeling for the proven tested export shape
 - import history query utility for vendor/topic/text/date/status investigations
 - import retrieval index manifests for search-ready file-level records
 - segment retrieval index manifests for linked dataset segment lookup
@@ -57,23 +66,26 @@ This is narrower than the full internal parser and document-ingestion surface al
 ## Current Build Emphasis
 
 - deterministic processing before smart enrichment
-- auditability through manifests, diagnostics, and governance reports
-- governance-first design with machine-readable rules
+- internal assurance through manifests, diagnostics, governance rules, and traceable reports
+- ordinary-user explanations before visible governance machinery
+- deliberate Advanced Tools access for power-user, enterprise, maintainer, and diagnostic workflows
 - UI controls mapped to real backend workflows, not placeholder lifecycle actions
 - user-visible capability growth should stay ahead of governance/documentation drag
+- diagnostic artifacts structured for future local-assistant interpretation
 - user-facing scope should stay narrower than experimental internal parser coverage
 - MVP direction and anti-drift reference: see `docs/SKILLSPRING_QUANTUM_MVP_DIRECTION.md`
 - contributor philosophy reference: see `docs/SKILLSPRING_QUANTUM_PRODUCT_PHILOSOPHY.md`
 
 ## Current Gaps / Next Build Targets
 
-- harden the first user-facing major vendor set so the app promise and real behavior match
+- keep hardening the now-expanded first-class vendor set so the app promise and real behavior stay matched at the exact export-shape level
 - carry archive-selected trust context deeper into dataset review and preview layers so users can tell exactly what came from the archive handoff versus the latest current bundle
-- decide whether dataset-side historical preview should eventually read versioned run files directly instead of always reflecting the latest current bundle
+- improve archive usability further so preserved attachments and source references are directly useful during review, not only summarized
 - connect import summaries, archive browsing, and dataset browsing even more tightly across screens, especially around stable historical versus rolling-current dataset scope
-- surface preserved conversation attachments more clearly inside archive and dataset trust flows
-- add direct UI controls for curated promotion, purge restore, and folder merge flows when they become more central to user value
-- decide whether archive-only versus archive-plus-dataset import controls are worth exposing after the current dataset trust work settles
+- continue clarifying historical-run versus rolling-current dataset scope
+- keep curated promotion, purge restore, folder merge, governance editing, and tiered database inspection behind deliberate Advanced Tools access
+- define a stable diagnostic explanation contract for future local-assistant use without making assistant integration an MVP blocker
+- decide whether archive-only versus archive-plus-dataset import controls are worth exposing after the current dataset clarity work settles
 
 ## Internal Coverage Beyond MVP
 
@@ -97,6 +109,16 @@ The desktop product now has a clearer end-to-end shape than earlier reference sn
 - Datasets now include source-context trust summaries, redaction/trust cards, in-app previews of topic segments, prompt/response pairs, micro segments, and private-review records, plus current-bundle versus historical-run handoff controls
 
 This means the current product is no longer just "pipeline wrappers plus file-open buttons." It now provides a more coherent local review workflow across imports, archives, and datasets.
+
+## User and Governance Surface Model
+
+Quantum should maintain three distinct surfaces:
+
+1. **General-user product surface**: import, results, readable archive, datasets, search, and plain-language recovery.
+2. **Advanced assurance surface**: diagnostics, governance, tiered DB, review, promotion, manifests, and detailed evidence entered deliberately.
+3. **Future assistant interpretation surface**: evidence-backed access that lets a local assistant explain outcomes and recovery options without bypassing Quantum's rules or inventing conclusions.
+
+The general-user surface is the MVP priority. The advanced surface remains real product capability but should not dominate ordinary navigation. The assistant surface is a future integration contract, not a reason to delay the standalone product.
 
 ## Adjacent Project Signals
 

@@ -173,6 +173,7 @@ export default function OrganizedOutputScreen() {
         topics={topics}
         selectedFile={selectedFile}
         content={content}
+        attachmentSummaries={attachmentSummaries}
         onSelectFile={handleSelectFile}
         onRefresh={refreshAll}
       />

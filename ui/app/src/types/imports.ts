@@ -24,6 +24,15 @@ export interface ImportSourceEntry {
   reason: string;
 }
 
+export interface ImportSourceVendorSummary {
+  vendor: "chatgpt" | "grok" | "claude" | "gemini" | "copilot" | "recovered";
+  label: string;
+  supportTier: ImportSupportTier;
+  detectedFiles: number;
+  companionFiles: number;
+  recommendation: string;
+}
+
 export interface ImportSourceSummary {
   inputPath: string;
   inputType: "missing" | "file" | "folder";
@@ -33,6 +42,7 @@ export interface ImportSourceSummary {
   countsByKind: Record<ImportSourceEntry["kind"], number>;
   notes: string[];
   sampleFiles: ImportSourceEntry[];
+  vendorSummaries: ImportSourceVendorSummary[];
 }
 
 export interface ImportRunResult {

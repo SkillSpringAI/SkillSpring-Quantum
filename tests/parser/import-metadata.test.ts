@@ -1,6 +1,7 @@
 import assert from "node:assert";
 import { readFile } from "node:fs/promises";
 import claudeFixture from "../fixtures/sample-claude-conversation.json" with { type: "json" };
+import geminiFixture from "../fixtures/sample-gemini-conversation.json" with { type: "json" };
 import grokFixture from "../fixtures/sample-grok-export.json" with { type: "json" };
 import { detectAndParseConversationExport } from "../../core/parser/index.js";
 import {
@@ -13,7 +14,7 @@ const claudeMetadata = summarizeDetectedConversationImport(claudeDetected);
 assert.ok(claudeMetadata, "Expected Claude-shaped fixture to produce conversation metadata");
 assert.equal(claudeMetadata?.sourceCategory, "conversation");
 assert.equal(claudeMetadata?.detectedLabel, "Claude export");
-assert.equal(claudeMetadata?.supportTier, "mvp_compatibility_fallback");
+assert.equal(claudeMetadata?.supportTier, "mvp_first_class");
 assert.deepEqual(claudeMetadata?.conversationIds, ["claude-conversation-1"]);
 assert.deepEqual(claudeMetadata?.vendorSources, ["claude"]);
 assert.equal(claudeMetadata?.conversationCount, 1);
@@ -31,6 +32,13 @@ assert.equal(grokMetadata?.supportTier, "mvp_first_class");
 assert.deepEqual(grokMetadata?.vendorSources, ["grok"]);
 assert.ok((grokMetadata?.attachmentCount ?? 0) > 0, "Expected Grok metadata to count attachment references");
 
+const geminiDetected = detectAndParseConversationExport(geminiFixture);
+const geminiMetadata = summarizeDetectedConversationImport(geminiDetected);
+assert.ok(geminiMetadata, "Expected Gemini JSON fixture to produce conversation metadata");
+assert.equal(geminiMetadata?.detectedLabel, "Gemini export");
+assert.equal(geminiMetadata?.supportTier, "mvp_first_class");
+assert.deepEqual(geminiMetadata?.vendorSources, ["gemini"]);
+
 const geminiHtmlFixture = await readFile(new URL("../fixtures/sample-gemini-activity.html", import.meta.url), "utf-8");
 const geminiHtmlDetected = detectAndParseConversationExport(geminiHtmlFixture);
 const geminiHtmlMetadata = summarizeDetectedConversationImport(geminiHtmlDetected);
@@ -44,7 +52,7 @@ const copilotCsvDetected = detectAndParseConversationExport(copilotCsvFixture);
 const copilotCsvMetadata = summarizeDetectedConversationImport(copilotCsvDetected);
 assert.ok(copilotCsvMetadata, "Expected Copilot CSV fixture to produce conversation metadata");
 assert.equal(copilotCsvMetadata?.detectedLabel, "Microsoft Copilot activity export");
-assert.equal(copilotCsvMetadata?.supportTier, "mvp_compatibility_fallback");
+assert.equal(copilotCsvMetadata?.supportTier, "mvp_first_class");
 assert.deepEqual(copilotCsvMetadata?.vendorSources, ["copilot"]);
 assert.equal(copilotCsvMetadata?.conversationCount, 2);
 
@@ -66,7 +74,7 @@ const runSummary = buildImportRunRetrievalSummary([
 ]);
 
 assert.ok(runSummary, "Expected run summary across conversation imports");
-assert.deepEqual(runSummary?.supportTiers, ["mvp_first_class", "mvp_compatibility_fallback"]);
+assert.deepEqual(runSummary?.supportTiers, ["mvp_first_class"]);
 assert.deepEqual(runSummary?.vendorSources, ["claude", "grok"]);
 assert.equal(runSummary?.conversationFiles, 2);
 assert.ok((runSummary?.conversationCount ?? 0) >= 2, "Expected aggregated conversation count");

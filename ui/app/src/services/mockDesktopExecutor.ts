@@ -109,6 +109,10 @@ export async function executeMockDesktopCommand(
         const p = payload as DatasetLatestRunPayload;
         return fromBridge(await bridge.datasets.readLatestRun(p.outputRoot));
       }
+      case "datasets.preview": {
+        const p = payload as { outputRoot: string; runId: string; kind: string; limit?: number; offset?: number };
+        return fromBridge(await bridge.datasets.readPreview(p.outputRoot, p.runId, p.kind, p.limit, p.offset));
+      }
       case "datasets.segmentRetrievalIndex": {
         const p = payload as DatasetLatestRunPayload;
         return fromBridge(await bridge.datasets.readSegmentRetrievalIndex(p.outputRoot));
@@ -210,7 +214,8 @@ export async function executeMockDesktopCommand(
           unsupported: 0
         },
         notes: ["Mock inspection only. Launch through Electron for real path inspection."],
-        sampleFiles: []
+        sampleFiles: [],
+        vendorSummaries: []
       }, "Mock import source inspection returned.");
     }
 
@@ -334,6 +339,22 @@ export async function executeMockDesktopCommand(
         latest: null,
         runs: []
       }, "Mock dataset summary returned.");
+    }
+
+    case "datasets.preview": {
+      const p = payload as { outputRoot: string; runId: string; kind: string; limit?: number; offset?: number };
+      return ok(command, {
+        outputRoot: p.outputRoot,
+        runId: p.runId,
+        kind: p.kind,
+        scope: "historical_run",
+        sourcePath: p.outputRoot + "/datasets/runs/" + p.runId + "/" + p.kind + ".jsonl",
+        limit: p.limit ?? 25,
+        offset: p.offset ?? 0,
+        totalRecords: 0,
+        hasMore: false,
+        records: []
+      }, "Mock dataset preview returned.");
     }
 
     case "datasets.segmentRetrievalIndex": {

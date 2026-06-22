@@ -55,6 +55,13 @@ declare global {
       };
       datasets: {
         readLatestRun: (outputRoot: string, limit?: number) => Promise<unknown>;
+        readPreview: (
+          outputRoot: string,
+          runId: string,
+          kind: "topic_segments" | "prompt_response_pairs" | "micro_segments" | "private_review",
+          limit?: number,
+          offset?: number
+        ) => Promise<unknown>;
         readSegmentRetrievalIndex: (outputRoot: string) => Promise<unknown>;
       };
       governance: {

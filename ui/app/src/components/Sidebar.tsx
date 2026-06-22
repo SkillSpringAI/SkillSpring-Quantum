@@ -1,10 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ADVANCED_NAV_ITEMS, PRIMARY_NAV_ITEMS } from "../state/navigation";
 import { useNavigation } from "../state/navigationContext";
 
 export default function Sidebar() {
   const { activeScreen, setActiveScreen } = useNavigation();
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const activeAdvanced = ADVANCED_NAV_ITEMS.some((item) => item.id === activeScreen);
+
+  useEffect(() => {
+    if (activeAdvanced) {
+      setAdvancedOpen(true);
+    }
+  }, [activeAdvanced]);
 
   return (
     <aside className="sidebar">
@@ -26,10 +33,10 @@ export default function Sidebar() {
           type="button"
           onClick={() => setAdvancedOpen((current) => !current)}
         >
-          {advancedOpen ? "Hide More Tools" : "More Tools"}
+          {advancedOpen ? "Hide Advanced Tools" : "Advanced Tools"}
         </button>
         <p className="muted sidebar-note">
-          Advanced controls for power users live here when you need deeper review, governance, or database access.
+          Deeper diagnostics, governance, review, and database tools live here when the main import, archive, and dataset flow needs closer inspection.
         </p>
         {advancedOpen ? (
           <nav className="nav nav-secondary">

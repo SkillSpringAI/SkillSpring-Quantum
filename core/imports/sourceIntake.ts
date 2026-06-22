@@ -50,6 +50,15 @@ export interface ImportSourceEntry {
   reason: string;
 }
 
+export interface ImportSourceVendorSummary {
+  vendor: "chatgpt" | "grok" | "claude" | "gemini" | "copilot" | "recovered";
+  label: string;
+  supportTier: ImportSupportTier;
+  detectedFiles: number;
+  companionFiles: number;
+  recommendation: string;
+}
+
 export interface ImportSourceSummary {
   inputPath: string;
   inputType: "missing" | "file" | "folder";
@@ -59,6 +68,7 @@ export interface ImportSourceSummary {
   countsByKind: Record<ImportSourceKind, number>;
   notes: string[];
   sampleFiles: ImportSourceEntry[];
+  vendorSummaries: ImportSourceVendorSummary[];
 }
 
 export interface ImportRunFileResult {
@@ -158,7 +168,8 @@ export async function inspectImportSource(inputPath: string): Promise<ImportSour
       unsupportedFiles: 0,
       countsByKind,
       notes: ["Path does not exist."],
-      sampleFiles: []
+      sampleFiles: [],
+      vendorSummaries: []
     };
   }
 
@@ -190,7 +201,25 @@ export async function inspectImportSource(inputPath: string): Promise<ImportSour
   }
 
   if (countsByKind.conversation_json > 0) {
-    notes.push("Recovered conversation JSON can be imported when its thread structure is recognizable, but this does not always mean first-class vendor support.");
+    const firstClassNamedJson = entries.some(
+      (entry) =>
+        entry.kind === "conversation_json" &&
+        entry.supportTier === "mvp_first_class" &&
+        (entry.displayLabel === "Claude export" || entry.displayLabel === "Gemini export")
+    );
+    const fallbackOrGenericJson = entries.some(
+      (entry) =>
+        entry.kind === "conversation_json" &&
+        entry.supportTier !== "mvp_first_class"
+    );
+
+    if (firstClassNamedJson && fallbackOrGenericJson) {
+      notes.push("Conversation JSON includes both named vendor exports and recovery-style shapes here. Quantum will label which files are first-class versus fallback before you import.");
+    } else if (firstClassNamedJson) {
+      notes.push("Named vendor conversation JSON exports found here can follow Quantum's strongest import path rather than only a generic recovery route.");
+    } else {
+      notes.push("Recovered conversation JSON can be imported when its thread structure is recognizable, but this does not always mean first-class vendor support.");
+    }
   }
 
   if (countsByKind.gemini_activity_html > 0) {
@@ -215,7 +244,8 @@ export async function inspectImportSource(inputPath: string): Promise<ImportSour
     unsupportedFiles: entries.length - supportedFiles,
     countsByKind,
     notes,
-    sampleFiles: sortImportSourceEntriesForDisplay(entries).slice(0, 12)
+    sampleFiles: sortImportSourceEntriesForDisplay(entries).slice(0, 12),
+    vendorSummaries: buildImportSourceVendorSummaries(entries)
   };
 }
 
@@ -910,7 +940,7 @@ async function classifyImportFile(
             displayLabel: "Microsoft Copilot activity export",
             supported: true,
             supportTier,
-            reason: "Recognized as a Microsoft Copilot activity export and will be recovered through compatibility fallback parsing."
+            reason: "Recognized as a Microsoft Copilot activity export and will be imported through Quantum's named Copilot adapter."
           };
         }
       } catch {
@@ -948,6 +978,7 @@ async function classifyImportFile(
       if (
         detected.kind === "grok_export" ||
         detected.kind === "claude_export" ||
+        detected.kind === "gemini_export" ||
         detected.kind === "generic_conversation"
       ) {
         const vendorSources = uniqueConversationSources(detected);
@@ -962,7 +993,9 @@ async function classifyImportFile(
             detected.kind === "grok_export"
               ? "Recognized as a Grok export and will be imported as conversations."
               : detected.kind === "claude_export"
-                ? "Recognized as a Claude export and will be recovered through compatibility fallback parsing."
+                ? "Recognized as a Claude export and will be imported through Quantum's named Claude adapter."
+                : detected.kind === "gemini_export"
+                  ? "Recognized as a Gemini export and will be imported through Quantum's named Gemini adapter."
                 : buildConversationJsonReason(vendorSources, supportTier)
         };
       }
@@ -1017,7 +1050,7 @@ async function classifyImportFile(
 }
 
 function buildConversationImportDisplayLabel(
-  detectedKind: "grok_export" | "claude_export" | "generic_conversation",
+  detectedKind: "grok_export" | "claude_export" | "gemini_export" | "generic_conversation",
   vendorSources: ConversationImportMetadata["vendorSources"]
 ): string {
   if (detectedKind === "grok_export") {
@@ -1026,6 +1059,10 @@ function buildConversationImportDisplayLabel(
 
   if (detectedKind === "claude_export") {
     return "Claude export";
+  }
+
+  if (detectedKind === "gemini_export") {
+    return "Gemini export";
   }
 
   const vendorLabel = vendorSources.length > 0 ? formatVendorSourceList(vendorSources) : "Recovered";
@@ -1135,6 +1172,115 @@ function sortImportSourceEntriesForDisplay(entries: ImportSourceEntry[]): Import
 
     return left.path.localeCompare(right.path);
   });
+}
+
+function buildImportSourceVendorSummaries(
+  entries: ImportSourceEntry[]
+): ImportSourceVendorSummary[] {
+  const summaries = new Map<
+    ImportSourceVendorSummary["vendor"],
+    ImportSourceVendorSummary
+  >();
+
+  for (const entry of entries) {
+    const vendor = inferVendorFromImportEntry(entry);
+    if (!vendor) {
+      continue;
+    }
+
+    const current = summaries.get(vendor) ?? {
+      vendor,
+      label: formatImportSourceVendorLabel(vendor),
+      supportTier: entry.supportTier,
+      detectedFiles: 0,
+      companionFiles: 0,
+      recommendation: ""
+    };
+
+    if (entry.supported) {
+      current.detectedFiles += 1;
+    } else if (isCompanionEntry(entry)) {
+      current.companionFiles += 1;
+    }
+
+    if (supportTierPriority(entry.supportTier) < supportTierPriority(current.supportTier)) {
+      current.supportTier = entry.supportTier;
+    }
+
+    summaries.set(vendor, current);
+  }
+
+  return [...summaries.values()]
+    .map((summary) => ({
+      ...summary,
+      recommendation: buildVendorRecommendation(summary)
+    }))
+    .sort((left, right) => {
+      const supportDelta = supportTierPriority(left.supportTier) - supportTierPriority(right.supportTier);
+      if (supportDelta !== 0) {
+        return supportDelta;
+      }
+
+      return left.label.localeCompare(right.label);
+    });
+}
+
+function inferVendorFromImportEntry(
+  entry: ImportSourceEntry
+): ImportSourceVendorSummary["vendor"] | null {
+  const text = (entry.displayLabel + " " + entry.reason).toLowerCase();
+
+  if (text.includes("chatgpt")) return "chatgpt";
+  if (text.includes("grok")) return "grok";
+  if (text.includes("claude")) return "claude";
+  if (text.includes("gemini")) return "gemini";
+  if (text.includes("copilot")) return "copilot";
+  if (entry.kind === "conversation_json" && entry.supported) return "recovered";
+
+  return null;
+}
+
+function isCompanionEntry(entry: ImportSourceEntry): boolean {
+  return !entry.supported && entry.reason.includes("Companion file for");
+}
+
+function formatImportSourceVendorLabel(
+  vendor: ImportSourceVendorSummary["vendor"]
+): string {
+  switch (vendor) {
+    case "chatgpt":
+      return "ChatGPT";
+    case "grok":
+      return "Grok";
+    case "claude":
+      return "Claude";
+    case "gemini":
+      return "Gemini";
+    case "copilot":
+      return "Microsoft Copilot";
+    default:
+      return "Recovered conversation JSON";
+  }
+}
+
+function buildVendorRecommendation(summary: ImportSourceVendorSummary): string {
+  const companionNote =
+    summary.companionFiles > 0
+      ? " " + summary.companionFiles + " companion file(s) will be handled through the main package import automatically."
+      : "";
+
+  switch (summary.vendor) {
+    case "chatgpt":
+    case "grok":
+    case "claude":
+      return summary.label + " is inside the strongest MVP import path. Import now, then open the readable archive first." + companionNote;
+    case "gemini":
+      return "Gemini is importable through a recovery path today. Use the My Activity HTML as the main file and verify preserved versus missing linked files after import." + companionNote;
+    case "copilot":
+      return "Microsoft Copilot is first-class for the proven activity CSV export shape Quantum tests today. Import if this matches that CSV export path, then review archive and dataset output normally." + companionNote;
+    default:
+      return "Recovered conversation JSON can import when the thread structure is recognizable, but it should be treated as recovery work rather than vendor-complete support." + companionNote;
+  }
 }
 
 function importSourceEntryPriority(entry: ImportSourceEntry): number {

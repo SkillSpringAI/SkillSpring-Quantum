@@ -49,6 +49,8 @@ This is narrower than the full internal parser and document-ingestion surface al
 - desktop import history panel with recent-run browsing, full-history investigation search, direct retrieval handoff, and per-file output links
 - clearer vendor-specific intake labeling across source inspection and import history for ChatGPT, Grok, Claude, Gemini, and proven Copilot fallback paths
 - recovery guidance across imports and import history so failed, skipped, and fallback runs explain the next useful checks in plain English
+- vendor-first import entry that now starts moving the UI toward expected export source before file-mode reasoning
+- clearer import match feedback for ready-now, recovery-path, and mismatch states
 - desktop retrieval screen with vendor/topic/date narrowing, linked segment inspection, and saved investigations
 - desktop markdown archive browser grouped by inferred topic folder
 - archive-to-dataset handoff from selected markdown files into matched dataset context
@@ -79,6 +81,9 @@ This is narrower than the full internal parser and document-ingestion surface al
 ## Current Gaps / Next Build Targets
 
 - keep hardening the now-expanded first-class vendor set so the app promise and real behavior stay matched at the exact export-shape level
+- continue reshaping the imports screen so ordinary users can choose a vendor, check the export shape, and import without learning Quantum vocabulary first
+- keep simplifying empty states and first-read density across imports, archive, and datasets before broader external-user exposure
+- make schema-match outcomes more visual and decisive than text-only explanation
 - carry archive-selected trust context deeper into dataset review and preview layers so users can tell exactly what came from the archive handoff versus the latest current bundle
 - improve archive usability further so preserved attachments and source references are directly useful during review, not only summarized
 - connect import summaries, archive browsing, and dataset browsing even more tightly across screens, especially around stable historical versus rolling-current dataset scope
@@ -102,13 +107,25 @@ Those paths should be treated as expansion assets, not as the main story for the
 The desktop product now has a clearer end-to-end shape than earlier reference snapshots:
 
 - Settings can persist a configurable output root across the app
-- Imports can inspect sources, run local imports, and show recent import history with file-level outcomes
+- Imports can inspect sources, run local imports, show recent import history with file-level outcomes, and now begin from a more vendor-first entry flow
 - Imports and import history now explain recovery-path, failed, and skipped outcomes with concrete next-step guidance
 - Retrieval can search prior imports and linked dataset segments, save named investigations, and reopen them later
-- Readable Archive browsing now supports topic/source/date filtering, in-app file navigation, archive-event file opening, preserved-attachment handoff, and direct dataset-context handoff from selected archive files
-- Datasets now include source-context trust summaries, redaction/trust cards, in-app previews of topic segments, prompt/response pairs, micro segments, and private-review records, plus current-bundle versus historical-run handoff controls
+- Readable Archive browsing now supports topic/source/date filtering, in-app file navigation, archive-event file opening, preserved-attachment handoff, direct dataset-context handoff from selected archive files, and lighter first-use guidance
+- Datasets now include source-context trust summaries, redaction/trust cards, in-app previews of topic segments, prompt/response pairs, micro segments, and private-review records, plus current-bundle versus historical-run handoff controls and lighter guide content
 
 This means the current product is no longer just "pipeline wrappers plus file-open buttons." It now provides a more coherent local review workflow across imports, archives, and datasets.
+
+## Continue Tomorrow
+
+The current UX is improved but not yet ready for a first external-user impression without more simplification.
+
+The next explicit UX continuation slices are:
+
+- finish shifting Imports toward a clear vendor-first workflow with stronger export-schema validation cues
+- reduce the amount of required reading on first load across Imports, Readable Archive, and Datasets
+- collapse secondary panels until the user has actual import output to work from
+- make mismatch and recovery-path states visually obvious enough that users can act quickly
+- keep advanced assurance tools contextual and avoid making the ordinary flow feel like a product to be studied
 
 ## User and Governance Surface Model
 

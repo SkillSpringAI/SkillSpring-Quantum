@@ -16,6 +16,7 @@ import { useSettings } from "../state/settingsContext";
 export default function OrganizedOutputScreen() {
   const { setActiveScreen } = useNavigation();
   const { settings } = useSettings();
+  const [showArchiveHelp, setShowArchiveHelp] = useState(false);
   const [latestArchive, setLatestArchive] = useState<ArchiveNotification | null>(null);
   const [archiveEvents, setArchiveEvents] = useState<ArchiveNotification[]>([]);
   const [archiveEventsFile, setArchiveEventsFile] = useState("");
@@ -94,7 +95,7 @@ export default function OrganizedOutputScreen() {
         {topics.length === 0 ? (
           <>
             <p className="muted">
-              No readable archive files are available yet. Start in Imports, run a conversation import, then come back here to read the archive output.
+              No readable archive yet. Import a conversation export first, then come back here to read it.
             </p>
             <div className="action-bar">
               <button className="primary-btn" type="button" onClick={() => setActiveScreen("imports")}>
@@ -105,24 +106,26 @@ export default function OrganizedOutputScreen() {
         ) : (
           <>
             <p className="muted">
-              This is the main place to read back what Quantum created from your imported conversations.
+              Read back the imported conversations here.
             </p>
             <p className="muted">
-              {archiveFileCount} readable archive file(s) across {topics.length} topic folder(s). The latest file opens automatically so you can start reading right away.
+              {archiveFileCount} file(s) across {topics.length} topic folder(s). The latest file opens automatically.
             </p>
-            <ul className="list">
-              <li>Readable markdown is grouped by topic so you can browse what was imported quickly.</li>
-              <li>You can search by topic, file name, path, or the readable preview text from each archive file.</li>
-              <li>Each selected file now shows archive context like source, topic, conversation date, and segment range when that metadata is available.</li>
-              <li>Recent archive updates show which files were written, backed up, skipped, or replaced.</li>
-              <li>These archive files come from the same imported conversation content used for datasets.</li>
-              <li>When vendor exports included uploaded files or linked files, preserved attachments are summarized separately below.</li>
-            </ul>
             <div className="action-bar">
+              <button className="secondary-btn" type="button" onClick={() => setShowArchiveHelp((value) => !value)}>
+                {showArchiveHelp ? "Hide Tips" : "Show Tips"}
+              </button>
               <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(settings.outputRoot)}>
                 Open Output Folder
               </button>
             </div>
+            {showArchiveHelp ? (
+              <ul className="list">
+                <li>Use search to narrow by topic, title, source, or trust clues.</li>
+                <li>Use this screen when you want the easiest human-readable view of imported conversations.</li>
+                <li>Preserved attachments and dataset handoff live in the selected-file pane.</li>
+              </ul>
+            ) : null}
           </>
         )}
       </div>
@@ -131,7 +134,7 @@ export default function OrganizedOutputScreen() {
         <h2>Preserved Files</h2>
         {attachmentSummaries.length === 0 ? (
           <p className="muted">
-            No preserved vendor attachment archives were detected for this output folder yet.
+            No preserved attachment archives detected yet.
           </p>
         ) : (
           <>

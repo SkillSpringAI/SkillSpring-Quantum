@@ -1,35 +1,80 @@
 import type { DatasetRunResult } from "../types/datasetRun";
+import type { MarkdownArchiveFile } from "../types/markdownArchive";
+
+export type DatasetPreviewIntentKind =
+  | "topic_segments"
+  | "prompt_response_pairs"
+  | "micro_segments"
+  | "private_review";
 
 export interface DatasetInvestigationIntent {
   vendor?: string;
   topic?: string;
+  rawTopic?: string;
   createdAt?: string;
   archiveTitle?: string;
   archivePath?: string;
+  supportTier?: MarkdownArchiveFile["supportTier"];
+  hasAttachmentReferences?: boolean;
+  hasPreservedAttachments?: boolean;
+  hasMissingAttachments?: boolean;
+  preferredPreviewKind?: DatasetPreviewIntentKind;
+  previewReason?: string;
+}
+
+export interface DatasetRunMatchResult {
+  run: DatasetRunResult["runs"][number] | null;
+  score: number;
+  matchedVendor: boolean;
+  matchedTopic: boolean;
 }
 
 export function findMatchingDatasetRun(
   runs: DatasetRunResult["runs"],
   intent: DatasetInvestigationIntent
 ): DatasetRunResult["runs"][number] | null {
+  return findMatchingDatasetRunDetails(runs, intent).run;
+}
+
+export function findMatchingDatasetRunDetails(
+  runs: DatasetRunResult["runs"],
+  intent: DatasetInvestigationIntent
+): DatasetRunMatchResult {
   const normalizedVendor = intent.vendor?.trim().toLowerCase() ?? "";
-  const normalizedTopic = intent.topic?.trim().toLowerCase() ?? "";
+  const topicCandidates = [intent.topic, intent.rawTopic]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .map((value) => value.trim().toLowerCase());
 
   const scoredRuns = runs.map((run) => {
     let score = 0;
     const sourceContext = run.source_context;
+    const matchedVendor =
+      !!normalizedVendor &&
+      !!sourceContext?.vendor_sources.some((vendor) => vendor.toLowerCase() === normalizedVendor);
+    const matchedTopic =
+      topicCandidates.length > 0 &&
+      !!sourceContext?.topic_hints.some((topic) =>
+        topicCandidates.some((candidate) => topic.toLowerCase().includes(candidate) || candidate.includes(topic.toLowerCase()))
+      );
 
-    if (normalizedVendor && sourceContext?.vendor_sources.some((vendor) => vendor.toLowerCase() === normalizedVendor)) {
+    if (matchedVendor) {
       score += 3;
     }
 
-    if (normalizedTopic && sourceContext?.topic_hints.some((topic) => topic.toLowerCase().includes(normalizedTopic))) {
+    if (matchedTopic) {
       score += 2;
     }
 
-    return { run, score };
+    return { run, score, matchedVendor, matchedTopic };
   });
 
   scoredRuns.sort((left, right) => right.score - left.score || right.run.run_id.localeCompare(left.run.run_id));
-  return scoredRuns[0]?.score ? scoredRuns[0].run : runs[0] ?? null;
+  const best = scoredRuns[0];
+
+  return {
+    run: best?.score ? best.run : runs[0] ?? null,
+    score: best?.score ?? 0,
+    matchedVendor: best?.score ? best.matchedVendor : false,
+    matchedTopic: best?.score ? best.matchedTopic : false
+  };
 }

@@ -26,6 +26,19 @@ Gemini My Activity HTML remains a narrower fallback route.
 
 ## Near-term priorities
 
+## Continue Tomorrow
+
+The app is now more stable and the import UX has started moving toward a vendor-first flow, but the ordinary-user surface is still too dense for a first external impression.
+
+Tomorrow should continue from these explicit UX slices:
+
+- keep pushing the vendor-first import flow so users start from `ChatGPT`, `Claude`, `Grok`, `Gemini`, `Copilot`, or `Auto Detect` instead of reasoning about file mode first
+- make export-schema match results more visual and decisive, especially for mismatch, recovery-path, and ready-now states
+- collapse or defer secondary guidance panels until they are backed by real data from an actual import
+- simplify archive and dataset empty states further so they feel like result screens, not instructions manuals
+- trim or restructure source-summary, import-history, and dataset explanation density so a first-time user can act without studying the product
+- keep diagnostics, governance, and other advanced surfaces subordinate and contextual
+
 ### Priority 1: Archive usability
 
 Continue making the readable archive something users actively work from instead of merely inspect.
@@ -35,11 +48,12 @@ Current focus:
 - file-level attachment trust inside archive review
 - direct open actions for preserved attachments referenced by a selected archive file
 - stronger archive search and review affordances tied to real trust evidence
+- lighter archive empty states and less always-visible explanation text
 
 Likely next slices:
 
-- open all preserved attachments for a selected archive file
-- improve preview affordances for previewable preserved files
+- continue reducing explanatory overload in archive empty and first-use states
+- make the selected-file pane feel more like a guided review flow than a technical detail dump
 - tighten archive-to-dataset handoff language around exact file context
 
 ### Priority 2: Dataset usability
@@ -51,12 +65,13 @@ Current focus:
 - historical-run dataset preview
 - source-context trust carried into dataset review
 - clearer redaction and trust explanation
+- lighter dataset guidance with optional deeper explanation instead of mandatory reading
 
 Likely next slices:
 
-- direct dataset export/open controls for selected run artifacts
-- clearer historical-run versus current-bundle explanation
-- tighter archive-selected context inside dataset previews
+- continue reducing first-read density across dataset notes, outputs, and preview framing
+- preserve strong trust explanation while moving secondary teaching content behind optional reveals
+- tighten archive-selected context inside dataset previews
 
 ### Priority 3: Trust hardening
 
@@ -68,6 +83,7 @@ Focus:
 - partial-package clarity
 - failure and retry guidance
 - exact export-shape honesty in UI and docs
+- schema-match clarity inside the vendor-first import flow
 
 ## Advanced surface rule
 

@@ -1,6 +1,7 @@
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
 import DetailPane from "../components/DetailPane";
+import ScreenErrorBoundary from "../components/ScreenErrorBoundary";
 import DashboardScreen from "../screens/DashboardScreen";
 import ImportsScreen from "../screens/ImportsScreen";
 import RetrievalScreen from "../screens/RetrievalScreen";
@@ -43,13 +44,21 @@ function ScreenRouter() {
 }
 
 export default function AppShell() {
+  const { activeScreen, setActiveScreen } = useNavigation();
+
   return (
     <div className="app-shell">
       <Sidebar />
       <main className="main-area">
         <Topbar />
         <div className="screen-area">
-          <ScreenRouter />
+          <ScreenErrorBoundary
+            key={activeScreen}
+            screenId={activeScreen}
+            onGoDashboard={() => setActiveScreen("dashboard")}
+          >
+            <ScreenRouter />
+          </ScreenErrorBoundary>
         </div>
       </main>
       <DetailPane />

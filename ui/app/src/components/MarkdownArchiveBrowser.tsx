@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type {
   AttachmentArchiveSummary,
   MarkdownArchiveAttachment,
@@ -7,6 +7,7 @@ import type {
 } from "../types/markdownArchive";
 import { revealDesktopPath } from "../services/pathBridge";
 import { useNavigation } from "../state/navigationContext";
+import type { DatasetPreviewIntentKind } from "../utils/datasetIntent";
 
 interface MarkdownArchiveBrowserProps {
   topics: MarkdownArchiveTopic[];
@@ -76,7 +77,11 @@ export default function MarkdownArchiveBrowser({
             return (
               file.name.toLowerCase().includes(normalizedFilter) ||
               file.path.toLowerCase().includes(normalizedFilter) ||
-              file.previewText.toLowerCase().includes(normalizedFilter)
+              file.previewText.toLowerCase().includes(normalizedFilter) ||
+              (file.title ?? "").toLowerCase().includes(normalizedFilter) ||
+              (file.topic ?? "").toLowerCase().includes(normalizedFilter) ||
+              (file.rawTopic ?? "").toLowerCase().includes(normalizedFilter) ||
+              (file.source ?? "").toLowerCase().includes(normalizedFilter)
             );
           })
           .sort((left, right) => compareArchiveFiles(left, right, sortMode));
@@ -173,10 +178,20 @@ export default function MarkdownArchiveBrowser({
   const selectedPreservedAttachmentPaths = selectedFileAttachments
     .map((attachment) => attachment.resolvedArchivePath)
     .filter((value): value is string => Boolean(value));
+  const previewableAttachments = selectedFileAttachments.filter((attachment) => isInlinePreviewable(attachment));
+  const [selectedAttachmentPreviewId, setSelectedAttachmentPreviewId] = useState("");
+  const selectedAttachmentPreview =
+    previewableAttachments.find((attachment) => attachment.id === selectedAttachmentPreviewId) ??
+    previewableAttachments[0] ??
+    null;
 
   async function openAllPreservedAttachments() {
     await Promise.all(selectedPreservedAttachmentPaths.map((targetPath) => revealDesktopPath(targetPath)));
   }
+
+  useEffect(() => {
+    setSelectedAttachmentPreviewId(previewableAttachments[0]?.id ?? "");
+  }, [selectedFile?.path]);
 
   return (
     <div className="panel large">
@@ -301,6 +316,11 @@ export default function MarkdownArchiveBrowser({
                 ? `${visibleTopics.reduce((sum, topic) => sum + topic.files.length, 0)} matching file(s) across readable archive content`
                 : `${topics.reduce((sum, topic) => sum + topic.files.length, 0)} archive file(s) across ${topics.length} topic folder(s)`}
             </p>
+            {visibleFiles.length > 0 ? (
+              <p className="muted">
+                Trust clues in current results: {summarizeArchiveVisibleTrust(visibleFiles)}
+              </p>
+            ) : null}
             {visibleTopics.map((topic) => (
               <div key={topic.path} className="markdown-topic-group">
                 <strong>{topic.name}</strong>
@@ -318,6 +338,9 @@ export default function MarkdownArchiveBrowser({
                     >
                       <div>{file.name}</div>
                       <div className="muted archive-file-meta">{formatArchiveFileMeta(file)}</div>
+                      {summarizeArchiveListBadges(file).length > 0 ? (
+                        <div className="muted archive-list-badges">{summarizeArchiveListBadges(file).join(" | ")}</div>
+                      ) : null}
                       {file.previewText ? (
                         <div className="muted">{file.previewText}</div>
                       ) : null}
@@ -403,6 +426,15 @@ export default function MarkdownArchiveBrowser({
                             {attachment.mimeType ?? attachment.id}
                           </p>
                           <div className="action-bar">
+                            {isInlinePreviewable(attachment) ? (
+                              <button
+                                className="primary-btn"
+                                type="button"
+                                onClick={() => setSelectedAttachmentPreviewId(attachment.id)}
+                              >
+                                Preview Inline
+                              </button>
+                            ) : null}
                             {attachment.resolvedArchivePath ? (
                               <button
                                 className="secondary-btn"
@@ -425,6 +457,21 @@ export default function MarkdownArchiveBrowser({
                         </div>
                       ))}
                     </div>
+                    {selectedAttachmentPreview ? (
+                      <div className="detail-box">
+                        <strong>Attachment Preview</strong>
+                        <p className="muted">
+                          Inline preview is available here for previewable preserved or preview-path files referenced by the selected archive record.
+                        </p>
+                        <div className="attachment-preview-shell">
+                          <div className="attachment-preview-toolbar">
+                            <strong>{selectedAttachmentPreview.label}</strong>
+                            <span className="muted">{describePreviewKind(selectedAttachmentPreview)}</span>
+                          </div>
+                          {renderAttachmentPreview(selectedAttachmentPreview)}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -480,9 +527,16 @@ export default function MarkdownArchiveBrowser({
                     openDatasetInvestigation({
                       vendor: selectedFile.source,
                       topic: selectedFile.topic ?? selectedFile.rawTopic,
+                      rawTopic: selectedFile.rawTopic,
                       createdAt: selectedFile.createdAt,
                       archiveTitle: selectedFile.title ?? selectedFile.name,
-                      archivePath: selectedFile.path
+                      archivePath: selectedFile.path,
+                      supportTier: selectedFile.supportTier,
+                      hasAttachmentReferences: selectedFile.hasAttachmentReferences,
+                      hasPreservedAttachments: selectedFile.hasPreservedAttachments,
+                      hasMissingAttachments: selectedFile.hasMissingAttachments,
+                      preferredPreviewKind: inferArchivePreviewKind(selectedFile),
+                      previewReason: buildArchivePreviewReason(selectedFile)
                     })
                   }
                 >
@@ -606,6 +660,76 @@ function summarizeArchiveContextBadges(file: MarkdownArchiveFile): string[] {
   return badges;
 }
 
+function summarizeArchiveListBadges(file: MarkdownArchiveFile): string[] {
+  const badges: string[] = [];
+
+  if (file.supportTier === "mvp_first_class") {
+    badges.push("ready-now");
+  } else if (file.supportTier === "compatibility_fallback") {
+    badges.push("recovery-path");
+  }
+
+  if (file.hasPreservedAttachments) {
+    badges.push("preserved attachments");
+  } else if (file.hasAttachmentReferences) {
+    badges.push("attachment references");
+  }
+
+  if (file.hasMissingAttachments) {
+    badges.push("missing attachment risk");
+  }
+
+  if (file.createdAt) {
+    badges.push(new Date(file.createdAt).toLocaleDateString());
+  }
+
+  return badges;
+}
+
+function summarizeArchiveVisibleTrust(files: MarkdownArchiveFile[]): string {
+  const firstClass = files.filter((file) => file.supportTier === "mvp_first_class").length;
+  const fallback = files.filter((file) => file.supportTier === "compatibility_fallback").length;
+  const preserved = files.filter((file) => file.hasPreservedAttachments).length;
+  const missing = files.filter((file) => file.hasMissingAttachments).length;
+  const referenced = files.filter((file) => file.hasAttachmentReferences).length;
+
+  return [
+    firstClass ? `${firstClass} ready-now` : "",
+    fallback ? `${fallback} recovery-path` : "",
+    referenced ? `${referenced} with attachment references` : "",
+    preserved ? `${preserved} with preserved evidence` : "",
+    missing ? `${missing} with missing attachment risk` : ""
+  ].filter(Boolean).join(" | ") || "no additional trust clues";
+}
+
+function inferArchivePreviewKind(file: MarkdownArchiveFile): DatasetPreviewIntentKind {
+  if (file.hasMissingAttachments) {
+    return "private_review";
+  }
+
+  if (file.hasAttachmentReferences || file.topic || file.rawTopic) {
+    return "topic_segments";
+  }
+
+  return "prompt_response_pairs";
+}
+
+function buildArchivePreviewReason(file: MarkdownArchiveFile): string {
+  if (file.hasMissingAttachments) {
+    return "Started in private review because this archive file carries missing attachment risk and may need the highest-caution dataset view first.";
+  }
+
+  if (file.hasAttachmentReferences) {
+    return "Started in topic segments because this archive file references attachments and topic-level context is the safest first review surface.";
+  }
+
+  if (file.topic || file.rawTopic) {
+    return "Started in topic segments because archive markdown files are closest to the topic-organized dataset view.";
+  }
+
+  return "Started in prompt/response because this archive file had limited topic clues and a direct QA-style preview is the quickest review surface.";
+}
+
 function formatArchiveSourceLabel(source: string): string {
   switch (source) {
     case "chatgpt":
@@ -697,6 +821,84 @@ function formatAttachmentStatusLabel(attachment: MarkdownArchiveAttachment): str
     default:
       return "Referenced only";
   }
+}
+
+function isInlinePreviewable(attachment: MarkdownArchiveAttachment): boolean {
+  return attachmentPreviewKind(attachment) !== null;
+}
+
+function attachmentPreviewKind(
+  attachment: MarkdownArchiveAttachment
+): "image" | "pdf" | null {
+  const targetPath = attachment.resolvedPreviewPath ?? attachment.resolvedArchivePath ?? "";
+  const normalized = targetPath.toLowerCase();
+
+  if (/\.(png|jpe?g|gif|webp|bmp|svg)$/.test(normalized)) {
+    return "image";
+  }
+
+  if (normalized.endsWith(".pdf")) {
+    return "pdf";
+  }
+
+  if ((attachment.mimeType ?? "").startsWith("image/")) {
+    return "image";
+  }
+
+  if ((attachment.mimeType ?? "").toLowerCase() === "application/pdf") {
+    return "pdf";
+  }
+
+  return null;
+}
+
+function describePreviewKind(attachment: MarkdownArchiveAttachment): string {
+  const kind = attachmentPreviewKind(attachment);
+  switch (kind) {
+    case "image":
+      return "Image preview";
+    case "pdf":
+      return "PDF preview";
+    default:
+      return "Preview unavailable";
+  }
+}
+
+function renderAttachmentPreview(attachment: MarkdownArchiveAttachment) {
+  const targetPath = attachment.resolvedPreviewPath ?? attachment.resolvedArchivePath;
+  if (!targetPath) {
+    return <p className="muted">No local preview path is available for this attachment.</p>;
+  }
+
+  const src = toFileUrl(targetPath);
+  const kind = attachmentPreviewKind(attachment);
+
+  if (kind === "image") {
+    return (
+      <img
+        className="attachment-preview-image"
+        src={src}
+        alt={attachment.label}
+      />
+    );
+  }
+
+  if (kind === "pdf") {
+    return (
+      <iframe
+        className="attachment-preview-frame"
+        src={src}
+        title={attachment.label}
+      />
+    );
+  }
+
+  return <p className="muted">Inline preview is not available for this attachment type yet.</p>;
+}
+
+function toFileUrl(targetPath: string): string {
+  const normalized = targetPath.replace(/\\/g, "/");
+  return encodeURI("file:///" + normalized);
 }
 
 function formatBytes(value: number): string {

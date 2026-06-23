@@ -27,7 +27,15 @@ export async function loadArchiveNotifications(
     };
   }
 
-  return response.result;
+  const result = response.result as Partial<ArchiveNotificationsResult>;
+  return {
+    outputRoot: result.outputRoot ?? outputRoot,
+    notificationsRoot: result.notificationsRoot ?? outputRoot + "/notifications",
+    eventsFile: result.eventsFile ?? outputRoot + "/notifications/archive-events.jsonl",
+    latestFile: result.latestFile ?? outputRoot + "/notifications/latest-archive-event.json",
+    latest: result.latest ?? null,
+    events: Array.isArray(result.events) ? result.events : []
+  };
 }
 
 export function describeArchiveNotification(event: ArchiveNotification): string {

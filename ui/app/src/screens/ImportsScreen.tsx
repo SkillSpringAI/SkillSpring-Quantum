@@ -8,6 +8,7 @@ import type {
   ImportJobForm,
   ImportSourceSummary,
   ImportSourceVendorSummary,
+  ImportVendorChoice,
   RunLogEntry,
   RunState,
   ImportSupportTier
@@ -303,6 +304,7 @@ export default function ImportsScreen() {
   const { settings, updateSettings } = useSettings();
   const [form, setForm] = useState<ImportJobForm>({
     mode: "single_file",
+    expectedVendor: "auto_detect",
     inputFile: "",
     inputFolder: "",
     outputRoot: settings.outputRoot
@@ -485,6 +487,10 @@ export default function ImportsScreen() {
   const latestPackageCompanionSkips = countPackageCompanionSkips(latestRunForNextSteps ?? null);
   const runNeedsDiagnostics = runNeedsAttention(latestRunForNextSteps ?? null);
   const recoveryGuidance = buildRecoveryGuidance(latestRunForNextSteps ?? null);
+  const showHistoryPanel = Boolean(importHistory?.runs.length || importHistory?.latest || historyMode === "query");
+  const expectedVendorSummary = findExpectedVendorSummary(sourceSummary, form.expectedVendor);
+  const expectedVendorMessage = buildExpectedVendorMessage(sourceSummary, form.expectedVendor);
+  const validationCard = buildValidationCard(sourceSummary, form.expectedVendor);
 
   function nextStepSummary(run: ImportRunSummary): string {
     if (run.filesImported === 0) {
@@ -530,167 +536,139 @@ export default function ImportsScreen() {
       />
 
       <div className="panel">
-        <h2>Import Notes</h2>
+        <h2>What Quantum Expects</h2>
         <p className="muted">
-          MVP focus: inspect recognizable AI exports, import them locally, open a readable archive, and review the dataset output without leaving the app.
+          Quantum works best when you point it at the export you actually downloaded, then let it confirm the shape before import.
         </p>
         <ul>
-          <li>ChatGPT, Grok, and Claude are the clearest ready-now conversation import paths.</li>
-          <li>Gemini export JSON and the proven Microsoft Copilot activity CSV shape are now ready-now paths, while Gemini My Activity HTML still uses a narrower recovery route when users rely on that export path.</li>
-          <li>Quantum inspects a file or folder first, then tells you what it can import, archive, or skip before the run starts.</li>
-          <li>Conversation imports produce both a readable archive and privacy-aware dataset records in the same local run.</li>
-          <li>Keep one stable output folder for related imports so history, search, and datasets stay connected.</li>
+          <li>Most major AI exports are easiest to validate from their downloaded folder.</li>
+          <li>Quantum checks the export shape first, then tells you whether it looks ready-now, recovery-path, or unsupported.</li>
+          <li>A successful conversation import produces both a readable archive and privacy-aware datasets in the same local run.</li>
         </ul>
-        <p className="muted">
-          Generic documents and PDFs can still be processed, but they are supporting paths rather than the main MVP promise.
-        </p>
       </div>
 
       <div className="panel">
-        <h2>Next Step</h2>
-        {!latestRunForNextSteps ? (
+        <h2>Match Check</h2>
+        {!sourceSummary ? (
           <>
             <p className="muted">
-              Start by inspecting a file or folder. After your first import, Quantum will point you to the best next screen.
+              Pick a vendor and export path, then use <strong>Check Match</strong> before you import.
             </p>
+            <p className="muted">{buildPreInspectVendorHint(form.expectedVendor)}</p>
+          </>
+        ) : (
+          <>
+            <div className={validationCard.toneClass}>
+              <strong>{validationCard.title}</strong>
+              <p className="muted">{expectedVendorMessage}</p>
+              {expectedVendorSummary ? (
+                <p className="muted">
+                  {formatVendorSummaryLabel(expectedVendorSummary.vendor)} readiness: {formatSupportTierLabel(expectedVendorSummary.supportTier)} | {expectedVendorSummary.detectedFiles} main import file(s)
+                  {expectedVendorSummary.companionFiles > 0 ? ` | ${expectedVendorSummary.companionFiles} companion file(s)` : ""}
+                </p>
+              ) : null}
+            </div>
             <div className="action-bar">
               <button className="primary-btn" type="button" onClick={refreshSourceSummary}>
-                Inspect Current Path
+                Check Current Path Again
               </button>
             </div>
           </>
-        ) : (
-          <>
-            <p className="muted">{nextStepSummary(latestRunForNextSteps)}</p>
+        )}
+      </div>
+
+      {latestRunForNextSteps ? (
+        <div className="panel">
+          <h2>Next Step</h2>
+          <p className="muted">{nextStepSummary(latestRunForNextSteps)}</p>
+          <p className="muted">
+            Latest run: {new Date(latestRunForNextSteps.runAt).toLocaleString()} | {latestRunOutcomeSummary}
+          </p>
+          {latestPackageCompanionSkips > 0 ? (
             <p className="muted">
-              Latest run: {new Date(latestRunForNextSteps.runAt).toLocaleString()} | {latestRunOutcomeSummary}
+              Vendor package note: {latestPackageCompanionSkips} companion file(s) were expected and were handled through the main package import instead of being added as separate dataset sources.
             </p>
-            {latestPackageCompanionSkips > 0 ? (
-              <p className="muted">
-                Vendor package note: {latestPackageCompanionSkips} companion file(s) were expected and were handled through the main package import instead of being added as separate dataset sources.
-              </p>
+          ) : null}
+          <div className="action-bar">
+            {hasConversationOutputs ? (
+              <button className="primary-btn" type="button" onClick={() => setActiveScreen("organized-output")}>
+                Open Readable Archive
+              </button>
             ) : null}
-            <div className="action-bar">
-              {hasConversationOutputs ? (
-                <button className="primary-btn" type="button" onClick={() => setActiveScreen("organized-output")}>
-                  Open Readable Archive
-                </button>
-              ) : null}
-              {latestArchiveArtifactPath ? (
-                <button
-                  className="secondary-btn"
-                  type="button"
-                  onClick={() => revealDesktopPath(latestArchiveArtifactPath)}
-                >
-                  Open Latest Archive File
-                </button>
-              ) : null}
-              {hasDatasetOutputs ? (
-                <button className="primary-btn" type="button" onClick={() => setActiveScreen("datasets")}>
-                  Open Datasets
-                </button>
-              ) : null}
-              {latestDatasetArtifactPath ? (
-                <button
-                  className="secondary-btn"
-                  type="button"
-                  onClick={() => revealDesktopPath(latestDatasetArtifactPath)}
-                >
-                  Open Latest Dataset File
-                </button>
-              ) : null}
-              {runNeedsDiagnostics ? (
-                <button className="secondary-btn" type="button" onClick={() => setActiveScreen("diagnostics")}>
-                  Check Diagnostics
-                </button>
-              ) : null}
-              {latestRunForNextSteps.retrievalSummary ? (
-                <button
-                  className="secondary-btn"
-                  type="button"
-                  onClick={() =>
-                    openRetrievalInvestigation({
-                      filters: {
-                        text: "",
-                        vendor: "",
-                        topic: "",
-                        status: "all",
-                        from: "",
-                        to: ""
-                      },
-                      suggestedName: latestRunForNextSteps.retrievalSummary?.topicHints[0] || "Latest import"
-                    })
-                  }
-                >
-                  Find Imported Files
-                </button>
-              ) : null}
-            </div>
-          </>
-        )}
-      </div>
-
-      <div className="panel">
-        <h2>Recovery Guidance</h2>
-        {!latestRunForNextSteps ? (
-          <p className="muted">
-            After your first import, Quantum will explain whether you can move straight to archive and datasets or whether a failed, skipped, or recovery-path result needs a quick check first.
-          </p>
-        ) : recoveryGuidance.length === 0 ? (
-          <p className="muted">
-            This run does not need special recovery steps. You can keep moving into archive review and dataset review.
-          </p>
-        ) : (
-          <>
-            <p className="muted">
-              Use these checks before retrying an import or treating every record in this run as fully reliable.
-            </p>
-            <ul>
-              {recoveryGuidance.map((step) => (
-                <li key={step}>{step}</li>
-              ))}
-            </ul>
-            <div className="action-bar">
-              <button className="secondary-btn" type="button" onClick={refreshSourceSummary}>
-                Re-Inspect Current Path
+            {hasDatasetOutputs ? (
+              <button className="primary-btn" type="button" onClick={() => setActiveScreen("datasets")}>
+                Open Datasets
               </button>
-              {runNeedsDiagnostics ? (
-                <button className="secondary-btn" type="button" onClick={() => setActiveScreen("diagnostics")}>
-                  Open Diagnostics
-                </button>
-              ) : null}
-              {hasConversationOutputs ? (
-                <button className="secondary-btn" type="button" onClick={() => setActiveScreen("organized-output")}>
-                  Review Archive
-                </button>
-              ) : null}
-              {hasDatasetOutputs ? (
-                <button className="secondary-btn" type="button" onClick={() => setActiveScreen("datasets")}>
-                  Review Dataset Context
-                </button>
-              ) : null}
-            </div>
-          </>
-        )}
-      </div>
+            ) : null}
+            {runNeedsDiagnostics ? (
+              <button className="secondary-btn" type="button" onClick={() => setActiveScreen("diagnostics")}>
+                Check Diagnostics
+              </button>
+            ) : null}
+            {latestArchiveArtifactPath ? (
+              <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(latestArchiveArtifactPath)}>
+                Open Latest Archive File
+              </button>
+            ) : null}
+            {latestDatasetArtifactPath ? (
+              <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(latestDatasetArtifactPath)}>
+                Open Latest Dataset File
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
-      <ImportHistoryPanel
-        history={importHistory}
-        selectedRun={selectedRun}
-        onSelectRun={setSelectedRun}
-        onRefresh={refreshImportHistory}
-        onSearch={runHistorySearch}
-        onResetSearch={resetHistorySearch}
-        onOpenRunInRetrieval={handoffRunToRetrieval}
-        onOpenResultInRetrieval={handoffResultToRetrieval}
-        searchMode={historyMode}
-        searchBusy={historySearchBusy}
-      />
+      {latestRunForNextSteps && recoveryGuidance.length > 0 ? (
+        <div className="panel">
+          <h2>Needs Attention</h2>
+          <p className="muted">
+            Use these checks before retrying an import or treating every record in this run as fully reliable.
+          </p>
+          <ul>
+            {recoveryGuidance.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ul>
+          <div className="action-bar">
+            <button className="secondary-btn" type="button" onClick={refreshSourceSummary}>
+              Re-Check Path
+            </button>
+            {runNeedsDiagnostics ? (
+              <button className="secondary-btn" type="button" onClick={() => setActiveScreen("diagnostics")}>
+                Open Diagnostics
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {showHistoryPanel ? (
+        <ImportHistoryPanel
+          history={importHistory}
+          selectedRun={selectedRun}
+          onSelectRun={setSelectedRun}
+          onRefresh={refreshImportHistory}
+          onSearch={runHistorySearch}
+          onResetSearch={resetHistorySearch}
+          onOpenRunInRetrieval={handoffRunToRetrieval}
+          onOpenResultInRetrieval={handoffResultToRetrieval}
+          searchMode={historyMode}
+          searchBusy={historySearchBusy}
+        />
+      ) : (
+        <div className="panel large">
+          <h2>Import History</h2>
+          <p className="muted">
+            Your recent imports will appear here after the first successful run.
+          </p>
+        </div>
+      )}
 
       <div className="panel large">
         <h2>Source Summary</h2>
         {!sourceSummary ? (
-          <p className="muted">Inspect a file or folder to see what Quantum can import, recover, or skip before you run anything.</p>
+          <p className="muted">Use Check Match to confirm that the selected export path looks like the vendor you intended to import.</p>
         ) : (
           <>
             <p className="muted">
@@ -749,13 +727,23 @@ export default function ImportsScreen() {
                 </p>
                 <div className="stats-grid two-col">
                   {sourceSummary.vendorSummaries.map((summary) => (
-                    <div key={summary.vendor} className="stat-card">
+                    <div
+                      key={summary.vendor}
+                      className={
+                        "stat-card" +
+                        (isExpectedVendor(form.expectedVendor, summary.vendor) ? " vendor-match-card" : "") +
+                        (shouldDimVendorCard(form.expectedVendor, summary.vendor) ? " subdued-card" : "")
+                      }
+                    >
                       <span className="label">{formatVendorSummaryLabel(summary.vendor)}</span>
                       <strong>{formatSupportTierLabel(summary.supportTier)}</strong>
                       <p className="muted">
                         {summary.detectedFiles} main import file(s) detected
                         {summary.companionFiles > 0 ? ` | ${summary.companionFiles} companion file(s)` : ""}
                       </p>
+                      {isExpectedVendor(form.expectedVendor, summary.vendor) ? (
+                        <p className="muted">Matches the vendor you selected above.</p>
+                      ) : null}
                       <p className="muted">{summary.recommendation}</p>
                     </div>
                   ))}
@@ -793,4 +781,129 @@ export default function ImportsScreen() {
       <RunLogPanel entries={logEntries} />
     </section>
   );
+}
+
+function findExpectedVendorSummary(
+  sourceSummary: ImportSourceSummary | null,
+  expectedVendor: ImportVendorChoice
+): ImportSourceVendorSummary | null {
+  if (!sourceSummary || expectedVendor === "auto_detect") {
+    return null;
+  }
+
+  return sourceSummary.vendorSummaries.find((summary) => summary.vendor === expectedVendor) ?? null;
+}
+
+function buildPreInspectVendorHint(expectedVendor: ImportVendorChoice): string {
+  switch (expectedVendor) {
+    case "chatgpt":
+      return "ChatGPT usually arrives as a folder export. Start with the downloaded folder unless you only have the core export file.";
+    case "claude":
+      return "Claude exports are easiest to validate from the full folder so companion files can be recognized as expected package parts.";
+    case "grok":
+      return "Grok is best checked from the whole export folder so manifests and preserved attachments stay connected.";
+    case "gemini":
+      return "Gemini often arrives as a folder. Quantum will tell you whether it matches the ready-now JSON path or a narrower fallback route.";
+    case "copilot":
+      return "Copilot is strongest when you point Quantum at the activity CSV file directly.";
+    default:
+      return "Auto Detect works best when you have a mixed exports folder and want Quantum to identify the vendor package for you.";
+  }
+}
+
+function buildExpectedVendorMessage(
+  sourceSummary: ImportSourceSummary | null,
+  expectedVendor: ImportVendorChoice
+): string {
+  if (!sourceSummary) {
+    return "No export has been checked yet.";
+  }
+
+  if (expectedVendor === "auto_detect") {
+    return sourceSummary.supportedFiles > 0
+      ? `Quantum found ${sourceSummary.supportedFiles} importable file(s) in this path.`
+      : "Quantum did not find an importable export in this path yet.";
+  }
+
+  const match = sourceSummary.vendorSummaries.find((summary) => summary.vendor === expectedVendor);
+  if (!match) {
+    return `This path does not currently look like a ${EXPECTED_VENDOR_LABELS[expectedVendor]} export Quantum recognizes cleanly.`;
+  }
+
+  if (match.supportTier === "mvp_first_class") {
+    return `This path looks like a ${EXPECTED_VENDOR_LABELS[expectedVendor]} export in Quantum's strongest supported lane.`;
+  }
+
+  if (match.supportTier === "mvp_compatibility_fallback") {
+    return `This path looks like a ${EXPECTED_VENDOR_LABELS[expectedVendor]} export, but it will use a recovery path and deserves a quick spot-check after import.`;
+  }
+
+  return `Quantum found ${EXPECTED_VENDOR_LABELS[expectedVendor]} clues here, but this path is not in the strongest supported shape yet.`;
+}
+
+const EXPECTED_VENDOR_LABELS: Record<Exclude<ImportVendorChoice, "auto_detect">, string> = {
+  chatgpt: "ChatGPT",
+  claude: "Claude",
+  grok: "Grok",
+  gemini: "Gemini",
+  copilot: "Microsoft Copilot"
+};
+
+function buildValidationCard(
+  sourceSummary: ImportSourceSummary | null,
+  expectedVendor: ImportVendorChoice
+): { title: string; toneClass: string } {
+  if (!sourceSummary) {
+    return {
+      title: "Ready to check",
+      toneClass: "detail-box"
+    };
+  }
+
+  if (expectedVendor === "auto_detect") {
+    return sourceSummary.supportedFiles > 0
+      ? { title: "Importable export found", toneClass: "context-tip" }
+      : { title: "No supported export found yet", toneClass: "warning-box" };
+  }
+
+  const match = sourceSummary.vendorSummaries.find((summary) => summary.vendor === expectedVendor);
+  if (!match) {
+    return {
+      title: "Vendor mismatch",
+      toneClass: "warning-box"
+    };
+  }
+
+  if (match.supportTier === "mvp_first_class") {
+    return {
+      title: "Strong match",
+      toneClass: "context-tip"
+    };
+  }
+
+  if (match.supportTier === "mvp_compatibility_fallback") {
+    return {
+      title: "Usable with caution",
+      toneClass: "warning-box"
+    };
+  }
+
+  return {
+    title: "Detected, but not in the strongest lane",
+    toneClass: "warning-box"
+  };
+}
+
+function isExpectedVendor(
+  expectedVendor: ImportVendorChoice,
+  vendor: ImportSourceVendorSummary["vendor"]
+): boolean {
+  return expectedVendor !== "auto_detect" && expectedVendor === vendor;
+}
+
+function shouldDimVendorCard(
+  expectedVendor: ImportVendorChoice,
+  vendor: ImportSourceVendorSummary["vendor"]
+): boolean {
+  return expectedVendor !== "auto_detect" && expectedVendor !== vendor;
 }

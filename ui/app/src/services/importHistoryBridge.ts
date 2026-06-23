@@ -20,6 +20,22 @@ function emptyHistoryResult(outputRoot: string): ImportHistoryResult {
   };
 }
 
+function normalizeRun(run: ImportRunSummary): ImportRunSummary {
+  return {
+    ...run,
+    artifacts: Array.isArray(run.artifacts) ? run.artifacts : [],
+    results: Array.isArray(run.results) ? run.results : [],
+    retrievalSummary: run.retrievalSummary
+      ? {
+          ...run.retrievalSummary,
+          supportTiers: Array.isArray(run.retrievalSummary.supportTiers) ? run.retrievalSummary.supportTiers : [],
+          vendorSources: Array.isArray(run.retrievalSummary.vendorSources) ? run.retrievalSummary.vendorSources : [],
+          topicHints: Array.isArray(run.retrievalSummary.topicHints) ? run.retrievalSummary.topicHints : []
+        }
+      : null
+  };
+}
+
 export async function loadImportHistory(
   outputRoot = "organized_output",
   limit = 8
@@ -33,7 +49,16 @@ export async function loadImportHistory(
     return emptyHistoryResult(outputRoot);
   }
 
-  return response.result as ImportHistoryResult;
+  const result = response.result as Partial<ImportHistoryResult>;
+  const runs = Array.isArray(result.runs) ? result.runs.map((run) => normalizeRun(run)) : [];
+  return {
+    outputRoot: result.outputRoot ?? outputRoot,
+    importsRoot: result.importsRoot ?? outputRoot + "/imports",
+    latestFile: result.latestFile ?? outputRoot + "/imports/latest-import-run.json",
+    historyDir: result.historyDir ?? outputRoot + "/imports/history",
+    latest: result.latest ? normalizeRun(result.latest) : runs[0] ?? null,
+    runs
+  };
 }
 
 export async function searchImportHistory(
@@ -59,12 +84,13 @@ export async function searchImportHistory(
   }
 
   const result = response.result as QueryImportHistoryResult;
+  const runs = Array.isArray(result.runs) ? result.runs.map((run) => normalizeRun(run)) : [];
   return {
-    outputRoot: result.outputRoot,
-    importsRoot: result.importsRoot,
-    latestFile: result.importsRoot + "/latest-import-run.json",
-    historyDir: result.historyDir,
-    latest: result.runs[0] ?? null,
-    runs: result.runs
+    outputRoot: result.outputRoot ?? outputRoot,
+    importsRoot: result.importsRoot ?? outputRoot + "/imports",
+    latestFile: (result.importsRoot ?? outputRoot + "/imports") + "/latest-import-run.json",
+    historyDir: result.historyDir ?? outputRoot + "/imports/history",
+    latest: runs[0] ?? null,
+    runs
   };
 }

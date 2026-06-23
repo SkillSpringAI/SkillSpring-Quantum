@@ -1,5 +1,13 @@
 export type ImportMode = "single_file" | "batch";
 
+export type ImportVendorChoice =
+  | "auto_detect"
+  | "chatgpt"
+  | "claude"
+  | "grok"
+  | "gemini"
+  | "copilot";
+
 export type RunState = "idle" | "running" | "success" | "failed";
 
 export type ImportSupportTier =
@@ -10,6 +18,7 @@ export type ImportSupportTier =
 
 export interface ImportJobForm {
   mode: ImportMode;
+  expectedVendor: ImportVendorChoice;
   inputFile: string;
   inputFolder: string;
   outputRoot: string;

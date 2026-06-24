@@ -19,6 +19,7 @@ This is narrower than the full internal parser and document-ingestion surface al
 ## Implemented Spine
 
 - ChatGPT export parsing and raw conversation normalization
+- ChatGPT source inspection now recognizes both multi-file export folders and `chat.html`-style dumps instead of only a single expected file shape
 - named Claude export detection and parser path
 - named Gemini export detection and parser path
 - named Microsoft Copilot activity CSV detection and parser path
@@ -63,6 +64,8 @@ This is narrower than the full internal parser and document-ingestion surface al
 - diagnostics preflight and reporting
 - purge restore and topic folder merge helpers
 - Electron desktop bridge / IPC preload for backend workflows
+- Electron desktop command spawning now runs safely against Windows paths with spaces, including `process.execPath` under `C:\Program Files\...`
+- desktop bridge honesty so import/source inspection fails explicitly when the Electron bridge is unavailable instead of silently falling back to mock behavior
 - React desktop screens for imports, diagnostics, governance, DB browsing, datasets, organized output, review queue, and settings
 
 ## Current Build Emphasis
@@ -88,6 +91,7 @@ This is narrower than the full internal parser and document-ingestion surface al
 - improve archive usability further so preserved attachments and source references are directly useful during review, not only summarized
 - connect import summaries, archive browsing, and dataset browsing even more tightly across screens, especially around stable historical versus rolling-current dataset scope
 - continue clarifying historical-run versus rolling-current dataset scope
+- keep reducing dead-end file actions by only surfacing secondary artifact actions when the backing path exists and the user actually needs them
 - keep curated promotion, purge restore, folder merge, governance editing, and tiered database inspection behind deliberate Advanced Tools access
 - define a stable diagnostic explanation contract for future local-assistant use without making assistant integration an MVP blocker
 - decide whether archive-only versus archive-plus-dataset import controls are worth exposing after the current dataset clarity work settles
@@ -108,16 +112,17 @@ The desktop product now has a clearer end-to-end shape than earlier reference sn
 
 - Settings can persist a configurable output root across the app
 - Imports can inspect sources, run local imports, show recent import history with file-level outcomes, and now begin from a more vendor-first entry flow
+- Imports now give a more concrete "check this export, then import this path" flow instead of forcing file-mode reasoning and internal vocabulary up front
 - Imports and import history now explain recovery-path, failed, and skipped outcomes with concrete next-step guidance
 - Retrieval can search prior imports and linked dataset segments, save named investigations, and reopen them later
 - Readable Archive browsing now supports topic/source/date filtering, in-app file navigation, archive-event file opening, preserved-attachment handoff, direct dataset-context handoff from selected archive files, and lighter first-use guidance
-- Datasets now include source-context trust summaries, redaction/trust cards, in-app previews of topic segments, prompt/response pairs, micro segments, and private-review records, plus current-bundle versus historical-run handoff controls and lighter guide content
+- Datasets now include source-context trust summaries, redaction/trust cards, in-app previews of topic segments, prompt/response pairs, micro segments, and private-review records, plus current-bundle versus historical-run handoff controls, lighter guide content, and fewer default file-action choices
 
 This means the current product is no longer just "pipeline wrappers plus file-open buttons." It now provides a more coherent local review workflow across imports, archives, and datasets.
 
 ## Continue Tomorrow
 
-The current UX is improved but not yet ready for a first external-user impression without more simplification.
+The current UX is improved and materially more honest than earlier builds, but it is still not ready for a first external-user impression without more simplification.
 
 The next explicit UX continuation slices are:
 
@@ -125,6 +130,7 @@ The next explicit UX continuation slices are:
 - reduce the amount of required reading on first load across Imports, Readable Archive, and Datasets
 - collapse secondary panels until the user has actual import output to work from
 - make mismatch and recovery-path states visually obvious enough that users can act quickly
+- keep smoothing visual density, hierarchy, and button emphasis across the general-user surface
 - keep advanced assurance tools contextual and avoid making the ordinary flow feel like a product to be studied
 
 ## User and Governance Surface Model

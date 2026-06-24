@@ -36,8 +36,7 @@ export async function inspectSourcePath(inputPath: string): Promise<ImportSource
   const response = await inspectImportPath({ inputPath });
 
   if (!response.ok) {
-    console.error("Import source inspection failed:", response.error);
-    return null;
+    throw new Error(response.error);
   }
 
   const result = response.result as Partial<ImportSourceSummary>;

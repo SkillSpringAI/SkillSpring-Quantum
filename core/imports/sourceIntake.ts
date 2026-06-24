@@ -173,9 +173,10 @@ export async function inspectImportSource(inputPath: string): Promise<ImportSour
     };
   }
 
-  const files = stat.isDirectory()
-    ? await listFilesRecursive(normalizedPath)
-    : [normalizedPath];
+  const resolvedInput = stat.isDirectory()
+    ? await resolveDirectoryImportFiles(normalizedPath)
+    : { files: [normalizedPath], notes: [] };
+  const files = resolvedInput.files;
   const packageCompanionReasons = stat.isDirectory()
     ? await buildVendorPackageCompanionReasons(files)
     : new Map<string, string>();
@@ -191,6 +192,8 @@ export async function inspectImportSource(inputPath: string): Promise<ImportSour
   if (countsByKind.pdf_document > 0) {
     notes.push("PDF files can be archived intact, with local text extraction attempted when available.");
   }
+
+  notes.push(...resolvedInput.notes);
 
   if (countsByKind.unsupported > 0) {
     notes.push("Unsupported file types will be skipped so the import stays focused on formats Quantum recognizes.");
@@ -273,7 +276,7 @@ export async function runImportSource(
   let unsupportedFilesSkipped = 0;
 
   const files = summary.inputType === "folder"
-    ? await listFilesRecursive(summary.inputPath)
+    ? (await resolveDirectoryImportFiles(summary.inputPath)).files
     : [summary.inputPath];
   const packageCompanionReasons = summary.inputType === "folder"
     ? await buildVendorPackageCompanionReasons(files)
@@ -1021,6 +1024,17 @@ async function classifyImportFile(
   }
 
   if (ext === ".html") {
+    if (path.basename(filePath).toLowerCase() === "chat.html" && await isChatGptHtmlExportFile(filePath)) {
+      return {
+        path: filePath,
+        kind: "chatgpt_export",
+        displayLabel: "ChatGPT export",
+        supported: true,
+        supportTier: "mvp_first_class",
+        reason: "Recognized as a ChatGPT export bundle and will be imported as conversations."
+      };
+    }
+
     try {
       const raw = await fs.readFile(filePath, "utf-8");
       const detected = detectAndParseConversationExport(raw);
@@ -1123,6 +1137,18 @@ async function buildVendorPackageCompanionReasons(files: string[]): Promise<Map<
       continue;
     }
 
+    const chatGptHtmlPath = byName.get("chat.html");
+    if (chatGptHtmlPath && await isChatGptHtmlExportFile(chatGptHtmlPath)) {
+      for (const filePath of directoryFiles) {
+        if (filePath === chatGptHtmlPath) continue;
+        reasons.set(
+          filePath,
+          "Companion file for ChatGPT export. Quantum uses the exported chat bundle as the main import source, so this file is not imported separately."
+        );
+      }
+      continue;
+    }
+
     const claudeConversationsPath = byName.get("conversations.json");
     const claudeUsersPath = byName.get("users.json");
     if (
@@ -1155,6 +1181,20 @@ async function isClaudeExportFile(filePath: string): Promise<boolean> {
     return detectAndParseConversationExport(raw).kind === "claude_export";
   } catch {
     return false;
+  }
+}
+
+async function isChatGptHtmlExportFile(filePath: string): Promise<boolean> {
+  const fileHandle = await fs.open(filePath, "r");
+  try {
+    const buffer = Buffer.alloc(65536);
+    const { bytesRead } = await fileHandle.read(buffer, 0, buffer.length, 0);
+    const head = buffer.toString("utf-8", 0, bytesRead);
+    return head.includes("ChatGPT Data Export") && head.includes("var jsonData =");
+  } catch {
+    return false;
+  } finally {
+    await fileHandle.close();
   }
 }
 
@@ -1228,6 +1268,9 @@ function buildImportSourceVendorSummaries(
 function inferVendorFromImportEntry(
   entry: ImportSourceEntry
 ): ImportSourceVendorSummary["vendor"] | null {
+  if (entry.kind === "chatgpt_export") return "chatgpt";
+  if (entry.kind === "gemini_activity_html") return "gemini";
+
   const text = (entry.displayLabel + " " + entry.reason).toLowerCase();
 
   if (text.includes("chatgpt")) return "chatgpt";
@@ -1235,6 +1278,14 @@ function inferVendorFromImportEntry(
   if (text.includes("claude")) return "claude";
   if (text.includes("gemini")) return "gemini";
   if (text.includes("copilot")) return "copilot";
+  if (entry.kind === "conversation_json" || isCompanionEntry(entry)) {
+    const pathText = entry.path.toLowerCase();
+    if (pathText.includes("chatgpt")) return "chatgpt";
+    if (pathText.includes("grok")) return "grok";
+    if (pathText.includes("claude")) return "claude";
+    if (pathText.includes("gemini")) return "gemini";
+    if (pathText.includes("copilot")) return "copilot";
+  }
   if (entry.kind === "conversation_json" && entry.supported) return "recovered";
 
   return null;
@@ -1330,4 +1381,44 @@ async function listFilesRecursive(root: string): Promise<string[]> {
   }
 
   return files.sort();
+}
+
+async function resolveDirectoryImportFiles(
+  root: string
+): Promise<{ files: string[]; notes: string[] }> {
+  const topLevelEntries = await fs.readdir(root, { withFileTypes: true });
+  const topLevelFiles = topLevelEntries
+    .filter((entry) => entry.isFile())
+    .map((entry) => path.join(root, entry.name))
+    .sort();
+
+  const chatGptHtmlPath = topLevelFiles.find(
+    (filePath) => path.basename(filePath).toLowerCase() === "chat.html"
+  );
+
+  if (chatGptHtmlPath && await isChatGptHtmlExportFile(chatGptHtmlPath)) {
+    const companionNames = new Set([
+      "message_feedback.json",
+      "shared_conversations.json",
+      "user_settings.json",
+      "user.json"
+    ]);
+    const files = topLevelFiles.filter(
+      (filePath) =>
+        filePath === chatGptHtmlPath ||
+        companionNames.has(path.basename(filePath).toLowerCase())
+    );
+
+    return {
+      files,
+      notes: [
+        "Large ChatGPT export bundle detected. Quantum will inspect the exported chat bundle directly instead of flooding review with every package attachment file."
+      ]
+    };
+  }
+
+  return {
+    files: await listFilesRecursive(root),
+    notes: []
+  };
 }

@@ -18,6 +18,7 @@ declare global {
       };
       shell: {
         openPath: (targetPath: string) => Promise<unknown>;
+        pathExists: (targetPath: string) => Promise<unknown>;
       };
       imports: {
         inspectSource: (inputPath: string) => Promise<unknown>;

@@ -22,9 +22,10 @@ import {
   submitImportJob,
   updateActiveImportPath
 } from "../services/importBridge";
+import { desktopBridgeAvailable } from "../services/desktopBridge";
 import { loadImportHistory, searchImportHistory } from "../services/importHistoryBridge";
 import { loadArchiveNotifications } from "../services/archiveNotificationsBridge";
-import { revealDesktopPath } from "../services/pathBridge";
+import OpenPathButton from "../components/OpenPathButton";
 import type { ImportHistoryFilters, ImportHistoryResult, ImportRunSummary } from "../types/importHistory";
 import { useNavigation } from "../state/navigationContext";
 import { useSettings } from "../state/settingsContext";
@@ -302,6 +303,8 @@ function buildPostRunStatusMessage(run: ImportRunSummary | null, fallbackMessage
 export default function ImportsScreen() {
   const { openRetrievalInvestigation, setActiveScreen } = useNavigation();
   const { settings, updateSettings } = useSettings();
+  const [showImportHelp, setShowImportHelp] = useState(false);
+  const [showSourceDetails, setShowSourceDetails] = useState(false);
   const [form, setForm] = useState<ImportJobForm>({
     mode: "single_file",
     expectedVendor: "auto_detect",
@@ -408,15 +411,29 @@ export default function ImportsScreen() {
       return;
     }
 
-    const result = await inspectSourcePath(sourcePath);
-    setSourceSummary(result);
+    try {
+      const result = await inspectSourcePath(sourcePath);
+      setSourceSummary(result);
 
-    if (result) {
+      if (result) {
+        setStatusMessage("Source path checked.");
+        setLogEntries((prev) => [
+          makeLogEntry(
+            "info",
+            "Inspected source path: " + result.supportedFiles + " supported file(s), " + result.unsupportedFiles + " unsupported."
+          ),
+          ...prev
+        ]);
+      }
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : "Desktop bridge unavailable. Relaunch SkillSpring Quantum through Electron so real file inspection and imports can run.";
+      setSourceSummary(null);
+      setRunState("failed");
+      setStatusMessage(message);
       setLogEntries((prev) => [
-        makeLogEntry(
-          "info",
-          "Inspected source path: " + result.supportedFiles + " supported file(s), " + result.unsupportedFiles + " unsupported."
-        ),
+        makeLogEntry("error", message),
         ...prev
       ]);
     }
@@ -478,6 +495,14 @@ export default function ImportsScreen() {
     refreshArchiveNotifications();
   }, [form.outputRoot]);
 
+  useEffect(() => {
+    if (!desktopBridgeAvailable()) {
+      const message = "Desktop bridge unavailable. Relaunch SkillSpring Quantum through Electron so real file inspection and imports can run.";
+      setStatusMessage(message);
+      setLogEntries((prev) => [makeLogEntry("error", message), ...prev]);
+    }
+  }, []);
+
   const latestRunForNextSteps = importHistory?.latest;
   const latestArchiveArtifactPath = findLatestArchiveArtifactPath(latestRunForNextSteps ?? null);
   const latestDatasetArtifactPath = findLatestDatasetArtifactPath(latestRunForNextSteps ?? null);
@@ -536,15 +561,23 @@ export default function ImportsScreen() {
       />
 
       <div className="panel">
-        <h2>What Quantum Expects</h2>
+        <h2>Before You Import</h2>
         <p className="muted">
-          Quantum works best when you point it at the export you actually downloaded, then let it confirm the shape before import.
+          Start with the export you actually downloaded. Quantum will check whether this path looks ready before it imports anything.
         </p>
-        <ul>
-          <li>Most major AI exports are easiest to validate from their downloaded folder.</li>
-          <li>Quantum checks the export shape first, then tells you whether it looks ready-now, recovery-path, or unsupported.</li>
-          <li>A successful conversation import produces both a readable archive and privacy-aware datasets in the same local run.</li>
-        </ul>
+        <div className="action-bar">
+          <button className="secondary-btn" type="button" onClick={() => setShowImportHelp((value) => !value)}>
+            {showImportHelp ? "Hide Steps" : "Show Steps"}
+          </button>
+        </div>
+        {showImportHelp ? (
+          <ul>
+            <li>Pick the vendor first so Quantum knows which export shape to look for.</li>
+            <li>Use the downloaded folder when the export came as a package, not just a single file.</li>
+            <li>Run the check first. If it looks good, import from the same path without changing anything.</li>
+            <li>After import, start in Readable Archive. Open Datasets only when you want structured output.</li>
+          </ul>
+        ) : null}
       </div>
 
       <div className="panel">
@@ -552,7 +585,7 @@ export default function ImportsScreen() {
         {!sourceSummary ? (
           <>
             <p className="muted">
-              Pick a vendor and export path, then use <strong>Check Match</strong> before you import.
+              Pick a vendor and export path, then use <strong>Check This Export</strong> before you import.
             </p>
             <p className="muted">{buildPreInspectVendorHint(form.expectedVendor)}</p>
           </>
@@ -561,6 +594,7 @@ export default function ImportsScreen() {
             <div className={validationCard.toneClass}>
               <strong>{validationCard.title}</strong>
               <p className="muted">{expectedVendorMessage}</p>
+              <p className="muted">{buildValidationNextStep(sourceSummary, form.expectedVendor)}</p>
               {expectedVendorSummary ? (
                 <p className="muted">
                   {formatVendorSummaryLabel(expectedVendorSummary.vendor)} readiness: {formatSupportTierLabel(expectedVendorSummary.supportTier)} | {expectedVendorSummary.detectedFiles} main import file(s)
@@ -572,6 +606,11 @@ export default function ImportsScreen() {
               <button className="primary-btn" type="button" onClick={refreshSourceSummary}>
                 Check Current Path Again
               </button>
+              {sourceSummary.supportedFiles > 0 ? (
+                <button className="secondary-btn" type="button" onClick={handleSubmit}>
+                  Import This Path
+                </button>
+              ) : null}
             </div>
           </>
         )}
@@ -606,14 +645,14 @@ export default function ImportsScreen() {
               </button>
             ) : null}
             {latestArchiveArtifactPath ? (
-              <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(latestArchiveArtifactPath)}>
+              <OpenPathButton className="secondary-btn" targetPath={latestArchiveArtifactPath}>
                 Open Latest Archive File
-              </button>
+              </OpenPathButton>
             ) : null}
             {latestDatasetArtifactPath ? (
-              <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(latestDatasetArtifactPath)}>
+              <OpenPathButton className="secondary-btn" targetPath={latestDatasetArtifactPath}>
                 Open Latest Dataset File
-              </button>
+              </OpenPathButton>
             ) : null}
           </div>
         </div>
@@ -666,113 +705,128 @@ export default function ImportsScreen() {
       )}
 
       <div className="panel large">
-        <h2>Source Summary</h2>
+        <h2>Check Results</h2>
         {!sourceSummary ? (
-          <p className="muted">Use Check Match to confirm that the selected export path looks like the vendor you intended to import.</p>
+          <p className="muted">Run the export check to see whether this path looks ready, incomplete, or unsupported.</p>
         ) : (
           <>
             <p className="muted">
               {sourceSummary.inputType} found at <code>{sourceSummary.inputPath}</code>
             </p>
             <p className="muted">
-              This summary helps you decide whether to import now, clean up the export first, or ignore files that are outside the main MVP path.
+              {buildSourceSummaryLead(sourceSummary)}
             </p>
             <div className="stats-grid two-col">
               <div className="stat-card accent-card">
-                <span className="label">AI Export Files</span>
+                <span className="label">Main Export Files</span>
                 <strong>
                   {sourceSummary.countsByKind.chatgpt_export + sourceSummary.countsByKind.conversation_json}
                     + sourceSummary.countsByKind.gemini_activity_html
                 </strong>
+                <p className="muted">Recognized conversation export files in this path.</p>
               </div>
               <div className="stat-card">
-                <span className="label">Ready To Process</span>
+                <span className="label">Ready Now</span>
                 <strong>{sourceSummary.supportedFiles}</strong>
+                <p className="muted">Files Quantum can import from this path right now.</p>
               </div>
               <div className="stat-card">
                 <span className="label">Will Be Skipped</span>
                 <strong>{sourceSummary.unsupportedFiles}</strong>
+                <p className="muted">Files Quantum will ignore because they are outside the current import lane.</p>
               </div>
               <div className="stat-card subdued-card">
-                <span className="label">Document Files</span>
+                <span className="label">Supporting Docs</span>
                 <strong>
                   {sourceSummary.countsByKind.text_document + sourceSummary.countsByKind.json_document}
                 </strong>
+                <p className="muted">Extra documents found next to the main export.</p>
               </div>
               <div className="stat-card subdued-card">
                 <span className="label">PDF Files</span>
                 <strong>{sourceSummary.countsByKind.pdf_document}</strong>
+                <p className="muted">PDFs found in the selected path.</p>
               </div>
               <div className="stat-card">
                 <span className="label">Total Files</span>
                 <strong>{sourceSummary.totalFiles}</strong>
+                <p className="muted">Everything Quantum saw in the selected file or folder.</p>
               </div>
             </div>
-            {sourceSummary.notes.length > 0 ? (
-              <ul className="source-note-list">
-                {orderedSourceSummaryNotes(sourceSummary.notes).map((note) => (
-                  <li
-                    key={note.text}
-                    className={note.tone === "priority" ? "source-note priority-note" : "source-note secondary-note"}
-                  >
-                    {note.text}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            {sourceSummary.vendorSummaries.length > 0 ? (
+            <div className="action-bar">
+              <button className="secondary-btn" type="button" onClick={() => setShowSourceDetails((value) => !value)}>
+                {showSourceDetails ? "Hide File Details" : "Show File Details"}
+              </button>
+            </div>
+            {showSourceDetails ? (
               <>
-                <p className="muted">
-                  Vendor readiness shows which detected exports are inside the strongest MVP lane versus which ones still need recovery-path caution.
-                </p>
-                <div className="stats-grid two-col">
-                  {sourceSummary.vendorSummaries.map((summary) => (
-                    <div
-                      key={summary.vendor}
-                      className={
-                        "stat-card" +
-                        (isExpectedVendor(form.expectedVendor, summary.vendor) ? " vendor-match-card" : "") +
-                        (shouldDimVendorCard(form.expectedVendor, summary.vendor) ? " subdued-card" : "")
-                      }
-                    >
-                      <span className="label">{formatVendorSummaryLabel(summary.vendor)}</span>
-                      <strong>{formatSupportTierLabel(summary.supportTier)}</strong>
-                      <p className="muted">
-                        {summary.detectedFiles} main import file(s) detected
-                        {summary.companionFiles > 0 ? ` | ${summary.companionFiles} companion file(s)` : ""}
-                      </p>
-                      {isExpectedVendor(form.expectedVendor, summary.vendor) ? (
-                        <p className="muted">Matches the vendor you selected above.</p>
-                      ) : null}
-                      <p className="muted">{summary.recommendation}</p>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : null}
-            {sourceSummary.sampleFiles.length > 0 ? (
-              <div className="table-wrap">
-                <table className="review-table">
-                  <thead>
-                    <tr>
-                      <th>Detected Type</th>
-                      <th>Readiness</th>
-                      <th>Path</th>
-                      <th>What Happens If You Import</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sourceSummary.sampleFiles.map((entry) => (
-                      <tr key={entry.path} className={sourceEntryRowClassName(entry.kind)}>
-                        <td>{formatSourceEntryKindLabel(entry)}</td>
-                        <td>{formatSupportTierLabel(entry.supportTier)}</td>
-                        <td>{entry.path}</td>
-                        <td>{entry.reason}</td>
-                      </tr>
+                {sourceSummary.notes.length > 0 ? (
+                  <ul className="source-note-list">
+                    {orderedSourceSummaryNotes(sourceSummary.notes).map((note) => (
+                      <li
+                        key={note.text}
+                        className={note.tone === "priority" ? "source-note priority-note" : "source-note secondary-note"}
+                      >
+                        {note.text}
+                      </li>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </ul>
+                ) : null}
+                {sourceSummary.vendorSummaries.length > 0 ? (
+                  <>
+                    <p className="muted">
+                      Vendor readiness shows which export Quantum thinks this path most closely matches.
+                    </p>
+                    <div className="stats-grid two-col">
+                      {sourceSummary.vendorSummaries.map((summary) => (
+                        <div
+                          key={summary.vendor}
+                          className={
+                            "stat-card" +
+                            (isExpectedVendor(form.expectedVendor, summary.vendor) ? " vendor-match-card" : "") +
+                            (shouldDimVendorCard(form.expectedVendor, summary.vendor) ? " subdued-card" : "")
+                          }
+                        >
+                          <span className="label">{formatVendorSummaryLabel(summary.vendor)}</span>
+                          <strong>{formatSupportTierLabel(summary.supportTier)}</strong>
+                          <p className="muted">
+                            {summary.detectedFiles} main import file(s) detected
+                            {summary.companionFiles > 0 ? ` | ${summary.companionFiles} companion file(s)` : ""}
+                          </p>
+                          {isExpectedVendor(form.expectedVendor, summary.vendor) ? (
+                            <p className="muted">Matches the vendor you selected above.</p>
+                          ) : null}
+                          <p className="muted">{summary.recommendation}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : null}
+                {sourceSummary.sampleFiles.length > 0 ? (
+                  <div className="table-wrap">
+                    <table className="review-table">
+                      <thead>
+                        <tr>
+                          <th>Detected Type</th>
+                          <th>Readiness</th>
+                          <th>Path</th>
+                          <th>What Happens If You Import</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sourceSummary.sampleFiles.map((entry) => (
+                          <tr key={entry.path} className={sourceEntryRowClassName(entry.kind)}>
+                            <td>{formatSourceEntryKindLabel(entry)}</td>
+                            <td>{formatSupportTierLabel(entry.supportTier)}</td>
+                            <td>{entry.path}</td>
+                            <td>{entry.reason}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
+              </>
             ) : null}
           </>
         )}
@@ -797,13 +851,13 @@ function findExpectedVendorSummary(
 function buildPreInspectVendorHint(expectedVendor: ImportVendorChoice): string {
   switch (expectedVendor) {
     case "chatgpt":
-      return "ChatGPT usually arrives as a folder export. Start with the downloaded folder unless you only have the core export file.";
+      return "ChatGPT usually arrives as a folder export. Start with the downloaded folder unless you only have the main export file.";
     case "claude":
-      return "Claude exports are easiest to validate from the full folder so companion files can be recognized as expected package parts.";
+      return "Claude exports are easiest to validate from the full downloaded folder.";
     case "grok":
-      return "Grok is best checked from the whole export folder so manifests and preserved attachments stay connected.";
+      return "Grok is best checked from the whole export folder so manifests and attachments stay connected.";
     case "gemini":
-      return "Gemini often arrives as a folder. Quantum will tell you whether it matches the ready-now JSON path or a narrower fallback route.";
+      return "Gemini often arrives as a folder. Start there so Quantum can see the full export shape.";
     case "copilot":
       return "Copilot is strongest when you point Quantum at the activity CSV file directly.";
     default:
@@ -822,23 +876,23 @@ function buildExpectedVendorMessage(
   if (expectedVendor === "auto_detect") {
     return sourceSummary.supportedFiles > 0
       ? `Quantum found ${sourceSummary.supportedFiles} importable file(s) in this path.`
-      : "Quantum did not find an importable export in this path yet.";
+      : "Quantum did not find a usable export in this path yet.";
   }
 
   const match = sourceSummary.vendorSummaries.find((summary) => summary.vendor === expectedVendor);
   if (!match) {
-    return `This path does not currently look like a ${EXPECTED_VENDOR_LABELS[expectedVendor]} export Quantum recognizes cleanly.`;
+    return `This path does not currently look like a ${EXPECTED_VENDOR_LABELS[expectedVendor]} export Quantum recognizes.`;
   }
 
   if (match.supportTier === "mvp_first_class") {
-    return `This path looks like a ${EXPECTED_VENDOR_LABELS[expectedVendor]} export in Quantum's strongest supported lane.`;
+    return `This path looks like a ${EXPECTED_VENDOR_LABELS[expectedVendor]} export and is ready for the normal import path.`;
   }
 
   if (match.supportTier === "mvp_compatibility_fallback") {
     return `This path looks like a ${EXPECTED_VENDOR_LABELS[expectedVendor]} export, but it will use a recovery path and deserves a quick spot-check after import.`;
   }
 
-  return `Quantum found ${EXPECTED_VENDOR_LABELS[expectedVendor]} clues here, but this path is not in the strongest supported shape yet.`;
+  return `Quantum found ${EXPECTED_VENDOR_LABELS[expectedVendor]} clues here, but this path is not in the strongest import shape yet.`;
 }
 
 const EXPECTED_VENDOR_LABELS: Record<Exclude<ImportVendorChoice, "auto_detect">, string> = {
@@ -862,8 +916,8 @@ function buildValidationCard(
 
   if (expectedVendor === "auto_detect") {
     return sourceSummary.supportedFiles > 0
-      ? { title: "Importable export found", toneClass: "context-tip" }
-      : { title: "No supported export found yet", toneClass: "warning-box" };
+      ? { title: "Usable export found", toneClass: "context-tip" }
+      : { title: "No usable export found yet", toneClass: "warning-box" };
   }
 
   const match = sourceSummary.vendorSummaries.find((summary) => summary.vendor === expectedVendor);
@@ -876,7 +930,7 @@ function buildValidationCard(
 
   if (match.supportTier === "mvp_first_class") {
     return {
-      title: "Strong match",
+      title: "Ready to import",
       toneClass: "context-tip"
     };
   }
@@ -889,9 +943,57 @@ function buildValidationCard(
   }
 
   return {
-    title: "Detected, but not in the strongest lane",
+    title: "Detected, but not in the strongest shape",
     toneClass: "warning-box"
   };
+}
+
+function buildValidationNextStep(
+  sourceSummary: ImportSourceSummary | null,
+  expectedVendor: ImportVendorChoice
+): string {
+  if (!sourceSummary) {
+    return "Pick a path and run the check first.";
+  }
+
+  if (sourceSummary.supportedFiles === 0) {
+    return "Try the downloaded export folder or switch the selected vendor before importing.";
+  }
+
+  if (expectedVendor === "auto_detect") {
+    return "If this is the folder you meant to import, you can keep this path and run the import.";
+  }
+
+  const match = sourceSummary.vendorSummaries.find((summary) => summary.vendor === expectedVendor);
+  if (!match) {
+    return "Switch to the vendor that matches this folder, or browse to a different export before importing.";
+  }
+
+  if (match.supportTier === "mvp_first_class") {
+    return "This looks good. If this is the export you meant to use, import from this same path.";
+  }
+
+  if (match.supportTier === "mvp_compatibility_fallback") {
+    return "You can still import this path, but plan to review the archive and one dataset preview afterward.";
+  }
+
+  return "This path was partly recognized, but it is safer to browse to the downloaded export root before importing.";
+}
+
+function buildSourceSummaryLead(sourceSummary: ImportSourceSummary): string {
+  if (sourceSummary.supportedFiles === 0) {
+    return "Quantum did not find a usable main export in this path yet.";
+  }
+
+  if (sourceSummary.supportedFiles === 1 && sourceSummary.unsupportedFiles === 0) {
+    return "Quantum found one clean import candidate in this path.";
+  }
+
+  if (sourceSummary.unsupportedFiles === 0) {
+    return `Quantum found ${sourceSummary.supportedFiles} importable file(s) here and nothing extra that needs to be skipped.`;
+  }
+
+  return `Quantum found ${sourceSummary.supportedFiles} importable file(s) here and will ignore ${sourceSummary.unsupportedFiles} file(s) that are outside the current import lane.`;
 }
 
 function isExpectedVendor(

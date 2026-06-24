@@ -6,7 +6,7 @@ import type {
   ImportRunSummary,
   ImportSupportTier
 } from "../types/importHistory";
-import { revealDesktopPath } from "../services/pathBridge";
+import OpenPathButton from "./OpenPathButton";
 import {
   countPackageCompanionSkips,
   countUnexpectedSkippedFiles,
@@ -307,10 +307,6 @@ export default function ImportHistoryPanel({
       default:
         return "Not supported";
     }
-  }
-
-  async function handleOpenPath(targetPath: string) {
-    await revealDesktopPath(targetPath);
   }
 
   async function handleSearch() {
@@ -845,65 +841,37 @@ export default function ImportHistoryPanel({
                       </button>
                     ) : null}
                     {latestArchiveArtifactPath ? (
-                      <button
-                        className="primary-btn"
-                        type="button"
-                        onClick={() => handleOpenPath(latestArchiveArtifactPath)}
-                      >
+                      <OpenPathButton className="primary-btn" targetPath={latestArchiveArtifactPath}>
                         Open Latest Archive File
-                      </button>
+                      </OpenPathButton>
                     ) : null}
                     {latestDatasetArtifactPath ? (
-                      <button
-                        className="secondary-btn"
-                        type="button"
-                        onClick={() => handleOpenPath(latestDatasetArtifactPath)}
-                      >
+                      <OpenPathButton className="secondary-btn" targetPath={latestDatasetArtifactPath}>
                         Open Latest Dataset File
-                      </button>
+                      </OpenPathButton>
                     ) : null}
                     {latestDiagnosticsArtifactPath ? (
-                      <button
-                        className="secondary-btn"
-                        type="button"
-                        onClick={() => handleOpenPath(latestDiagnosticsArtifactPath)}
-                      >
+                      <OpenPathButton className="secondary-btn" targetPath={latestDiagnosticsArtifactPath}>
                         Open Latest Diagnostics
-                      </button>
+                      </OpenPathButton>
                     ) : null}
                     {latestAttachmentArchivePath ? (
-                      <button
-                        className="secondary-btn"
-                        type="button"
-                        onClick={() => handleOpenPath(latestAttachmentArchivePath)}
-                      >
+                      <OpenPathButton className="secondary-btn" targetPath={latestAttachmentArchivePath}>
                         Open Attachments Archive
-                      </button>
+                      </OpenPathButton>
                     ) : null}
                     {latestAttachmentManifestPath ? (
-                      <button
-                        className="secondary-btn"
-                        type="button"
-                        onClick={() => handleOpenPath(latestAttachmentManifestPath)}
-                      >
+                      <OpenPathButton className="secondary-btn" targetPath={latestAttachmentManifestPath}>
                         Open Attachment Manifest
-                      </button>
-                    ) : null}
-                    {runForDetail.artifacts.length > 0 ? (
-                      <>
-                      {runForDetail.artifacts.slice(0, 6).map((artifact) => (
-                        <button
-                          key={artifact.label + artifact.path}
-                          className="primary-btn"
-                          type="button"
-                          onClick={() => handleOpenPath(artifact.path)}
-                        >
-                          Open {artifact.label}
-                        </button>
-                      ))}
-                      </>
+                      </OpenPathButton>
                     ) : null}
                   </div>
+                  {additionalArtifactActions.length > 0 ? (
+                    <p className="muted">
+                      {additionalArtifactActions.length} additional artifact file(s) were recorded for this run.
+                      Use the file-level results below when you need a specific output instead of every artifact shortcut at once.
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="table-wrap">
@@ -952,14 +920,13 @@ export default function ImportHistoryPanel({
                                   </button>
                                 ) : null}
                                 {(result.artifacts ?? []).map((artifact) => (
-                                  <button
+                                  <OpenPathButton
                                     key={artifact.label + artifact.path}
                                     className="secondary-btn compact-btn"
-                                    type="button"
-                                    onClick={() => handleOpenPath(artifact.path)}
+                                    targetPath={artifact.path}
                                   >
                                     {artifact.label}
-                                  </button>
+                                  </OpenPathButton>
                                 ))}
                               </div>
                             ) : (
@@ -982,3 +949,16 @@ export default function ImportHistoryPanel({
     </div>
   );
 }
+  const additionalArtifactActions = !runForDetail
+    ? []
+    : runForDetail.artifacts.filter((artifact) => {
+        const primaryPaths = [
+          latestArchiveArtifactPath,
+          latestDatasetArtifactPath,
+          latestDiagnosticsArtifactPath,
+          latestAttachmentArchivePath,
+          latestAttachmentManifestPath
+        ].filter((path): path is string => Boolean(path));
+
+        return !primaryPaths.includes(artifact.path);
+      });

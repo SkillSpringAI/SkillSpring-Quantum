@@ -16,7 +16,7 @@ The core MVP loop is now:
 
 The current first-class vendor set is:
 
-- ChatGPT / OpenAI export JSON
+- ChatGPT / OpenAI export folders and JSON shards
 - Claude export JSON
 - Gemini export JSON
 - Grok export manifest JSON
@@ -28,7 +28,7 @@ Gemini My Activity HTML remains a narrower fallback route.
 
 ## Continue Tomorrow
 
-The app is now more stable and the import UX has started moving toward a vendor-first flow, but the ordinary-user surface is still too dense for a first external impression.
+The app is now more stable, ChatGPT folder detection is hardened, and the import UX has moved closer to a vendor-first flow, but the ordinary-user surface is still too dense for a first external impression.
 
 Tomorrow should continue from these explicit UX slices:
 
@@ -37,6 +37,8 @@ Tomorrow should continue from these explicit UX slices:
 - collapse or defer secondary guidance panels until they are backed by real data from an actual import
 - simplify archive and dataset empty states further so they feel like result screens, not instructions manuals
 - trim or restructure source-summary, import-history, and dataset explanation density so a first-time user can act without studying the product
+- keep reducing dead-end output buttons by only surfacing raw file actions when the path exists and the action helps the current step
+- continue calming the visual hierarchy so primary actions stand out and secondary actions stop competing with them
 - keep diagnostics, governance, and other advanced surfaces subordinate and contextual
 
 ### Priority 1: Archive usability

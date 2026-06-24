@@ -22,21 +22,21 @@ import type {
   SaveRetrievalViewPayload,
   DeleteRetrievalViewPayload,
   OpenPathPayload,
+  PathExistsResult,
   DatasetLatestRunPayload,
   DatasetPreviewPayload
 } from "../types/bridge";
 import { executeMockDesktopCommand } from "./mockDesktopExecutor";
 
-function ok<TResult>(
-  command: DesktopCommandName,
-  result: TResult,
-  message?: string
-): DesktopCommandResponse<TResult> {
+export function desktopBridgeAvailable(): boolean {
+  return typeof window !== "undefined" && typeof window.skillspringDesktop !== "undefined";
+}
+
+function unavailable(command: DesktopCommandName): DesktopCommandResponse {
   return {
-    ok: true,
+    ok: false,
     command,
-    result,
-    message
+    error: "Desktop bridge unavailable. Relaunch SkillSpring Quantum through Electron so real file inspection and imports can run."
   };
 }
 
@@ -44,6 +44,10 @@ export async function invokeDesktopCommand<TPayload, TResult>(
   request: DesktopCommandRequest<TPayload>
 ): Promise<DesktopCommandResponse<TResult>> {
   console.log("Desktop bridge request:", request);
+
+  if (!desktopBridgeAvailable()) {
+    return unavailable(request.command) as DesktopCommandResponse<TResult>;
+  }
 
   const mockResponse = await executeMockDesktopCommand(
     request.command,
@@ -180,6 +184,15 @@ export async function openDesktopPath(
 ): Promise<DesktopCommandResponse> {
   return invokeDesktopCommand<OpenPathPayload, Record<string, unknown>>({
     command: "shell.openPath",
+    payload
+  });
+}
+
+export async function checkDesktopPathExists(
+  payload: OpenPathPayload
+): Promise<DesktopCommandResponse<PathExistsResult>> {
+  return invokeDesktopCommand<OpenPathPayload, PathExistsResult>({
+    command: "shell.pathExists",
     payload
   });
 }

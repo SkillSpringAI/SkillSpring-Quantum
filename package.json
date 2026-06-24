@@ -28,7 +28,7 @@
     "renderer:build": "vite build --config ui/app/vite.config.ts",
     "electron:dev": "npm run renderer:build && electron .",
     "test:parser": "tsx tests/parser/chatgpt-parser.test.ts",
-    "test:import:intake": "tsx tests/parser/claude-source-intake.test.ts && tsx tests/parser/copilot-source-intake.test.ts && tsx tests/parser/vendor-package-source-intake.test.ts",
+    "test:import:intake": "tsx tests/parser/chatgpt-source-intake.test.ts && tsx tests/parser/chatgpt-html-source-intake.test.ts && tsx tests/parser/claude-source-intake.test.ts && tsx tests/parser/copilot-source-intake.test.ts && tsx tests/parser/vendor-package-source-intake.test.ts",
     "test:import:history": "tsx tests/parser/import-history-filter.test.ts",
     "test:import:metadata": "tsx tests/parser/import-metadata.test.ts",
     "test:import:retrieval": "tsx tests/parser/import-retrieval-index.test.ts",

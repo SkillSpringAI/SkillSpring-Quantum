@@ -3,6 +3,7 @@ import { loadLatestDatasetRun } from "../services/datasetRunBridge";
 import { loadDatasetPreview } from "../services/datasetPreviewBridge";
 import { loadMarkdownArchive } from "../services/markdownArchiveBridge";
 import { revealDesktopPath } from "../services/pathBridge";
+import OpenPathButton from "../components/OpenPathButton";
 import type { AttachmentArchiveSummary } from "../types/markdownArchive";
 import type {
   DatasetRunResult,
@@ -44,6 +45,7 @@ export default function DatasetsScreen() {
   } = useNavigation();
   const { settings } = useSettings();
   const [showDatasetGuide, setShowDatasetGuide] = useState(false);
+  const [showAllDatasetOutputCards, setShowAllDatasetOutputCards] = useState(false);
   const [datasetRun, setDatasetRun] = useState<DatasetRunResult | null>(null);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [previewKind, setPreviewKind] = useState<DatasetPreviewKind>("topic_segments");
@@ -187,6 +189,14 @@ export default function DatasetsScreen() {
     selectedRun?.private_review_segments ?? 0
   );
   const previewConfig = DATASET_PREVIEW_CONFIG[previewKind];
+  const datasetOutputCards = buildDatasetOutputCards(
+    artifactPaths,
+    selectedRunPaths,
+    selectedSourceNeedsAttention
+  );
+  const visibleDatasetOutputCards = showAllDatasetOutputCards
+    ? datasetOutputCards
+    : datasetOutputCards.slice(0, 2);
 
   async function loadPreview(kind: DatasetPreviewKind, offset = 0) {
     if (!selectedRun) {
@@ -258,18 +268,18 @@ export default function DatasetsScreen() {
         ) : (
           <>
             <p className="muted">
-              Review the structured dataset output from imported conversations here.
+              Review the structured output from imported conversations here.
             </p>
             {archiveHandoffSummary ? (
               <div className="detail-box">
                 <strong>Archive Handoff</strong>
                 <p className="muted">
-                  Arrived from archive file: {archiveHandoffSummary.archiveTitle}
+                  Opened from archive file: {archiveHandoffSummary.archiveTitle}
                 </p>
                 <p className="muted">
-                  Dataset run selection: {archiveHandoffSummary.matchedConfidently
-                    ? `matched ${archiveHandoffSummary.matchedRunId ?? "selected run"} from archive handoff signals`
-                    : "no direct vendor/topic match found, showing the best available dataset run"}
+                  Dataset run: {archiveHandoffSummary.matchedConfidently
+                    ? `matched ${archiveHandoffSummary.matchedRunId ?? "selected run"} from archive context`
+                    : "no direct vendor/topic match found, so Quantum picked the closest available dataset run"}
                 </p>
                 <p className="muted">
                   Handoff context:
@@ -296,11 +306,11 @@ export default function DatasetsScreen() {
                   <p className="muted">{buildArchiveHandoffBadges(archiveHandoffSummary).join(" | ")}</p>
                 ) : null}
                 <div className="action-bar">
-                  {archiveHandoffSummary.archivePath ? (
-                    <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(archiveHandoffSummary.archivePath ?? "")}>
-                      Reopen Archive File
-                    </button>
-                  ) : null}
+                    {archiveHandoffSummary.archivePath ? (
+                      <OpenPathButton className="secondary-btn" targetPath={archiveHandoffSummary.archivePath}>
+                        Reopen Archive File
+                      </OpenPathButton>
+                    ) : null}
                   <button className="secondary-btn" type="button" onClick={() => setArchiveHandoffSummary(null)}>
                     Clear Handoff
                   </button>
@@ -393,7 +403,7 @@ export default function DatasetsScreen() {
                 ) : null}
                 <div className="action-bar">
                   <button className="secondary-btn" type="button" onClick={() => setActiveScreen("imports")}>
-                    Review Import History
+                    Back To Imports
                   </button>
                   {selectedSourceContext.vendor_sources.length > 0 || selectedSourceTopics.length > 0 ? (
                     <button
@@ -416,31 +426,18 @@ export default function DatasetsScreen() {
                         })
                       }
                     >
-                      Find Imported Files
-                      </button>
-                    ) : null}
-                    {selectedAttachmentTrust && (selectedSourceContext.attachment_count ?? 0) > 0 ? (
-                      <>
-                        <button
-                          className="secondary-btn"
-                          type="button"
-                          onClick={() => revealDesktopPath(selectedAttachmentTrust.archiveRoot)}
-                        >
-                          Open Preserved Attachments
-                        </button>
-                        <button
-                          className="secondary-btn"
-                          type="button"
-                          onClick={() => revealDesktopPath(selectedAttachmentTrust.manifestPath)}
-                        >
-                          Open Attachment Manifest
-                        </button>
-                      </>
-                    ) : null}
-                    {selectedSourceNeedsAttention ? (
-                      <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(artifactPaths.diagnostics)}>
-                        Open Latest Diagnostics
+                      Search Imported Files
                     </button>
+                  ) : null}
+                  {selectedAttachmentTrust && (selectedSourceContext.attachment_count ?? 0) > 0 ? (
+                    <OpenPathButton className="secondary-btn" targetPath={selectedAttachmentTrust.archiveRoot}>
+                      Open Preserved Attachments
+                    </OpenPathButton>
+                  ) : null}
+                  {selectedSourceNeedsAttention ? (
+                    <OpenPathButton className="secondary-btn" targetPath={artifactPaths.diagnostics}>
+                      Open Latest Diagnostics
+                    </OpenPathButton>
                   ) : null}
                 </div>
               </div>
@@ -468,18 +465,15 @@ export default function DatasetsScreen() {
               </div>
             </div>
             <div className="action-bar">
-              <button className="primary-btn" type="button" onClick={() => revealDesktopPath(datasetRun.datasetsRoot)}>
-                Open Dataset Files
-              </button>
-              <button className="primary-btn" type="button" onClick={() => revealDesktopPath(selectedManifestPath)}>
+              <OpenPathButton className="primary-btn" targetPath={selectedManifestPath}>
                 Open Selected Dataset Summary
-              </button>
-              <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(artifactPaths.currentRoot)}>
-                Open Current Dataset Bundle
-              </button>
-              <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(artifactPaths.manifestsRoot)}>
-                Open Dataset Summaries Folder
-              </button>
+              </OpenPathButton>
+              <OpenPathButton className="secondary-btn" targetPath={datasetRun.datasetsRoot}>
+                Open Dataset Folder
+              </OpenPathButton>
+              <OpenPathButton className="secondary-btn" targetPath={artifactPaths.currentRoot}>
+                Open Current Bundle
+              </OpenPathButton>
             </div>
           </>
         )}
@@ -502,7 +496,7 @@ export default function DatasetsScreen() {
             ) : null}
             <p className="muted">Selected dataset build: {selectedRun.run_id}</p>
             <div className="detail-box">
-              <strong>Run Scope</strong>
+              <strong>What You Are Looking At</strong>
               <p className="muted">
                 Selected historical run: {selectedRun.run_id}
               </p>
@@ -514,11 +508,11 @@ export default function DatasetsScreen() {
               </p>
               {selectedRun && datasetRun?.latest && selectedRun.run_id !== datasetRun.latest.run_id ? (
                 <p className="muted">
-                  You are reviewing an older run summary. Snapshot files keep this screen historically aligned; any fallback to the current bundle is called out explicitly below.
+                  You are reviewing an older run summary. Snapshot files keep this screen aligned to that older run, and any fallback to the current bundle is called out below.
                 </p>
               ) : (
                 <p className="muted">
-                  You are reviewing the latest run, so the selected summary and the rolling current bundle should usually point at the same dataset generation.
+                  You are reviewing the latest run, so the selected summary and current bundle should usually point at the same dataset build.
                 </p>
               )}
             </div>
@@ -548,15 +542,15 @@ export default function DatasetsScreen() {
               </p>
             ) : null}
             <div className="action-bar">
-              <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(artifactPaths.currentPrivateReview)}>
-                Open Private Review File
-              </button>
-              <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(artifactPaths.diagnostics)}>
-                Open Latest Diagnostics
-              </button>
-              <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(artifactPaths.dbRoot)}>
-                Open Private Review Folder
-              </button>
+                <OpenPathButton className="secondary-btn" targetPath={artifactPaths.currentPrivateReview}>
+                  Open Private Review File
+                </OpenPathButton>
+                <OpenPathButton className="secondary-btn" targetPath={artifactPaths.diagnostics}>
+                  Open Latest Diagnostics
+                </OpenPathButton>
+                <OpenPathButton className="secondary-btn" targetPath={artifactPaths.dbRoot}>
+                  Open Private Review Folder
+                </OpenPathButton>
             </div>
           </>
         ) : (
@@ -567,16 +561,16 @@ export default function DatasetsScreen() {
       </div>
 
       <div className="panel large">
-        <h2>Dataset Outputs</h2>
+        <h2>Open Files</h2>
         {selectedRun ? (
           <>
             <p className="muted">
-              Use this section when you want to choose the right dataset artifact quickly. Current outputs are the rolling latest files, while selected run outputs reflect the historical build shown above.
+              Use this section when you want the raw files behind the summary and preview. Start with the selected run summary unless you already know which dataset format you need.
             </p>
             <div className="detail-box">
-              <strong>Quick Handoff</strong>
+              <strong>Start Here</strong>
               <p className="muted">
-                Lead with the selected run snapshot when you want artifacts that stay aligned with the dataset summary above. Use the current bundle only when another tool should read the latest rolling dataset files instead.
+                Start with the selected run summary or snapshot folder. Only drop into individual dataset files when you already know which format you need.
               </p>
               {selectedRunPaths && datasetRun?.latest && selectedRun.run_id !== datasetRun.latest.run_id ? (
                 <p className="muted">
@@ -602,17 +596,17 @@ export default function DatasetsScreen() {
                 </div>
               ) : null}
               <div className="action-bar">
-                {selectedRunPaths ? (
-                  <button className="primary-btn" type="button" onClick={() => revealDesktopPath(selectedRunPaths.runRoot)}>
-                    Open Run Snapshot Folder
-                  </button>
-                ) : null}
-                <button className="primary-btn" type="button" onClick={() => revealDesktopPath(selectedManifestPath)}>
+                <OpenPathButton className="primary-btn" targetPath={selectedManifestPath}>
                   Open Selected Run Summary
-                </button>
-                <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(artifactPaths.currentRoot)}>
+                </OpenPathButton>
+                {selectedRunPaths ? (
+                  <OpenPathButton className="secondary-btn" targetPath={selectedRunPaths.runRoot}>
+                    Open Run Snapshot Folder
+                  </OpenPathButton>
+                ) : null}
+                <OpenPathButton className="secondary-btn" targetPath={artifactPaths.currentRoot}>
                   Open Current Bundle Folder
-                </button>
+                </OpenPathButton>
                 {selectedRunPaths && datasetRun?.latest && selectedRun.run_id !== datasetRun.latest.run_id ? (
                   <button className="secondary-btn" type="button" onClick={() => setSelectedRunId(datasetRun.latest?.run_id ?? null)}>
                     Switch To Latest Run
@@ -621,36 +615,37 @@ export default function DatasetsScreen() {
               </div>
             </div>
             <div className="stats-grid two-col">
-              {buildDatasetOutputCards(
-                artifactPaths,
-                selectedRunPaths,
-                selectedSourceNeedsAttention
-              ).map((card) => (
+              {visibleDatasetOutputCards.map((card) => (
                 <div key={card.label} className="stat-card">
                   <span className="label">{card.label}</span>
                   <strong>{card.title}</strong>
                   <p className="muted">{card.note}</p>
                   <p className="muted">{card.trustNote}</p>
-                  <p className="muted">{card.handoffNote}</p>
                   <div className="action-bar">
                     {card.runPath ? (
-                      <button className="primary-btn" type="button" onClick={() => revealDesktopPath(card.runPath)}>
+                      <OpenPathButton className="primary-btn" targetPath={card.runPath}>
                         Open Selected Run File
-                      </button>
+                      </OpenPathButton>
                     ) : null}
-                    <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(card.currentPath)}>
+                    <OpenPathButton className="secondary-btn" targetPath={card.currentPath}>
                       Open Current File
-                    </button>
-                    <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(card.folderPath)}>
-                      Open Snapshot Folder
-                    </button>
-                    <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(card.currentFolderPath)}>
-                      Open Current Folder
-                    </button>
+                    </OpenPathButton>
                   </div>
+                  <p className="muted">{card.handoffNote}</p>
                 </div>
               ))}
             </div>
+            {datasetOutputCards.length > 2 ? (
+              <div className="action-bar">
+                <button
+                  className="secondary-btn"
+                  type="button"
+                  onClick={() => setShowAllDatasetOutputCards((value) => !value)}
+                >
+                  {showAllDatasetOutputCards ? "Show Fewer Dataset Types" : "Show All Dataset Types"}
+                </button>
+              </div>
+            ) : null}
           </>
         ) : (
           <p className="muted">
@@ -754,7 +749,7 @@ export default function DatasetsScreen() {
           <strong>{previewConfig.label}</strong>
           <p className="muted">{previewConfig.description}</p>
           <p className="muted">
-            Trust context: {selectedSourceSummary} | Privacy handling: {selectedRedactionExplanation}
+            Import context: {selectedSourceSummary} | Privacy handling: {selectedRedactionExplanation}
           </p>
           {selectedSourceBadges.length > 0 ? (
             <p className="muted">{selectedSourceBadges.join(" | ")}</p>
@@ -806,21 +801,21 @@ export default function DatasetsScreen() {
       </div>
 
       <div className="panel">
-        <h2>Guide</h2>
+        <h2>How To Use This</h2>
         <p className="muted">
-          Start with topic segments for the clearest review. Use prompt/response for quick scans. Use private review only when a run needs extra caution.
+          Start with topic segments for the clearest review. Use prompt/response for faster scanning. Use private review only when a run needs extra caution.
         </p>
         <div className="action-bar">
           <button className="secondary-btn" type="button" onClick={() => setShowDatasetGuide((value) => !value)}>
-            {showDatasetGuide ? "Hide Details" : "Show Details"}
+            {showDatasetGuide ? "Hide Tips" : "Show Tips"}
           </button>
         </div>
         {showDatasetGuide ? (
           <ul className="list">
-            <li>The selected dataset summary is per run, while the current dataset bundle reflects the latest accumulated outputs.</li>
-            <li>Use Dataset Outputs when you want to choose between the rolling current file and the run snapshot artifact for the selected historical run.</li>
-            <li>Privacy handling summarizes which common sensitive patterns were redacted before dataset records were written.</li>
-            <li>Governance remains under More Tools for power users and should not block normal dataset review.</li>
+            <li>Start with topic segments when you want the easiest human-readable review.</li>
+            <li>Use prompt/response when you want compact examples instead of longer thread context.</li>
+            <li>Use Open Files only when you need the raw dataset artifacts, not just the in-app preview.</li>
+            <li>Privacy handling tells you whether common sensitive details were masked before records were written.</li>
           </ul>
         ) : null}
       </div>

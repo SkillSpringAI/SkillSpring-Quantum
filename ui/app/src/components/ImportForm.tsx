@@ -37,7 +37,7 @@ export default function ImportForm(props: ImportFormProps) {
     <div className="panel">
       <h2>Start Here</h2>
       <p className="muted">
-        Pick the export source first, choose the downloaded file or folder, then let Quantum check whether it matches before you import.
+        Pick the export source, choose the downloaded file or folder, then check it before you import.
       </p>
 
       <div className="detail-box">
@@ -128,7 +128,7 @@ export default function ImportForm(props: ImportFormProps) {
           onClick={props.onInspectSource}
           disabled={props.disabled}
         >
-          Check Match
+          Check This Export
         </button>
         <button
           className="primary-btn"

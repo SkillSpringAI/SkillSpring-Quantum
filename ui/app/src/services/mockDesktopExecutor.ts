@@ -65,6 +65,10 @@ export async function executeMockDesktopCommand(
         const p = payload as OpenPathPayload;
         return fromBridge(await bridge.shell.openPath(p.targetPath));
       }
+      case "shell.pathExists": {
+        const p = payload as OpenPathPayload;
+        return fromBridge(await bridge.shell.pathExists(p.targetPath));
+      }
       case "imports.inspect": {
         const p = payload as InspectImportSourcePayload;
         return fromBridge(await bridge.imports.inspectSource(p.inputPath));
@@ -194,6 +198,11 @@ export async function executeMockDesktopCommand(
     case "shell.openPath": {
       const p = payload as OpenPathPayload;
       return ok(command, { targetPath: p.targetPath }, "Mock path open accepted.");
+    }
+
+    case "shell.pathExists": {
+      const p = payload as OpenPathPayload;
+      return ok(command, { targetPath: p.targetPath, exists: false }, "Mock path existence returned.");
     }
 
     case "imports.inspect": {

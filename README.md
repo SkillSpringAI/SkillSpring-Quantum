@@ -2,6 +2,15 @@
 
 SkillSpring Quantum is a local-first desktop app and TypeScript processing engine for turning AI conversation exports into readable archives, privacy-aware datasets, and auditable local artifacts.
 
+The current desktop experience is designed around a guided local loop:
+
+1. choose a vendor or use auto-detect
+2. point Quantum at the downloaded export file or folder
+3. check whether the export shape looks usable
+4. import from that exact path
+5. review the readable archive first
+6. review structured dataset output when you need it
+
 The current product shape is centered on one core promise:
 
 1. inspect a recognizable AI export
@@ -32,7 +41,7 @@ The product hierarchy is:
 
 ### MVP first-class now
 
-- ChatGPT / OpenAI export JSON
+- ChatGPT / OpenAI export folders and JSON shards, including multi-file export folders and `chat.html`-style dumps that Quantum now recognizes through source inspection
 - Claude export JSON
 - Gemini export JSON
 - Grok export manifest JSON, including referenced attachment blob preservation when vendor blob folders are present
@@ -59,17 +68,28 @@ The product hierarchy is:
 
 The desktop app can currently:
 
-1. choose a file or folder, or enter a path directly
-2. inspect what Quantum found before import
-3. run a local import into a configurable output root
-4. review recent import history with per-file results and output links
-5. search prior imports by vendor, topic, text, date, and status
-6. get plain-English recovery guidance for failed, skipped, and fallback imports before retrying
-7. browse readable archive output with topic, source, and date filters
-8. open archive files, archive event logs, topic folders, and preserved attachment locations from the UI
-9. jump from archive and import views into related retrieval and dataset investigations
-10. review dataset manifests, dataset trust context, redaction summaries, current dataset previews, and current-versus-historical handoff controls inside the app
-11. inspect private-review and diagnostics paths when a run needs more caution
+1. start imports from a vendor-first flow instead of reasoning about file mode first
+2. choose a file or folder, or enter a path directly
+3. inspect what Quantum found before import and see ready-now, recovery-path, or mismatch feedback
+4. run a local import into a configurable output root
+5. review recent import history with per-file results, guarded output links, and retrieval handoff
+6. search prior imports by vendor, topic, text, date, and status
+7. get plain-English recovery guidance for failed, skipped, and fallback imports before retrying
+8. browse readable archive output with topic, source, and date filters
+9. open archive files, archive event logs, topic folders, and preserved attachment locations from the UI when those paths actually exist
+10. jump from archive and import views into related retrieval and dataset investigations
+11. review dataset manifests, trust context, redaction summaries, previews, and current-versus-historical handoff controls inside the app
+12. inspect private-review and diagnostics paths when a run needs more caution
+
+## Desktop runtime note
+
+The real import and inspection workflow depends on running the Electron desktop shell, not just the renderer in isolation.
+
+Recent hardening included:
+
+- honest failure when the desktop bridge is unavailable instead of silent mock fallback
+- Windows-safe Electron command spawning for paths under locations like `C:\Program Files\...`
+- guarded file-open buttons so the UI avoids pointing users at paths that do not exist yet
 
 ## Use cases the project currently fits best
 
@@ -79,6 +99,7 @@ The desktop app can currently:
 - tracing fallback recovery, attachment preservation, and package-companion handling across imports, archives, and datasets
 - following archive context into the matching dataset view without losing vendor/topic trust clues
 - investigating prior imports and linked dataset segments from one desktop workflow
+- working from exported ChatGPT folders that may contain multiple shards or `chat.html`-style dumps instead of only a single canonical file
 
 ## Internal and experimental coverage beyond the MVP story
 

@@ -29,6 +29,8 @@ interface ChatGPTConversationLike {
   mapping?: Record<string, ChatGPTNode>;
 }
 
+const CHATGPT_HTML_JSON_MARKER = "var jsonData = ";
+
 function mapRole(role?: string): Role {
   switch (role) {
     case "user":
@@ -134,6 +136,18 @@ function looksLikeConversationObject(value: unknown): value is ChatGPTConversati
 }
 
 export function parseChatGPTExport(raw: unknown): ParseResult {
+  if (typeof raw === "string") {
+    const embeddedJson = extractEmbeddedChatGptExportJsonText(raw);
+    if (embeddedJson !== null) {
+      return parseChatGptConversationArrayText(embeddedJson);
+    }
+
+    const trimmed = raw.trimStart();
+    if (trimmed.startsWith("[")) {
+      return parseChatGptConversationArrayText(trimmed);
+    }
+  }
+
   if (Array.isArray(raw)) {
     const conversations = raw
       .filter(looksLikeConversationObject)
@@ -162,4 +176,93 @@ export function parseChatGPTExport(raw: unknown): ParseResult {
   }
 
   return { conversations: [] };
+}
+
+function extractEmbeddedChatGptExportJsonText(raw: string): string | null {
+  if (!raw.includes("ChatGPT Data Export")) {
+    return null;
+  }
+
+  const start = raw.indexOf(CHATGPT_HTML_JSON_MARKER);
+  if (start === -1) {
+    return null;
+  }
+
+  const jsonStart = start + CHATGPT_HTML_JSON_MARKER.length;
+  const scriptEnd = raw.indexOf(";</script>", jsonStart);
+  if (scriptEnd === -1) {
+    return null;
+  }
+
+  return raw.slice(jsonStart, scriptEnd);
+}
+
+function parseChatGptConversationArrayText(arrayText: string): ParseResult {
+  if (!arrayText.trimStart().startsWith("[")) {
+    return { conversations: [] };
+  }
+
+  const conversations: Conversation[] = [];
+  let objectStart = -1;
+  let nestingDepth = 0;
+  let inString = false;
+  let escaping = false;
+
+  for (let index = 0; index < arrayText.length; index += 1) {
+    const character = arrayText[index];
+
+    if (inString) {
+      if (escaping) {
+        escaping = false;
+        continue;
+      }
+
+      if (character === "\\") {
+        escaping = true;
+        continue;
+      }
+
+      if (character === "\"") {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (character === "\"") {
+      inString = true;
+      continue;
+    }
+
+    if (objectStart === -1) {
+      if (character === "{") {
+        objectStart = index;
+        nestingDepth = 1;
+      }
+      continue;
+    }
+
+    if (character === "{" || character === "[") {
+      nestingDepth += 1;
+      continue;
+    }
+
+    if (character === "}" || character === "]") {
+      nestingDepth -= 1;
+      if (nestingDepth === 0) {
+        try {
+          const parsed = JSON.parse(arrayText.slice(objectStart, index + 1)) as ChatGPTConversationLike;
+          const conversation = parseSingleConversation(parsed);
+          if (conversation) {
+            conversations.push(conversation);
+          }
+        } catch {
+          return { conversations: [] };
+        }
+
+        objectStart = -1;
+      }
+    }
+  }
+
+  return { conversations };
 }

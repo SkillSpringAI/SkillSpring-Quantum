@@ -1,6 +1,7 @@
+import { useState } from "react";
 import type { ArchiveNotification } from "../types/notifications";
 import { describeArchiveNotification } from "../services/archiveNotificationsBridge";
-import { revealDesktopPath } from "../services/pathBridge";
+import OpenPathButton from "./OpenPathButton";
 
 interface ArchiveNotificationPanelProps {
   latest: ArchiveNotification | null;
@@ -17,6 +18,8 @@ export default function ArchiveNotificationPanel({
   eventsFilePath,
   onRefresh
 }: ArchiveNotificationPanelProps) {
+  const [showEventLog, setShowEventLog] = useState(false);
+
   return (
     <div className="panel">
       <div className="panel-heading-row">
@@ -36,13 +39,17 @@ export default function ArchiveNotificationPanel({
             Latest file written: {latest.title || latest.topic || "archive output"}
           </p>
           <div className="action-bar">
-            <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(latest.output_file)}>
+            <OpenPathButton
+              className="secondary-btn"
+              targetPath={latest.output_file}
+              missingText="Latest markdown file is no longer available."
+            >
               Open Latest Markdown File
-            </button>
+            </OpenPathButton>
             {latestFilePath ? (
-              <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(latestFilePath)}>
+              <OpenPathButton className="secondary-btn" targetPath={latestFilePath}>
                 Open Latest Event File
-              </button>
+              </OpenPathButton>
             ) : null}
           </div>
         </div>
@@ -52,26 +59,38 @@ export default function ArchiveNotificationPanel({
 
       {events.length > 0 ? (
         <>
-          {eventsFilePath ? (
-            <div className="action-bar">
-              <button className="secondary-btn" type="button" onClick={() => revealDesktopPath(eventsFilePath)}>
+          <p className="muted">
+            {events.length} recent archive update(s) are available.
+          </p>
+          <div className="action-bar">
+            <button
+              className="secondary-btn"
+              type="button"
+              onClick={() => setShowEventLog((value) => !value)}
+            >
+              {showEventLog ? "Hide Update Log" : "Show Update Log"}
+            </button>
+            {eventsFilePath ? (
+              <OpenPathButton className="secondary-btn" targetPath={eventsFilePath}>
                 Open Archive Events Log
-              </button>
-            </div>
+              </OpenPathButton>
+            ) : null}
+          </div>
+          {showEventLog ? (
+            <ul className="archive-event-list">
+              {events.map((event) => (
+                <li key={event.hash + event.notified_at}>
+                  <div>
+                    <span>{describeArchiveNotification(event)}</span>
+                    <small>{new Date(event.notified_at).toLocaleString()}</small>
+                  </div>
+                  <OpenPathButton className="secondary-btn chip-btn" targetPath={event.output_file}>
+                    Open File
+                  </OpenPathButton>
+                </li>
+              ))}
+            </ul>
           ) : null}
-          <ul className="archive-event-list">
-            {events.map((event) => (
-              <li key={event.hash + event.notified_at}>
-                <div>
-                  <span>{describeArchiveNotification(event)}</span>
-                  <small>{new Date(event.notified_at).toLocaleString()}</small>
-                </div>
-                <button className="secondary-btn chip-btn" type="button" onClick={() => revealDesktopPath(event.output_file)}>
-                  Open File
-                </button>
-              </li>
-            ))}
-          </ul>
         </>
       ) : (
         <p className="muted">Recent archive updates will appear here after an import writes conversation output.</p>

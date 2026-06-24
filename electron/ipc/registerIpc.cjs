@@ -18,7 +18,13 @@ async function runTsx(scriptPath, args = []) {
   const result = await runCommand(
     process.execPath,
     [tsxCli(root), fullScriptPath, ...args],
-    { cwd: root, shell: process.platform === "win32" }
+    {
+      cwd: root,
+      shell: false,
+      env: {
+        ELECTRON_RUN_AS_NODE: "1"
+      }
+    }
   );
 
   return {
@@ -101,6 +107,29 @@ function registerIpc() {
       return { ok: true, result: { targetPath: payload.targetPath } };
     } catch {
       return { ok: false, error: "Path not found: " + payload.targetPath };
+    }
+  });
+
+  ipcMain.handle("shell:pathExists", async (_event, payload) => {
+    const fs = require("node:fs/promises");
+
+    try {
+      await fs.stat(payload.targetPath);
+      return {
+        ok: true,
+        result: {
+          targetPath: payload.targetPath,
+          exists: true
+        }
+      };
+    } catch {
+      return {
+        ok: true,
+        result: {
+          targetPath: payload.targetPath,
+          exists: false
+        }
+      };
     }
   });
 

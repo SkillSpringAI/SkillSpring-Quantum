@@ -9,7 +9,8 @@ contextBridge.exposeInMainWorld("skillspringDesktop", {
   },
 
   shell: {
-    openPath: (targetPath) => ipcRenderer.invoke("shell:openPath", { targetPath })
+    openPath: (targetPath) => ipcRenderer.invoke("shell:openPath", { targetPath }),
+    pathExists: (targetPath) => ipcRenderer.invoke("shell:pathExists", { targetPath })
   },
 
   imports: {

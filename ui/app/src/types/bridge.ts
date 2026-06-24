@@ -11,6 +11,7 @@ export type DesktopCommandName =
   | "datasets.preview"
   | "datasets.segmentRetrievalIndex"
   | "shell.openPath"
+  | "shell.pathExists"
   | "dialog.pickFile"
   | "dialog.pickFolder"
   | "pipeline.runFile"
@@ -188,6 +189,11 @@ export interface DeleteRetrievalViewPayload {
 
 export interface OpenPathPayload {
   targetPath: string;
+}
+
+export interface PathExistsResult {
+  targetPath: string;
+  exists: boolean;
 }
 
 export interface DatasetLatestRunPayload {

@@ -13,6 +13,10 @@ function runCommand(command, args, options = {}) {
 
     const child = spawn(command, args, {
       cwd: options.cwd || process.cwd(),
+      env: {
+        ...process.env,
+        ...(options.env || {})
+      },
       shell,
       windowsHide: true
     });

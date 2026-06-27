@@ -119,7 +119,8 @@ The desktop product now has a clearer end-to-end shape than earlier reference sn
 - Imports and import history now explain recovery-path, failed, and skipped outcomes with concrete next-step guidance
 - Retrieval can search prior imports and linked dataset segments, save named investigations, and reopen them later
 - Readable Archive browsing now supports topic/source/date filtering, in-app file navigation, archive-event file opening, preserved-attachment handoff, direct dataset-context handoff from selected archive files, and lighter first-use guidance
-- Datasets now include source-context trust summaries, redaction/trust cards, in-app previews of topic segments, prompt/response pairs, micro segments, and private-review records, plus current-bundle versus historical-run handoff controls, lighter guide content, and fewer default file-action choices
+- Readable Archive selected-file review now adds clearer next-step guidance, attachment cues, and matching dataset/import actions so the chosen slice feels closer to a guided review flow than a technical dump
+- Datasets now include source-context trust summaries, redaction/trust cards, in-app previews of topic segments, prompt/response pairs, micro segments, and private-review records, plus current-bundle versus historical-run handoff controls, clearer preview-alignment explanation, lighter guide content, and fewer default file-action choices
 - Imports, Find Imports, and Datasets now lean more on progressive disclosure so the first loaded screen stays closer to the main next action and the denser operator surfaces open deliberately
 
 This means the current product is no longer just "pipeline wrappers plus file-open buttons." It now provides a more coherent local review workflow across imports, archives, and datasets.
@@ -137,6 +138,7 @@ The next explicit UX continuation slices are:
 - keep smoothing visual density, hierarchy, and button emphasis across the general-user surface
 - keep fixing the remaining alignment, spacing, and "old operator screen" feel that still shows up once users start scrolling through loaded states
 - keep advanced assurance tools contextual and avoid making the ordinary flow feel like a product to be studied
+- run a full manual Electron walkthrough across Imports, Readable Archive, Datasets, Find Imports, and contextual diagnostics, documenting the interaction flow and friction points for the next UI/UX pass
 
 ## User and Governance Surface Model
 

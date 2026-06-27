@@ -70,17 +70,18 @@ The desktop app can currently:
 
 1. start imports from a vendor-first flow instead of reasoning about file mode first
 2. choose a file or folder, or enter a path directly
-3. inspect what Quantum found before import and see ready-now, recovery-path, or mismatch feedback
+3. inspect what Quantum found before import and see import-ready, recovery-path, partial-match, or wrong-vendor feedback
 4. run a local import into a configurable output root
 5. review recent import history with per-file results, guarded output links, and retrieval handoff
 6. search prior imports by vendor, topic, text, date, and status
 7. get plain-English recovery guidance for failed, skipped, and fallback imports before retrying
 8. browse readable archive output with topic, source, and date filters
-9. open archive files, archive event logs, topic folders, and preserved attachment locations from the UI when those paths actually exist
-10. jump from archive and import views into related retrieval and dataset investigations
-11. review dataset manifests, trust context, redaction summaries, previews, and current-versus-historical handoff controls inside the app
-12. inspect private-review and diagnostics paths when a run needs more caution
-13. keep secondary screens calmer by hiding import history, deeper check results, raw dataset file actions, segment review, and other operator-heavy panels until the user chooses to open them
+9. review a selected archive slice with guided next-step cues, attachment evidence, file details, and matching dataset/import handoff actions
+10. open archive files, archive event logs, topic folders, and preserved attachment locations from the UI when those paths actually exist
+11. jump from archive and import views into related retrieval and dataset investigations
+12. review dataset manifests, source context, redaction summaries, in-app previews, and historical-versus-latest alignment cues inside the app
+13. inspect extra-care review and diagnostics paths when a run needs more caution
+14. keep secondary screens calmer by hiding import history, deeper check results, raw dataset file actions, segment review, and other operator-heavy panels until the user chooses to open them
 
 ## Desktop runtime note
 
@@ -92,6 +93,8 @@ Recent hardening included:
 - Windows-safe Electron command spawning for paths under locations like `C:\Program Files\...`
 - guarded file-open buttons so the UI avoids pointing users at paths that do not exist yet
 - calmer loaded-state UI on Imports, Find Imports, and Datasets so the first working view stays closer to the primary task instead of opening every secondary panel at once
+- clearer archive selected-file review flow so attachment context and dataset handoff are easier to follow
+- clearer dataset preview alignment messaging so users can tell when they are seeing an exact historical snapshot versus a latest-bundle fallback
 
 ## Use cases the project currently fits best
 
@@ -137,8 +140,10 @@ The current UI is materially better aligned to the MVP flow than earlier builds,
 What is working now:
 
 - vendor-first import guidance is clearer
-- mismatch versus ready-now states are more honest
+- import-ready versus mismatch and recovery-path states are more honest
+- archive selected-file review is more guided
 - archive, retrieval, and dataset screens keep more secondary detail behind optional reveals
+- dataset preview makes historical-run versus latest-bundle alignment easier to understand
 
 What still needs a future UX pass:
 
@@ -146,6 +151,23 @@ What still needs a future UX pass:
 - fewer moments where users feel they need to study the product before acting
 - clearer differentiation between primary actions and power-user inspection surfaces
 - continued simplification of loaded states once real data is present
+
+## Morning Note
+
+The next recommended validation step is a full manual walkthrough of the desktop app in Electron using real or realistic fixture-backed exports.
+
+That walkthrough should cover the whole ordinary user flow:
+
+1. Imports
+2. import history
+3. Readable Archive
+4. Datasets
+5. retrieval / Find Imports
+6. diagnostics only when needed
+
+The goal is not only to check correctness. It is also to document the interaction flow, friction points, confusing labels, dead-end actions, and moments where the UI still feels too internal or too dense. That documentation should feed the next UI/UX polish pass.
+
+Use [docs/MORNING_MANUAL_TEST_NOTE.md](docs/MORNING_MANUAL_TEST_NOTE.md) as the checklist and capture template for that walkthrough.
 
 ## Current scripts
 
@@ -239,4 +261,5 @@ npm run purge:restore -- "organized_output\purge\some_folder\some_file.md" "orga
 - anti-drift scope lock: [docs/SKILLSPRING_MVP_SCOPE_LOCK.md](docs/SKILLSPRING_MVP_SCOPE_LOCK.md)
 - checkable MVP roadmap: [docs/SKILLSPRING_QUANTUM_MVP_ROADMAP.md](docs/SKILLSPRING_QUANTUM_MVP_ROADMAP.md)
 - future-scope PIE boundary: [docs/SKILLSPRING_PIE_FUTURE_SCOPE.md](docs/SKILLSPRING_PIE_FUTURE_SCOPE.md)
+- morning manual walkthrough note: [docs/MORNING_MANUAL_TEST_NOTE.md](docs/MORNING_MANUAL_TEST_NOTE.md)
 

@@ -30,12 +30,12 @@ Current implemented desktop capabilities include:
 - persist a configurable output root through app settings
 - search full import history and reopen named retrieval investigations
 - open created archive, dataset, import, and DB paths from the UI
-- browse markdown archive output with topic/source/date filtering, file-open actions, archive-event handoff, and dataset-context handoff
+- browse markdown archive output with topic/source/date filtering, file-open actions, guided selected-file review, attachment evidence, archive-event handoff, and dataset-context handoff
 - browse tiered DB collections through a file-backed bridge
 - read latest dataset manifest summaries
-- review dataset trust context, redaction summaries, current dataset previews, and current-versus-historical dataset handoff cues in-app
+- review dataset source context, redaction summaries, current dataset previews, exact-versus-fallback preview alignment, and current-versus-historical dataset handoff cues in-app
 
-Some advanced controls are still earlier than the core import/archive/dataset workflow. The main product value is now much more visible than it was in earlier placeholder-heavy snapshots, but there is still room to deepen historical dataset review and cross-screen trust continuity.
+Some advanced controls are still earlier than the core import/archive/dataset workflow. The main product value is now much more visible than it was in earlier placeholder-heavy snapshots, but there is still room to deepen historical dataset review, cross-screen continuity, and first-read clarity.
 
 ## Current priority
 

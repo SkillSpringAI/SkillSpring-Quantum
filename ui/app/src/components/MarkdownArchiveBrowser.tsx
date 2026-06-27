@@ -299,15 +299,15 @@ export default function MarkdownArchiveBrowser({
             {showAdvancedFilters ? (
               <div className="history-filter-grid archive-filter-grid">
                 <label className="form-label tight">
-                  Trust
+                  Import result
                   <select
                     value={trustFilter}
                     onChange={(event) => setTrustFilter(event.target.value as ArchiveTrustFilter)}
                   >
-                    <option value="">All trust states</option>
-                    <option value="mvp_first_class">MVP first-class</option>
-                    <option value="compatibility_fallback">Compatibility fallback</option>
-                    <option value="missing_attachments">Missing attachment risk</option>
+                    <option value="">All import results</option>
+                    <option value="mvp_first_class">Ready-now import</option>
+                    <option value="compatibility_fallback">Recovery-path import</option>
+                    <option value="missing_attachments">Missing attached-file risk</option>
                   </select>
                 </label>
                 <label className="form-label tight">
@@ -348,7 +348,7 @@ export default function MarkdownArchiveBrowser({
             <p className="muted">{visibleArchiveSummary.note}</p>
             {visibleFiles.length > 0 ? (
               <p className="muted">
-                Trust clues in current results: {summarizeArchiveVisibleTrust(visibleFiles)}
+                Review clues in current results: {summarizeArchiveVisibleTrust(visibleFiles)}
               </p>
             ) : null}
             <div className="action-bar">
@@ -362,11 +362,11 @@ export default function MarkdownArchiveBrowser({
             </div>
             {showArchiveGuide ? (
               <div className="detail-box">
-                <strong>How To Read The Archive</strong>
+                <strong>How To Review The Archive</strong>
                 <ul className="list">
                   <li>Start with the newest conversation slice unless you are tracing a specific topic or vendor.</li>
                   <li>Use the selected-slice panel to decide whether to keep reading here, inspect attachments, or jump to datasets.</li>
-                  <li>Open advanced filters only when you want to focus on recovery-path, missing-file risk, or date windows.</li>
+                  <li>Open advanced filters only when you want to focus on recovery-path imports, missing-file risk, or date windows.</li>
                 </ul>
               </div>
             ) : null}
@@ -408,7 +408,7 @@ export default function MarkdownArchiveBrowser({
             {selectedFile ? (
               <>
                 <div className="detail-box">
-                  <strong>Selected Archive Slice</strong>
+                  <strong>Selected Conversation Slice</strong>
                   <p className="muted">{summarizeArchiveContext(selectedFile)}</p>
                   {selectedReviewSummary ? (
                     <div className="stats-grid two-col archive-detail-grid">
@@ -423,7 +423,7 @@ export default function MarkdownArchiveBrowser({
                   ) : null}
                   {selectedNextStep ? (
                     <div className="context-tip">
-                      <strong>Best Next Step</strong>
+                      <strong>Best Next Move</strong>
                       <p className="muted">{selectedNextStep}</p>
                     </div>
                   ) : null}
@@ -574,7 +574,7 @@ export default function MarkdownArchiveBrowser({
                             type="button"
                             onClick={() => revealDesktopPath(selectedAttachmentSummary.manifestPath)}
                           >
-                            Open Preservation Manifest
+                            Open File Summary
                           </button>
                         </div>
                       </div>
@@ -591,7 +591,7 @@ export default function MarkdownArchiveBrowser({
                               type="button"
                               onClick={() => openAllPreservedAttachments()}
                             >
-                              Open All Preserved Attachments
+                              Open All Saved Files
                             </button>
                           </div>
                         ) : null}
@@ -827,7 +827,7 @@ function summarizeArchiveVisibleTrust(files: MarkdownArchiveFile[]): string {
     referenced ? `${referenced} with attachment references` : "",
     preserved ? `${preserved} with preserved evidence` : "",
     missing ? `${missing} with missing attachment risk` : ""
-  ].filter(Boolean).join(" | ") || "no additional trust clues";
+  ].filter(Boolean).join(" | ") || "no additional review clues";
 }
 
 function summarizeArchiveReviewSummary(
@@ -879,7 +879,7 @@ function summarizeArchiveReviewSummary(
           ? "Referenced files were preserved and can be inspected from this screen."
           : file.hasAttachmentReferences
             ? "This file references attachments, but preserved evidence was not detected here."
-            : "No attachment evidence is shaping the trust level for this file."
+            : "No attachment evidence is changing how this file should be reviewed."
   });
 
   return summary;
@@ -887,7 +887,7 @@ function summarizeArchiveReviewSummary(
 
 function buildArchiveNextStep(file: MarkdownArchiveFile): string {
   if (file.hasMissingAttachments) {
-    return "Review the attachment evidence next, then open the related dataset context if you want the highest-caution structured view.";
+    return "Review the attachment evidence next, then open the related dataset context if you want the most careful structured view.";
   }
 
   if (file.supportTier === "compatibility_fallback") {
@@ -919,7 +919,7 @@ function inferArchivePreviewKind(file: MarkdownArchiveFile): DatasetPreviewInten
 
 function buildArchivePreviewReason(file: MarkdownArchiveFile): string {
   if (file.hasMissingAttachments) {
-    return "Started in private review because this archive file carries missing attachment risk and may need the highest-caution dataset view first.";
+    return "Started in extra-care review because this archive file carries missing attachment risk and may need the most careful dataset view first.";
   }
 
   if (file.hasAttachmentReferences) {
@@ -972,7 +972,7 @@ function formatArchiveFileMeta(file: MarkdownArchiveFile): string {
 function summarizeArchiveFileDetails(file: MarkdownArchiveFile): Array<{ label: string; value: string }> {
   const details: Array<{ label: string; value: string }> = [
     { label: "Source", value: file.source ? formatArchiveSourceLabel(file.source) : "Unknown" },
-    { label: "Trust Tier", value: formatSupportTierLabel(file.supportTier) ?? "Unknown" },
+    { label: "Import Path", value: formatSupportTierLabel(file.supportTier) ?? "Unknown" },
     { label: "Topic", value: file.topic ?? file.rawTopic ?? "Unknown" },
     { label: "Modified", value: new Date(file.modifiedAt).toLocaleString() },
     { label: "Size", value: formatBytes(file.sizeBytes) }
@@ -988,7 +988,7 @@ function summarizeArchiveFileDetails(file: MarkdownArchiveFile): Array<{ label: 
 
   if (file.hasAttachmentReferences) {
     details.push({
-      label: "Attachment Trust",
+      label: "Attached Files",
       value: file.hasMissingAttachments
         ? "Missing preservation risk"
         : file.hasPreservedAttachments
@@ -1009,7 +1009,7 @@ function formatSupportTierLabel(
     case "compatibility_fallback":
       return "Compatibility fallback";
     case "unknown":
-      return "Unknown trust tier";
+      return "Unknown import path";
     default:
       return null;
   }

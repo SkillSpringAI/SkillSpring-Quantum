@@ -252,7 +252,7 @@ function buildRecoveryGuidance(run: ImportRunSummary | null): string[] {
   }
 
   if (recoveryPathFiles > 0) {
-    steps.push("Spot-check the readable archive and one dataset preview because recovery-path imports are useful, but they deserve a quick completeness check before you trust them like first-class exports.");
+    steps.push("Spot-check the readable archive and one dataset preview because recovery-path imports are useful, but they still deserve a quick completeness check before you treat them like fully clean exports.");
   }
 
   if (run.filesImported === 0) {
@@ -591,13 +591,13 @@ export default function ImportsScreen() {
             <li>Pick the vendor first so Quantum knows which export shape to look for.</li>
             <li>Use the downloaded folder when the export came as a package, not just a single file.</li>
             <li>Run the check first. If it looks good, import from the same path without changing anything.</li>
-            <li>After import, start in Readable Archive. Open Datasets only when you want structured output.</li>
+            <li>After import, start in Readable Archive. Open Structured View only when you want structured output.</li>
           </ul>
         ) : null}
       </div>
 
       <div className="panel">
-        <h2>Match Check</h2>
+        <h2>Export Check</h2>
         {!sourceSummary ? (
           <>
             <p className="muted">
@@ -676,7 +676,7 @@ export default function ImportsScreen() {
             ) : null}
             {hasDatasetOutputs ? (
               <button className="primary-btn" type="button" onClick={() => setActiveScreen("datasets")}>
-                Open Datasets
+                Open Structured View
               </button>
             ) : null}
             {runNeedsDiagnostics ? (
@@ -700,9 +700,9 @@ export default function ImportsScreen() {
 
       {latestRunForNextSteps && recoveryGuidance.length > 0 ? (
         <div className="panel">
-          <h2>Needs Attention</h2>
+          <h2>Check Before You Move On</h2>
           <p className="muted">
-            This run needs a closer spot-check before you treat every output as fully reliable.
+            This run deserves a closer spot-check before you rely on every output.
           </p>
           <div className="action-bar">
             <button
@@ -710,7 +710,7 @@ export default function ImportsScreen() {
               type="button"
               onClick={() => setShowRecoveryGuidance((value) => !value)}
             >
-              {showRecoveryGuidance ? "Hide Recovery Checks" : "Show Recovery Checks"}
+              {showRecoveryGuidance ? "Hide What To Check" : "Show What To Check"}
             </button>
             <button className="secondary-btn" type="button" onClick={refreshSourceSummary}>
               Re-Check Path
@@ -771,7 +771,7 @@ export default function ImportsScreen() {
 
       {showSourceResults ? (
         <div className="panel large">
-          <h2>Check Results</h2>
+          <h2>Export Check Results</h2>
           <p className="muted">
             {sourceSummary.inputType} found at <code>{sourceSummary.inputPath}</code>
           </p>
@@ -788,17 +788,17 @@ export default function ImportsScreen() {
               <p className="muted">Recognized conversation export files in this path.</p>
             </div>
             <div className="stat-card">
-              <span className="label">Ready Now</span>
+              <span className="label">Import-Ready</span>
               <strong>{sourceSummary.supportedFiles}</strong>
               <p className="muted">Files Quantum can import from this path right now.</p>
             </div>
             <div className="stat-card">
-              <span className="label">Will Be Skipped</span>
+              <span className="label">Not Used</span>
               <strong>{sourceSummary.unsupportedFiles}</strong>
               <p className="muted">Files Quantum will ignore because they are outside the current import lane.</p>
             </div>
             <div className="stat-card subdued-card">
-              <span className="label">Supporting Docs</span>
+              <span className="label">Extra Files Nearby</span>
               <strong>
                 {sourceSummary.countsByKind.text_document + sourceSummary.countsByKind.json_document}
               </strong>
@@ -807,7 +807,7 @@ export default function ImportsScreen() {
           </div>
           <div className="action-bar">
             <button className="secondary-btn" type="button" onClick={() => setShowCheckResults((value) => !value)}>
-              {showCheckResults ? "Hide Full Check Results" : "Show Full Check Results"}
+              {showCheckResults ? "Hide File-by-File Results" : "Show File-by-File Results"}
             </button>
           </div>
           {showCheckResults ? (
@@ -846,7 +846,7 @@ export default function ImportsScreen() {
                   {sourceSummary.vendorSummaries.length > 0 ? (
                     <>
                       <p className="muted">
-                        Vendor readiness shows which export Quantum thinks this path most closely matches.
+                        This is Quantum's best guess about which export this path most closely matches.
                       </p>
                       <div className="stats-grid two-col">
                         {sourceSummary.vendorSummaries.map((summary) => (
@@ -904,7 +904,7 @@ export default function ImportsScreen() {
         </div>
       ) : showFirstUseResultsPlaceholder ? (
         <div className="panel large">
-          <h2>What Happens Next</h2>
+          <h2>What To Do Next</h2>
           <ul className="list">
             <li>Choose the export source you want to import.</li>
             <li>Browse to the downloaded file or folder.</li>
@@ -948,7 +948,7 @@ function buildPreInspectVendorHint(expectedVendor: ImportVendorChoice): string {
     case "claude":
       return "Claude exports are easiest to validate from the full downloaded folder.";
     case "grok":
-      return "Grok is best checked from the whole export folder so manifests and attachments stay connected.";
+      return "Grok is best checked from the whole export folder so attached files and supporting records stay connected.";
     case "gemini":
       return "Gemini often arrives as a folder. Start there so Quantum can see the full export shape.";
     case "copilot":
@@ -985,7 +985,7 @@ function buildExpectedVendorMessage(
     return `This path looks like a ${EXPECTED_VENDOR_LABELS[expectedVendor]} export, but it will use a recovery path and deserves a quick spot-check after import.`;
   }
 
-  return `Quantum found ${EXPECTED_VENDOR_LABELS[expectedVendor]} clues here, but this path is not in the strongest import shape yet.`;
+  return `Quantum found ${EXPECTED_VENDOR_LABELS[expectedVendor]} clues here, but this path is not the best version of that export yet.`;
 }
 
 const EXPECTED_VENDOR_LABELS: Record<Exclude<ImportVendorChoice, "auto_detect">, string> = {
@@ -1012,8 +1012,8 @@ function buildValidationCard(
 
   if (expectedVendor === "auto_detect") {
     return sourceSummary.supportedFiles > 0
-      ? { title: "Usable export found", toneClass: "context-tip", state: "ready", kicker: "Match result", badge: "ready now" }
-      : { title: "No usable export found yet", toneClass: "warning-box", state: "mismatch", kicker: "Match result", badge: "not ready" };
+      ? { title: "Usable export found", toneClass: "context-tip", state: "ready", kicker: "Check result", badge: "ready now" }
+      : { title: "No usable export found yet", toneClass: "warning-box", state: "mismatch", kicker: "Check result", badge: "not ready" };
   }
 
   const match = sourceSummary.vendorSummaries.find((summary) => summary.vendor === expectedVendor);
@@ -1022,7 +1022,7 @@ function buildValidationCard(
       title: "Vendor mismatch",
       toneClass: "warning-box",
       state: "mismatch",
-      kicker: "Match result",
+      kicker: "Check result",
       badge: "vendor mismatch"
     };
   }
@@ -1032,7 +1032,7 @@ function buildValidationCard(
       title: "Ready to import",
       toneClass: "context-tip",
       state: "ready",
-      kicker: "Match result",
+      kicker: "Check result",
       badge: "ready now"
     };
   }
@@ -1042,16 +1042,16 @@ function buildValidationCard(
       title: "Usable with caution",
       toneClass: "warning-box",
       state: "caution",
-      kicker: "Match result",
+      kicker: "Check result",
       badge: "recovery path"
     };
   }
 
   return {
-    title: "Detected, but not in the strongest shape",
+    title: "Detected, but not in the best shape yet",
     toneClass: "warning-box",
     state: "caution",
-    kicker: "Match result",
+    kicker: "Check result",
     badge: "partial match"
   };
 }

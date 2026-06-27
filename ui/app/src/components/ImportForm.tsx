@@ -59,7 +59,7 @@ export default function ImportForm(props: ImportFormProps) {
       </div>
 
       <label className="form-label">
-        Import shape
+        File or folder
         <select
           className="text-input"
           value={mode}
@@ -167,7 +167,7 @@ const IMPORT_VENDOR_CONFIG: Record<
   chatgpt: {
     label: "ChatGPT",
     recommendedMode: "batch",
-    guidance: "Most ChatGPT exports arrive as folders. Start with the folder so Quantum can validate the package shape.",
+    guidance: "Most ChatGPT exports arrive as folders. Start with the folder so Quantum can see the whole export clearly.",
     fileLabel: "ChatGPT export file",
     folderLabel: "ChatGPT export folder",
     filePlaceholder: "C:\\Users\\Laptop\\Desktop\\AI Exports\\chatgpt\\conversations.json",
@@ -185,7 +185,7 @@ const IMPORT_VENDOR_CONFIG: Record<
   grok: {
     label: "Grok",
     recommendedMode: "batch",
-    guidance: "Grok is best checked from the whole export folder so manifests and preserved blobs stay connected.",
+    guidance: "Grok is best checked from the whole export folder so attached files and supporting records stay connected.",
     fileLabel: "Grok export file",
     folderLabel: "Grok export folder",
     filePlaceholder: "C:\\Users\\Laptop\\Desktop\\AI Exports\\grok\\manifest.json",
@@ -194,7 +194,7 @@ const IMPORT_VENDOR_CONFIG: Record<
   gemini: {
     label: "Gemini",
     recommendedMode: "batch",
-    guidance: "Gemini often arrives as a folder. Quantum will tell you whether it matches the ready-now JSON path or a narrower fallback route.",
+    guidance: "Gemini often arrives as a folder. Quantum will tell you whether it is ready to import now or needs a narrower recovery path.",
     fileLabel: "Gemini export file",
     folderLabel: "Gemini export folder",
     filePlaceholder: "C:\\Users\\Laptop\\Desktop\\AI Exports\\gemini\\conversations.json",

@@ -285,11 +285,11 @@ export default function DatasetsScreen() {
         ) : (
           <>
             <p className="muted">
-              Review the structured output from imported conversations here.
+              Review the structured output from imported conversations here, starting with the clearest human-readable view.
             </p>
             {archiveHandoffSummary ? (
               <div className="detail-box">
-                <strong>Archive Handoff</strong>
+                <strong>Opened From Archive</strong>
                 <p className="muted">{archiveLinkStatus.headline}</p>
                 <div className="action-bar">
                   <button
@@ -297,7 +297,7 @@ export default function DatasetsScreen() {
                     type="button"
                     onClick={() => setShowArchiveHandoffDetails((value) => !value)}
                   >
-                    {showArchiveHandoffDetails ? "Hide Handoff Details" : "Show Handoff Details"}
+                    {showArchiveHandoffDetails ? "Hide Archive Link Details" : "Show Archive Link Details"}
                   </button>
                   {archiveHandoffSummary.archivePath ? (
                     <OpenPathButton className="secondary-btn" targetPath={archiveHandoffSummary.archivePath}>
@@ -378,7 +378,7 @@ export default function DatasetsScreen() {
             ) : null}
             {selectedSourceContext ? (
               <div className="detail-box">
-                <strong>Selected Import Context</strong>
+                <strong>About This Dataset</strong>
                 {selectedTrustHighlights.length > 0 ? (
                   <div className="stats-grid two-col">
                     {selectedTrustHighlights.map((detail) => (
@@ -449,7 +449,7 @@ export default function DatasetsScreen() {
                       <div className="context-tip">
                         <strong>Power-user option</strong>
                         <p className="muted">
-                          If you want to tune privacy handling or review thresholds, open <strong>More Tools</strong> in the sidebar, then choose <strong>Governance</strong>.
+                          If you want to tune privacy handling or review thresholds, open <strong>More Tools</strong> in the sidebar, then choose <strong>Governance</strong>. We still need to keep more of this language out of general-use flows.
                         </p>
                       </div>
                     ) : null}
@@ -490,7 +490,7 @@ export default function DatasetsScreen() {
                   ) : null}
                   {selectedSourceNeedsAttention ? (
                     <OpenPathButton className="secondary-btn" targetPath={artifactPaths.diagnostics}>
-                      Open Latest Diagnostics
+                      Open Latest Check Details
                     </OpenPathButton>
                   ) : null}
                 </div>
@@ -513,7 +513,7 @@ export default function DatasetsScreen() {
                 <p className="muted">Small message windows for search, spot checks, and lightweight review.</p>
               </div>
               <div className="stat-card">
-                <span className="label">Private Review</span>
+                <span className="label">Extra-Care Review</span>
                 <strong>{selectedRun.private_review_segments}</strong>
                 <p className="muted">Records that need extra care because signal or privacy rules were more sensitive.</p>
               </div>
@@ -597,13 +597,13 @@ export default function DatasetsScreen() {
             ) : null}
             <div className="action-bar">
                 <OpenPathButton className="secondary-btn" targetPath={artifactPaths.currentPrivateReview}>
-                  Open Private Review File
+                  Open Extra-Care Review File
                 </OpenPathButton>
                 <OpenPathButton className="secondary-btn" targetPath={artifactPaths.diagnostics}>
-                  Open Latest Diagnostics
+                  Open Latest Check Details
                 </OpenPathButton>
                 <OpenPathButton className="secondary-btn" targetPath={artifactPaths.dbRoot}>
-                  Open Private Review Folder
+                  Open Extra-Care Review Folder
                 </OpenPathButton>
             </div>
           </>
@@ -615,7 +615,7 @@ export default function DatasetsScreen() {
       </div>
 
       <div className="panel large">
-        <h2>Open Files</h2>
+        <h2>Raw Files</h2>
         {selectedRun ? (
           <>
             <p className="muted">
@@ -681,15 +681,15 @@ export default function DatasetsScreen() {
                       <span className="label">{card.label}</span>
                       <strong>{card.title}</strong>
                       <p className="muted">{card.note}</p>
-                      <p className="muted">{card.trustNote}</p>
+                      <p className="muted">{card.reviewNote}</p>
                       <div className="action-bar">
                         {card.runPath ? (
                           <OpenPathButton className="primary-btn" targetPath={card.runPath}>
-                            Open Selected Run File
+                            Open This Run's File
                           </OpenPathButton>
                         ) : null}
                         <OpenPathButton className="secondary-btn" targetPath={card.currentPath}>
-                          Open Current File
+                          Open Latest File
                         </OpenPathButton>
                       </div>
                       <p className="muted">{card.handoffNote}</p>
@@ -734,7 +734,7 @@ export default function DatasetsScreen() {
         </p>
         {previewIntentSummary ? (
           <div className="detail-box">
-            <strong>Archive Preview Handoff</strong>
+            <strong>Archive Preview Link</strong>
             <p className="muted">
               Started in: {DATASET_PREVIEW_CONFIG[previewIntentSummary.preferredKind].label}
             </p>
@@ -900,7 +900,7 @@ export default function DatasetsScreen() {
       <div className="panel">
         <h2>How To Use This</h2>
         <p className="muted">
-          Start with topic segments for the clearest review. Use prompt/response for faster scanning. Use private review only when a run needs extra caution.
+          Start with topic segments for the clearest review. Use prompt/response for faster scanning. Use extra-care review only when a run needs closer handling.
         </p>
         <div className="action-bar">
           <button className="secondary-btn" type="button" onClick={() => setShowDatasetGuide((value) => !value)}>
@@ -911,7 +911,7 @@ export default function DatasetsScreen() {
           <ul className="list">
             <li>Start with topic segments when you want the easiest human-readable review.</li>
             <li>Use prompt/response when you want compact examples instead of longer thread context.</li>
-            <li>Use Open Files only when you need the raw dataset artifacts, not just the in-app preview.</li>
+            <li>Use Raw Files only when you need the underlying dataset artifacts, not just the in-app preview.</li>
             <li>Privacy handling tells you whether common sensitive details were masked before records were written.</li>
           </ul>
         ) : null}
@@ -1057,7 +1057,7 @@ function buildPreviewModeLead(kind: DatasetPreviewKind): string {
     case "micro_segments":
       return "This is the lightest preview for quick scanning and smaller conversation windows.";
     case "private_review":
-      return "This is the highest-caution preview for records that need extra trust or privacy review.";
+      return "This is the most careful preview for records that need extra handling before normal reuse.";
     default:
       return "This preview mode shows a structured slice of the selected dataset run.";
   }
@@ -1122,8 +1122,8 @@ const DATASET_PREVIEW_CONFIG: Record<
     description: "Small message windows for quick scanning and retrieval checks."
   },
   private_review: {
-    label: "Private Review",
-    description: "Segments that need extra trust or privacy caution before normal reuse."
+    label: "Extra-Care Review",
+    description: "Segments that need extra handling before normal reuse."
   }
 };
 
@@ -1141,7 +1141,7 @@ function buildDatasetOutputCards(
   label: string;
   title: string;
   note: string;
-  trustNote: string;
+  reviewNote: string;
   handoffNote: string;
   currentPath: string;
   runPath?: string;
@@ -1153,7 +1153,7 @@ function buildDatasetOutputCards(
       label: "Topic Segments",
       title: "Best for context-rich dataset review",
       note: "Choose this when you want the clearest topic-organized conversation chunks.",
-      trustNote: selectedSourceNeedsAttention
+      reviewNote: selectedSourceNeedsAttention
         ? "Selected run used a recovery path, so this is a good first file to spot-check for completeness."
         : "This is usually the best first file when you want to validate overall dataset quality.",
       handoffNote: "Selected run file stays aligned with the summary and preview above. Current file is the rolling latest version of this dataset type.",
@@ -1166,7 +1166,7 @@ function buildDatasetOutputCards(
       label: "Prompt/Response Pairs",
       title: "Best for quick QA-style review",
       note: "Choose this when you want compact question-and-answer examples instead of longer threaded context.",
-      trustNote: "This view is easiest for fast manual checks, but it shows less surrounding conversation context than topic segments.",
+      reviewNote: "This view is easiest for fast manual checks, but it shows less surrounding conversation context than topic segments.",
       handoffNote: "Use the selected run file for historical review packs. Use the current file when another step should consume the newest prompt/response export.",
       currentPath: artifactPaths.currentPromptResponse,
       currentFolderPath: artifactPaths.currentRoot,
@@ -1177,7 +1177,7 @@ function buildDatasetOutputCards(
       label: "Micro Segments",
       title: "Best for spot checks and retrieval",
       note: "Choose this when you want smaller windows for search, lightweight review, or downstream retrieval use.",
-      trustNote: "Micro segments are compact and useful for search-oriented tasks, but they intentionally trade away some broader thread context.",
+      reviewNote: "Micro segments are compact and useful for search-oriented tasks, but they intentionally trade away some broader thread context.",
       handoffNote: "Selected run file preserves the snapshot you are inspecting. Current file follows the newest retrieval-oriented export.",
       currentPath: artifactPaths.currentMicroSegments,
       currentFolderPath: artifactPaths.currentRoot,
@@ -1185,11 +1185,11 @@ function buildDatasetOutputCards(
       folderPath: selectedRunPaths?.runRoot ?? artifactPaths.runsRoot
     },
     {
-      label: "Private Review",
+      label: "Extra-Care Review",
       title: "Best for the most sensitive records",
-      note: "Choose this when you want the records that were separated for extra trust or privacy caution.",
-      trustNote: "Treat this as the highest-caution dataset surface before normal reuse or promotion decisions.",
-      handoffNote: "Selected run private review stays tied to this run snapshot. Current private review file reflects the latest overall caution queue.",
+      note: "Choose this when you want the records that were separated for extra handling.",
+      reviewNote: "Treat this as the most careful dataset surface before normal reuse or promotion decisions.",
+      handoffNote: "The selected run's extra-care review stays tied to this run snapshot. The latest file reflects the newest overall caution queue.",
       currentPath: artifactPaths.currentPrivateReview,
       runPath: selectedRunPaths?.privateReview,
       currentFolderPath: artifactPaths.dbRoot,
@@ -1384,12 +1384,12 @@ function summarizeDatasetRedactionHighlights(
   });
 
   highlights.push({
-    label: "Private Review Hold",
+    label: "Extra-Care Hold",
     value: String(privateReviewSegments),
     note:
       privateReviewSegments > 0
         ? "These segments were held aside for extra caution, even if their redaction count alone did not fully explain the risk."
-        : "No segments were separated into private review for extra trust or privacy checking."
+        : "No segments were separated into extra-care review for added privacy checking."
   });
 
   return highlights;
@@ -1401,7 +1401,7 @@ function summarizeRedactionExplanation(
 ): string {
   if (!redactionSummary || redactionSummary.total_redactions === 0) {
     if (privateReviewSegments > 0) {
-      return privateReviewSegments + " segment(s) were still sent to private review even though no direct email, phone, URL, or address redactions were counted in this summary.";
+      return privateReviewSegments + " segment(s) were still sent to extra-care review even though no direct email, phone, URL, or address redactions were counted in this summary.";
     }
 
     return "No common email, phone, URL, or address redactions were counted in this dataset run.";
@@ -1420,7 +1420,7 @@ function summarizeRedactionExplanation(
   }
 
   if (privateReviewSegments > 0) {
-    parts.push(privateReviewSegments + " segment(s) also landed in private review for extra caution");
+    parts.push(privateReviewSegments + " segment(s) also landed in extra-care review for added caution");
   }
 
   return parts.join(" | ") + ".";
@@ -1491,7 +1491,7 @@ function summarizePreviewRecord(
     typeof record.signal_score === "number" ? "score " + record.signal_score : "";
 
   return {
-    kicker: kind === "private_review" ? "Private Review Segment" : "Topic Segment",
+    kicker: kind === "private_review" ? "Extra-Care Segment" : "Topic Segment",
     title: readString(record.title) || readString(record.topic) || "Untitled segment",
     meta: [
       readString(record.signal_tier),

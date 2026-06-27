@@ -183,6 +183,8 @@ export default function MarkdownArchiveBrowser({
   const selectedFileDetails = selectedFile ? summarizeArchiveFileDetails(selectedFile) : [];
   const selectedReviewSummary = selectedFile ? summarizeArchiveReviewSummary(selectedFile) : null;
   const selectedNextStep = selectedFile ? buildArchiveNextStep(selectedFile) : null;
+  const selectedReviewFlow = selectedFile ? buildArchiveReviewFlow(selectedFile) : [];
+  const selectedAttachmentLead = selectedFile ? summarizeArchiveAttachmentLead(selectedFile) : null;
   const selectedAttachmentSummary =
     selectedFile?.source === "grok" || selectedFile?.source === "gemini"
       ? attachmentSummaries.find((summary) => summary.vendor === selectedFile.source)
@@ -410,6 +412,9 @@ export default function MarkdownArchiveBrowser({
                 <div className="detail-box">
                   <strong>Selected Conversation Slice</strong>
                   <p className="muted">{summarizeArchiveContext(selectedFile)}</p>
+                  {selectedAttachmentLead ? (
+                    <p className="muted">{selectedAttachmentLead}</p>
+                  ) : null}
                   {selectedReviewSummary ? (
                     <div className="stats-grid two-col archive-detail-grid">
                       {selectedReviewSummary.map((detail) => (
@@ -425,6 +430,16 @@ export default function MarkdownArchiveBrowser({
                     <div className="context-tip">
                       <strong>Best Next Move</strong>
                       <p className="muted">{selectedNextStep}</p>
+                    </div>
+                  ) : null}
+                  {selectedReviewFlow.length > 0 ? (
+                    <div className="detail-box">
+                      <strong>Review Flow</strong>
+                      <ul className="list">
+                        {selectedReviewFlow.map((step) => (
+                          <li key={step}>{step}</li>
+                        ))}
+                      </ul>
                     </div>
                   ) : null}
                   {selectedContextBadges.length > 0 ? (
@@ -466,7 +481,7 @@ export default function MarkdownArchiveBrowser({
                       })
                     }
                   >
-                    Open Related Dataset Context
+                    Open Matching Dataset View
                   </button>
                   <button
                     className="secondary-btn"
@@ -485,7 +500,7 @@ export default function MarkdownArchiveBrowser({
                       })
                     }
                   >
-                    Find Related Import
+                    Find Matching Import
                   </button>
                   {selectedTopic ? (
                     <button
@@ -903,6 +918,42 @@ function buildArchiveNextStep(file: MarkdownArchiveFile): string {
   }
 
   return "Read the markdown here first, then use Find Related Import if you need broader run context.";
+}
+
+function buildArchiveReviewFlow(file: MarkdownArchiveFile): string[] {
+  const steps = ["Read this markdown slice first so you can confirm the conversation actually matches what you expected."];
+
+  if (file.hasMissingAttachments) {
+    steps.push("Open Attachment Details next because some referenced files were not preserved.");
+  } else if (file.hasPreservedAttachments) {
+    steps.push("Open Attachment Details if the saved files matter for understanding the conversation.");
+  }
+
+  if (file.supportTier === "compatibility_fallback") {
+    steps.push("Open the matching dataset view after this and do a quick completeness spot-check.");
+  } else if (file.topic || file.rawTopic || file.hasAttachmentReferences) {
+    steps.push("Open the matching dataset view if you want the structured version of this same conversation area.");
+  } else {
+    steps.push("Use Find Matching Import only if you need broader run context after reading this slice.");
+  }
+
+  return steps;
+}
+
+function summarizeArchiveAttachmentLead(file: MarkdownArchiveFile): string | null {
+  if (file.hasMissingAttachments) {
+    return "This slice references attached files, and some of them were not preserved in the current output.";
+  }
+
+  if (file.hasPreservedAttachments) {
+    return "This slice references attached files, and saved copies are available from this screen.";
+  }
+
+  if (file.hasAttachmentReferences) {
+    return "This slice references attached files, but only the reference trail is available here.";
+  }
+
+  return null;
 }
 
 function inferArchivePreviewKind(file: MarkdownArchiveFile): DatasetPreviewIntentKind {

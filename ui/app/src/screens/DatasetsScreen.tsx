@@ -211,6 +211,12 @@ export default function DatasetsScreen() {
     selectedRunPaths,
     selectedSourceNeedsAttention
   );
+  const previewAlignment = summarizePreviewAlignment(
+    archiveHandoffSummary,
+    selectedRun?.run_id ?? null,
+    datasetRun?.latest?.run_id ?? null,
+    previewScope?.scope
+  );
   const visibleDatasetOutputCards = showAllDatasetOutputCards
     ? datasetOutputCards
     : datasetOutputCards.slice(0, 2);
@@ -732,6 +738,19 @@ export default function DatasetsScreen() {
         <p className="muted">
           Preview dataset records inside the app before opening raw files. When available, Quantum uses the selected run snapshot instead of always falling back to the latest current bundle.
         </p>
+        <div className="detail-box">
+          <strong>What This Preview Is Showing</strong>
+          <p className="muted">{previewAlignment.headline}</p>
+          <div className="signal-badge-row">
+            <span className={previewAlignment.tone === "success" ? "signal-badge success" : "signal-badge warning"}>
+              {previewAlignment.badge}
+            </span>
+            {previewAlignment.secondaryBadge ? (
+              <span className="signal-badge">{previewAlignment.secondaryBadge}</span>
+            ) : null}
+          </div>
+          <p className="muted">{previewAlignment.nextStep}</p>
+        </div>
         {previewIntentSummary ? (
           <div className="detail-box">
             <strong>Archive Preview Link</strong>
@@ -1045,6 +1064,80 @@ function summarizeArchiveLinkStatus(
     badge: "best available fallback",
     tone: "warning",
     nextStep: "Use vendor, topic, and attachment clues here as guidance, but do not assume this is an exact one-to-one archive snapshot match."
+  };
+}
+
+function summarizePreviewAlignment(
+  handoff: {
+    matchedRunId?: string;
+    matchedConfidently: boolean;
+  } | null,
+  selectedRunId: string | null,
+  latestRunId: string | null,
+  scope?: "historical_run" | "latest_current_bundle"
+): { headline: string; badge: string; secondaryBadge?: string; tone: "success" | "warning"; nextStep: string } {
+  const scopeBadge =
+    scope === "historical_run"
+      ? "selected snapshot"
+      : scope === "latest_current_bundle"
+        ? "latest bundle fallback"
+        : "scope unavailable";
+
+  if (!selectedRunId) {
+    return {
+      headline: "No dataset run is selected yet.",
+      badge: scopeBadge,
+      tone: "warning",
+      nextStep: "Pick a run first, then use the preview to verify the structured output."
+    };
+  }
+
+  if (handoff?.matchedConfidently && handoff.matchedRunId === selectedRunId && scope === "historical_run") {
+    return {
+      headline: "This preview is following the same matched historical run as the archive file you opened from.",
+      badge: "exact archive-linked view",
+      secondaryBadge: scopeBadge,
+      tone: "success",
+      nextStep: "You can treat this as the closest structured companion to the selected archive slice."
+    };
+  }
+
+  if (handoff?.matchedConfidently && handoff.matchedRunId === selectedRunId && scope === "latest_current_bundle") {
+    return {
+      headline: "This preview matches the same run, but this preview mode had to fall back to the latest current bundle.",
+      badge: "same run, preview fallback",
+      secondaryBadge: scopeBadge,
+      tone: "warning",
+      nextStep: "Use the preview for convenience, but open this run's files if you need exact historical alignment."
+    };
+  }
+
+  if (handoff?.matchedConfidently && handoff.matchedRunId && handoff.matchedRunId !== selectedRunId) {
+    return {
+      headline: "The archive file matched a different run than the one currently selected here.",
+      badge: "different run selected",
+      secondaryBadge: scopeBadge,
+      tone: "warning",
+      nextStep: "Switch back to the matched run if you want archive context and preview context to stay tightly aligned."
+    };
+  }
+
+  if (selectedRunId === latestRunId && scope === "latest_current_bundle") {
+    return {
+      headline: "This preview is using the latest current bundle for the run you are already reviewing.",
+      badge: "latest bundle view",
+      secondaryBadge: scopeBadge,
+      tone: "success",
+      nextStep: "This is the simplest path when you just want the newest structured output for the selected run."
+    };
+  }
+
+  return {
+    headline: "This preview is the best available view for the selected run, but it is not an exact archive-linked match.",
+    badge: "best available view",
+    secondaryBadge: scopeBadge,
+    tone: "warning",
+    nextStep: "Use the archive link and scope details below if you need to confirm exactly where this preview is coming from."
   };
 }
 

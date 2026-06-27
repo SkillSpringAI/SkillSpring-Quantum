@@ -610,6 +610,7 @@ export default function ImportsScreen() {
             <div className={validationCard.toneClass + " match-card"}>
               <span className="match-card-kicker">{validationCard.kicker}</span>
               <strong>{validationCard.title}</strong>
+              <p className="muted">{buildValidationOutcomeLead(sourceSummary, form.expectedVendor)}</p>
               <p className="muted">{expectedVendorMessage}</p>
               <p className="muted">{buildValidationNextStep(sourceSummary, form.expectedVendor)}</p>
               <div className="signal-badge-row">
@@ -627,11 +628,11 @@ export default function ImportsScreen() {
                   {validationCard.badge}
                 </span>
                 <span className="signal-badge">
-                  {sourceSummary.supportedFiles} ready
+                  {sourceSummary.supportedFiles} import-ready
                 </span>
                 {sourceSummary.unsupportedFiles > 0 ? (
                   <span className="signal-badge">
-                    {sourceSummary.unsupportedFiles} skipped
+                    {sourceSummary.unsupportedFiles} not used
                   </span>
                 ) : null}
               </div>
@@ -644,11 +645,11 @@ export default function ImportsScreen() {
             </div>
             <div className="action-bar">
               <button className="primary-btn" type="button" onClick={refreshSourceSummary}>
-                Check Current Path Again
+                Re-Check This Path
               </button>
               {sourceSummary.supportedFiles > 0 ? (
-                <button className="secondary-btn" type="button" onClick={handleSubmit}>
-                  Import This Path
+                <button className="primary-btn" type="button" onClick={handleSubmit}>
+                  Import This Export
                 </button>
               ) : null}
             </div>
@@ -1012,8 +1013,8 @@ function buildValidationCard(
 
   if (expectedVendor === "auto_detect") {
     return sourceSummary.supportedFiles > 0
-      ? { title: "Usable export found", toneClass: "context-tip", state: "ready", kicker: "Check result", badge: "ready now" }
-      : { title: "No usable export found yet", toneClass: "warning-box", state: "mismatch", kicker: "Check result", badge: "not ready" };
+      ? { title: "Usable export found", toneClass: "context-tip", state: "ready", kicker: "Check result", badge: "import-ready" }
+      : { title: "No usable export found yet", toneClass: "warning-box", state: "mismatch", kicker: "Check result", badge: "nothing usable yet" };
   }
 
   const match = sourceSummary.vendorSummaries.find((summary) => summary.vendor === expectedVendor);
@@ -1023,7 +1024,7 @@ function buildValidationCard(
       toneClass: "warning-box",
       state: "mismatch",
       kicker: "Check result",
-      badge: "vendor mismatch"
+      badge: "wrong vendor"
     };
   }
 
@@ -1033,7 +1034,7 @@ function buildValidationCard(
       toneClass: "context-tip",
       state: "ready",
       kicker: "Check result",
-      badge: "ready now"
+      badge: "import-ready"
     };
   }
 
@@ -1054,6 +1055,40 @@ function buildValidationCard(
     kicker: "Check result",
     badge: "partial match"
   };
+}
+
+function buildValidationOutcomeLead(
+  sourceSummary: ImportSourceSummary | null,
+  expectedVendor: ImportVendorChoice
+): string {
+  if (!sourceSummary) {
+    return "No export has been checked yet.";
+  }
+
+  if (sourceSummary.supportedFiles === 0) {
+    return "Quantum did not find a usable import path in this file or folder yet.";
+  }
+
+  if (expectedVendor === "auto_detect") {
+    return sourceSummary.unsupportedFiles > 0
+      ? "Quantum found something it can import here, along with extra files it will leave alone."
+      : "Quantum found an importable export here.";
+  }
+
+  const match = sourceSummary.vendorSummaries.find((summary) => summary.vendor === expectedVendor);
+  if (!match) {
+    return `This path does not currently look like the ${EXPECTED_VENDOR_LABELS[expectedVendor]} export you selected.`;
+  }
+
+  if (match.supportTier === "mvp_first_class") {
+    return `This path matches the ${EXPECTED_VENDOR_LABELS[expectedVendor]} export you selected and is ready for the normal import path.`;
+  }
+
+  if (match.supportTier === "mvp_compatibility_fallback") {
+    return `This path matches the ${EXPECTED_VENDOR_LABELS[expectedVendor]} export you selected, but Quantum will use a recovery path.`;
+  }
+
+  return `Quantum found some ${EXPECTED_VENDOR_LABELS[expectedVendor]} clues here, but not enough for a clean import yet.`;
 }
 
 function buildValidationNextStep(

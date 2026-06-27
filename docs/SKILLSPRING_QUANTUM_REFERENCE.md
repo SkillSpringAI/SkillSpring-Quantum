@@ -81,6 +81,7 @@ This is narrower than the full internal parser and document-ingestion surface al
 - diagnostic artifacts structured for future local-assistant interpretation
 - user-facing scope should stay narrower than experimental internal parser coverage
 - MVP direction and anti-drift reference: see `docs/SKILLSPRING_QUANTUM_MVP_DIRECTION.md`
+- future-scope intent-engine reference: see `docs/SKILLSPRING_PIE_FUTURE_SCOPE.md`
 - contributor philosophy reference: see `docs/SKILLSPRING_QUANTUM_PRODUCT_PHILOSOPHY.md`
 
 ## Current Gaps / Next Build Targets

@@ -5,6 +5,9 @@ export interface SegmentRetrievalIndexEntry {
   title?: string;
   topic: string;
   rawTopic: string;
+  summaryLabel?: string;
+  intent?: string;
+  importance?: string;
   createdAt?: string;
   startIndex: number;
   endIndex: number;

@@ -38,6 +38,10 @@ interface TopicSegmentRecord {
   title?: string;
   topic: string;
   raw_topic: string;
+  summary_label?: string;
+  intent?: string;
+  importance?: string;
+  domain_hint?: string;
   created_at?: string;
   start_index: number;
   end_index: number;
@@ -244,6 +248,10 @@ export async function exportDatasets(
       title: segment.title,
       topic: segment.topic,
       raw_topic: segment.rawTopic,
+      summary_label: segment.summaryLabel,
+      intent: segment.intent,
+      importance: segment.importance,
+      domain_hint: segment.domainHint,
       created_at: segment.createdAt,
       start_index: segment.startIndex,
       end_index: segment.endIndex,
@@ -267,6 +275,9 @@ export async function exportDatasets(
       title: segment.title,
       topic: segment.topic,
       rawTopic: segment.rawTopic,
+      summaryLabel: segment.summaryLabel,
+      intent: segment.intent,
+      importance: segment.importance,
       createdAt: segment.createdAt,
       startIndex: segment.startIndex,
       endIndex: segment.endIndex,
@@ -280,6 +291,9 @@ export async function exportDatasets(
       searchText: [
         segment.source,
         segment.title ?? "",
+        segment.summaryLabel ?? "",
+        segment.intent ?? "",
+        segment.importance ?? "",
         segment.topic,
         segment.rawTopic,
         topicRecord.text

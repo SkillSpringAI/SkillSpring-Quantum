@@ -245,6 +245,7 @@ export default function RetrievalScreen() {
 
     if (normalizedTopic) {
       const topicMatch =
+        (entry.summaryLabel ?? "").toLowerCase().includes(normalizedTopic) ||
         entry.topic.toLowerCase().includes(normalizedTopic) ||
         entry.rawTopic.toLowerCase().includes(normalizedTopic);
       if (!topicMatch) {
@@ -794,8 +795,12 @@ export default function RetrievalScreen() {
                       className={selected ? "collection-item selected-row" : "collection-item"}
                       onClick={() => setSelectedSegment(entry)}
                     >
-                      <div><strong>{entry.topic}</strong></div>
-                      <div className="muted">{entry.source}</div>
+                      <div><strong>{entry.summaryLabel ?? entry.topic}</strong></div>
+                      <div className="muted">
+                        {entry.source}
+                        {entry.intent ? ` | ${entry.intent}` : ""}
+                        {entry.importance ? ` | ${entry.importance} importance` : ""}
+                      </div>
                       <div className="muted">{entry.textPreview.slice(0, 120)}</div>
                     </li>
                   );
@@ -808,8 +813,14 @@ export default function RetrievalScreen() {
                 <>
                   <div className="detail-box">
                     <strong>Conversation Segment</strong>
-                    <p className="muted">Topic: {detailSegment.topic}</p>
+                    <p className="muted">Topic: {detailSegment.summaryLabel ?? detailSegment.topic}</p>
                     <p className="muted">Source: {detailSegment.source}</p>
+                    {detailSegment.intent || detailSegment.importance ? (
+                      <p className="muted">
+                        {detailSegment.intent ? `Intent: ${detailSegment.intent}` : "Intent: unknown"}
+                        {detailSegment.importance ? ` | Importance: ${detailSegment.importance}` : ""}
+                      </p>
+                    ) : null}
                     <p className="muted">Conversation ID: {detailSegment.conversationId}</p>
                     {detailSegment.title ? <p className="muted">Title: {detailSegment.title}</p> : null}
                     <p className="muted">

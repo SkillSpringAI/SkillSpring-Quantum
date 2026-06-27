@@ -238,4 +238,5 @@ npm run purge:restore -- "organized_output\purge\some_folder\some_file.md" "orga
 - implementation/status reference: [docs/SKILLSPRING_QUANTUM_REFERENCE.md](docs/SKILLSPRING_QUANTUM_REFERENCE.md)
 - anti-drift scope lock: [docs/SKILLSPRING_MVP_SCOPE_LOCK.md](docs/SKILLSPRING_MVP_SCOPE_LOCK.md)
 - checkable MVP roadmap: [docs/SKILLSPRING_QUANTUM_MVP_ROADMAP.md](docs/SKILLSPRING_QUANTUM_MVP_ROADMAP.md)
+- future-scope PIE boundary: [docs/SKILLSPRING_PIE_FUTURE_SCOPE.md](docs/SKILLSPRING_PIE_FUTURE_SCOPE.md)
 

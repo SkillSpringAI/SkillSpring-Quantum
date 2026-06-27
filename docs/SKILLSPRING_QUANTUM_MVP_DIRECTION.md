@@ -146,6 +146,10 @@ Why this matters:
 
 General users need trustworthy outcomes. Power users and enterprise operators may need the underlying evidence. Quantum should support both without forcing one audience to use the other's interface.
 
+There is still a language and tone gap to close across the product. Even when the workflow is technically valid, too much governance-heavy or internal-sounding wording makes Quantum feel aimed at a narrower operator community than the broader audience it could serve.
+
+Future UX and copy work should keep reducing internal vocabulary in default user-facing interactions. The mass-market opportunity is more likely to come from simple, outcome-first language than from exposing more of the system's internal terminology up front.
+
 ### 7. Defer adjacent ingestion and advanced workflow expansion until the above are solid
 
 These matter, but they are not the first MVP priority for general users.
@@ -208,3 +212,5 @@ When choosing the next task, prefer work that improves one of these areas:
 - dataset usability
 
 If a task does not clearly improve one of those, it is probably not the next MVP task.
+
+For future expansion planning around richer parsing and intent analysis, see `docs/SKILLSPRING_PIE_FUTURE_SCOPE.md`. Treat that document as a future-scope reference, not as permission to widen the current MVP boundary.

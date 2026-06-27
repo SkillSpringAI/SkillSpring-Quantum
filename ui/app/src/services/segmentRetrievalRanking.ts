@@ -44,10 +44,16 @@ function scoreSegment(
   }
 
   if (topic) {
-    if (entry.topic.toLowerCase() === topic) {
+    const summary = (entry.summaryLabel ?? "").toLowerCase();
+
+    if (entry.topic.toLowerCase() === topic || summary === topic) {
       score += 40;
       reasons.push("exact topic match");
-    } else if (entry.topic.toLowerCase().includes(topic) || entry.rawTopic.toLowerCase().includes(topic)) {
+    } else if (
+      entry.topic.toLowerCase().includes(topic) ||
+      entry.rawTopic.toLowerCase().includes(topic) ||
+      summary.includes(topic)
+    ) {
       score += 20;
       reasons.push("topic match");
     }
@@ -57,6 +63,12 @@ function scoreSegment(
     let matched = 0;
 
     for (const term of textTerms) {
+      if ((entry.summaryLabel ?? "").toLowerCase().includes(term)) {
+        score += 20;
+        matched += 1;
+        continue;
+      }
+
       if (entry.topic.toLowerCase().includes(term)) {
         score += 16;
         matched += 1;
@@ -90,6 +102,13 @@ function scoreSegment(
     reasons.push("high signal");
   } else if (entry.signalTier === "low_signal") {
     score += 4;
+  }
+
+  if (entry.importance === "high") {
+    score += 10;
+    reasons.push("high importance");
+  } else if (entry.importance === "medium") {
+    score += 5;
   }
 
   score += Math.min(12, Math.round(entry.signalScore / 10));

@@ -10,5 +10,7 @@ const segments = segmentConversation(convo, 2);
 assert.ok(segments.length >= 1, "Expected at least one segment");
 assert.ok(segments[0].messages.length >= 2, "Expected segment to contain messages");
 assert.ok(typeof segments[0].topic === "string", "Expected topic string");
+assert.ok(typeof segments[0].summaryLabel === "string", "Expected segment to include a readable summary label");
+assert.ok(typeof segments[0].intent === "string", "Expected segment to include an intent label");
 
 console.log("segmenter.test.ts passed");

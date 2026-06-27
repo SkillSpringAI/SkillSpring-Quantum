@@ -1,6 +1,11 @@
 import type { Conversation, ConversationMessage } from "../parser/types.js";
 import { normalizeTopic } from "./topicNormalizer.js";
 import type { LocalIndexState } from "../index/state.js";
+import {
+  classifyMessages,
+  type SegmentImportance,
+  type SegmentIntentLabel
+} from "../models/classifier.js";
 
 export interface ConversationSegment {
   conversationId: string;
@@ -13,6 +18,12 @@ export interface ConversationSegment {
   confidence: number;
   reason: string;
   matchedKeywords: string[];
+  summaryLabel?: string;
+  intent?: SegmentIntentLabel;
+  importance?: SegmentImportance;
+  classificationConfidence?: number;
+  classificationReasons?: string[];
+  domainHint?: string;
   startIndex: number;
   endIndex: number;
   messages: ConversationMessage[];
@@ -74,6 +85,7 @@ function jaccardSimilarity(a: string[], b: string[]): number {
 }
 
 function sameTopic(a: ConversationSegment, b: ConversationSegment): boolean {
+  if (a.summaryLabel && b.summaryLabel && a.summaryLabel === b.summaryLabel) return true;
   if (a.topic === b.topic) return true;
   if (a.topic === "general" || b.topic === "general") return false;
 
@@ -135,24 +147,15 @@ export function segmentConversation(
       similarity < 0.45;
 
     if (shouldSplit) {
-      const inferred = inferRawTopic(currentWindow);
-      const normalized = normalizeTopic(inferred.rawTopic, index);
+      const segment = buildSegment(
+        conversation,
+        currentWindow,
+        currentStartIndex,
+        currentStartIndex + currentWindow.length - 1,
+        index
+      );
 
-      provisionalSegments.push({
-        conversationId: conversation.id,
-        source: conversation.source,
-        title: conversation.title,
-        createdAt: conversation.createdAt,
-        participants: conversation.participants,
-        topic: normalized.normalizedTopic,
-        rawTopic: normalized.rawTopic,
-        confidence: Math.max(inferred.confidence, normalized.confidence),
-        reason: normalized.reason,
-        matchedKeywords: normalized.matchedKeywords,
-        startIndex: currentStartIndex,
-        endIndex: currentStartIndex + currentWindow.length - 1,
-        messages: currentWindow
-      });
+      provisionalSegments.push(segment);
 
       currentStartIndex = messageIndex;
       currentWindow = [];
@@ -163,25 +166,15 @@ export function segmentConversation(
   }
 
   if (currentWindow.length > 0) {
-    const windowMessages = currentWindow;
-    const inferred = inferRawTopic(windowMessages);
-    const normalized = normalizeTopic(inferred.rawTopic, index);
-
-    provisionalSegments.push({
-      conversationId: conversation.id,
-      source: conversation.source,
-      title: conversation.title,
-      createdAt: conversation.createdAt,
-      participants: conversation.participants,
-      topic: normalized.normalizedTopic,
-      rawTopic: normalized.rawTopic,
-      confidence: Math.max(inferred.confidence, normalized.confidence),
-      reason: normalized.reason,
-      matchedKeywords: normalized.matchedKeywords,
-      startIndex: currentStartIndex,
-      endIndex: currentStartIndex + windowMessages.length - 1,
-      messages: windowMessages
-    });
+    provisionalSegments.push(
+      buildSegment(
+        conversation,
+        currentWindow,
+        currentStartIndex,
+        currentStartIndex + currentWindow.length - 1,
+        index
+      )
+    );
   }
 
   const merged: ConversationSegment[] = [];
@@ -194,6 +187,22 @@ export function segmentConversation(
       previous.messages.push(...segment.messages);
       previous.confidence = Math.max(previous.confidence, segment.confidence);
       previous.matchedKeywords = [...new Set([...previous.matchedKeywords, ...segment.matchedKeywords])];
+      if (!previous.summaryLabel && segment.summaryLabel) {
+        previous.summaryLabel = segment.summaryLabel;
+      }
+      if ((!previous.importance || previous.importance === "low") && segment.importance) {
+        previous.importance = segment.importance;
+      }
+      if ((!previous.intent || previous.intent === "general") && segment.intent) {
+        previous.intent = segment.intent;
+      }
+      previous.classificationConfidence = Math.max(
+        previous.classificationConfidence ?? 0,
+        segment.classificationConfidence ?? 0
+      );
+      previous.classificationReasons = [
+        ...new Set([...(previous.classificationReasons ?? []), ...(segment.classificationReasons ?? [])])
+      ];
       continue;
     }
 
@@ -205,4 +214,39 @@ export function segmentConversation(
   }
 
   return merged.filter(segment => segment.messages.length > 0);
+}
+
+function buildSegment(
+  conversation: Conversation,
+  messages: ConversationMessage[],
+  startIndex: number,
+  endIndex: number,
+  index?: LocalIndexState
+): ConversationSegment {
+  const inferred = inferRawTopic(messages);
+  const normalized = normalizeTopic(inferred.rawTopic, index);
+  const classified = classifyMessages(conversation.title, messages);
+  const summaryLabel = classified?.summaryLabel;
+
+  return {
+    conversationId: conversation.id,
+    source: conversation.source,
+    title: conversation.title,
+    createdAt: conversation.createdAt,
+    participants: conversation.participants,
+    topic: normalized.normalizedTopic,
+    rawTopic: normalized.rawTopic,
+    confidence: Math.max(inferred.confidence, normalized.confidence, classified?.confidence ?? 0),
+    reason: normalized.reason,
+    matchedKeywords: normalized.matchedKeywords,
+    summaryLabel,
+    intent: classified?.intent,
+    importance: classified?.importance,
+    classificationConfidence: classified?.confidence,
+    classificationReasons: classified?.reasons,
+    domainHint: classified?.domain,
+    startIndex,
+    endIndex,
+    messages
+  };
 }

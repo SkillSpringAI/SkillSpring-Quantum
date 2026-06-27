@@ -58,6 +58,10 @@ export function renderSegmentMarkdown(segment: ConversationSegment): string {
     "confidence: " + segment.confidence,
     "reason: " + JSON.stringify(segment.reason),
     "matchedKeywords: " + JSON.stringify(segment.matchedKeywords),
+    "summaryLabel: " + JSON.stringify(segment.summaryLabel ?? ""),
+    "intent: " + JSON.stringify(segment.intent ?? ""),
+    "importance: " + JSON.stringify(segment.importance ?? ""),
+    "domainHint: " + JSON.stringify(segment.domainHint ?? ""),
     "startIndex: " + segment.startIndex,
     "endIndex: " + segment.endIndex,
     "participants:",
@@ -67,7 +71,7 @@ export function renderSegmentMarkdown(segment: ConversationSegment): string {
   ].join("\n");
 
   const title = "# " + (segment.title ?? "Untitled Conversation") + "\n";
-  const subtitle = "## Segment Topic: " + segment.topic + "\n";
+  const subtitle = "## Segment Topic: " + (segment.summaryLabel ?? segment.topic) + "\n";
 
   const transcript = segment.messages
     .map((msg, index) => {

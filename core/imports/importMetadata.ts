@@ -98,8 +98,9 @@ export function summarizeDetectedConversationImport(
 
     const segments = segmentConversation(conversation);
     for (const segment of segments) {
-      if (!segment.topic || segment.topic === "general") continue;
-      topicCounts.set(segment.topic, (topicCounts.get(segment.topic) ?? 0) + 1);
+      const topicHint = summarizeSegmentTopicHint(segment);
+      if (!topicHint) continue;
+      topicCounts.set(topicHint, (topicCounts.get(topicHint) ?? 0) + 1);
     }
   }
 
@@ -126,6 +127,21 @@ export function summarizeDetectedConversationImport(
     sampleTitles,
     topicHints
   };
+}
+
+function summarizeSegmentTopicHint(
+  segment: ReturnType<typeof segmentConversation>[number]
+): string | null {
+  if (segment.summaryLabel?.trim()) {
+    return segment.summaryLabel.trim();
+  }
+
+  if (segment.topic && segment.topic !== "general") {
+    return segment.topic.replace(/_/g, " ").trim();
+  }
+
+  const raw = segment.rawTopic?.trim();
+  return raw ? raw : null;
 }
 
 export function formatVendorSourceLabel(source: Conversation["source"]): string {

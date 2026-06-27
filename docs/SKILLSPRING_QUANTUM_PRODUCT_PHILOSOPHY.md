@@ -89,6 +89,38 @@ Trust does not require exposing every internal control mechanism.
 
 The application should prioritize understandable outcomes over visible governance complexity.
 
+There is still an important unfinished language problem here.
+
+Even when Quantum is functionally correct, too much governance language, operator language, or internal-systems wording can make the product feel like it was built for a niche technical community rather than for general users.
+
+If Quantum claims to be usable by general users, then the majority of user-facing copy, labels, flows, and explanations should sound like they are for general users.
+
+That does not mean hiding real evidence or advanced capability.
+
+It means defaulting to wording such as:
+
+- imported
+- skipped
+- missing
+- recovered
+- review needed
+- output created
+- check this next
+
+instead of expecting users to think in terms of:
+
+- governance
+- tiered records
+- manifests
+- promotion
+- curation
+- diagnostics artifacts
+- policy surfaces
+
+Advanced terminology can still exist where it is genuinely needed. It should not dominate the default product voice.
+
+This matters strategically as well as ergonomically. A product that sounds niche will usually remain niche, even if its core workflow could help a much broader audience.
+
 ## Governance as Quiet Product Infrastructure
 
 Governance is part of the product, but it should operate at the correct layer.

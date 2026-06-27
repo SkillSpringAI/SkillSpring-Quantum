@@ -1,6 +1,5 @@
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
-import DetailPane from "../components/DetailPane";
 import ScreenErrorBoundary from "../components/ScreenErrorBoundary";
 import DashboardScreen from "../screens/DashboardScreen";
 import ImportsScreen from "../screens/ImportsScreen";
@@ -61,7 +60,6 @@ export default function AppShell() {
           </ScreenErrorBoundary>
         </div>
       </main>
-      <DetailPane />
     </div>
   );
 }

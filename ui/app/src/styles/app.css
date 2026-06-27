@@ -48,7 +48,7 @@ p {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 240px 1fr 320px;
+  grid-template-columns: 240px 1fr;
   min-height: 100vh;
 }
 
@@ -544,6 +544,29 @@ select {
   border: 1px solid var(--border);
 }
 
+.match-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.match-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 6px;
+  background: rgba(110, 168, 254, 0.45);
+}
+
+.match-card-kicker {
+  display: inline-block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .context-tip {
   margin-top: 12px;
   padding: 14px;
@@ -566,6 +589,14 @@ select {
 
 .warning-box p {
   margin-bottom: 0;
+}
+
+.context-tip.match-card::before {
+  background: rgba(73, 209, 125, 0.85);
+}
+
+.warning-box.match-card::before {
+  background: rgba(243, 179, 61, 0.9);
 }
 
 .vendor-match-card {
@@ -644,6 +675,10 @@ select {
 
 .archive-detail-grid {
   margin-top: 12px;
+}
+
+.archive-reading-guide {
+  margin-top: 14px;
 }
 
 .attachment-preview-shell {

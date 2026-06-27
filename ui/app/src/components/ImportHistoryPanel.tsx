@@ -613,6 +613,19 @@ export default function ImportHistoryPanel({
   const latestAttachmentManifestPath = findAttachmentManifestArtifactPath(runForDetail);
   const latestAttachmentArchivePath = findAttachmentArchiveArtifactPath(runForDetail);
   const recoveryGuidance = summarizeRunRecoveryGuidance(runForDetail);
+  const additionalArtifactActions = !runForDetail
+    ? []
+    : runForDetail.artifacts.filter((artifact) => {
+        const primaryPaths = [
+          latestArchiveArtifactPath,
+          latestDatasetArtifactPath,
+          latestDiagnosticsArtifactPath,
+          latestAttachmentArchivePath,
+          latestAttachmentManifestPath
+        ].filter((path): path is string => Boolean(path));
+
+        return !primaryPaths.includes(artifact.path);
+      });
   const visibleResults = runForDetail
     ? runForDetail.results.filter((result) => {
         if (filters.status !== "all" && result.status !== filters.status) {
@@ -949,16 +962,3 @@ export default function ImportHistoryPanel({
     </div>
   );
 }
-  const additionalArtifactActions = !runForDetail
-    ? []
-    : runForDetail.artifacts.filter((artifact) => {
-        const primaryPaths = [
-          latestArchiveArtifactPath,
-          latestDatasetArtifactPath,
-          latestDiagnosticsArtifactPath,
-          latestAttachmentArchivePath,
-          latestAttachmentManifestPath
-        ].filter((path): path is string => Boolean(path));
-
-        return !primaryPaths.includes(artifact.path);
-      });

@@ -80,6 +80,7 @@ The desktop app can currently:
 10. jump from archive and import views into related retrieval and dataset investigations
 11. review dataset manifests, trust context, redaction summaries, previews, and current-versus-historical handoff controls inside the app
 12. inspect private-review and diagnostics paths when a run needs more caution
+13. keep secondary screens calmer by hiding import history, deeper check results, raw dataset file actions, segment review, and other operator-heavy panels until the user chooses to open them
 
 ## Desktop runtime note
 
@@ -90,6 +91,7 @@ Recent hardening included:
 - honest failure when the desktop bridge is unavailable instead of silent mock fallback
 - Windows-safe Electron command spawning for paths under locations like `C:\Program Files\...`
 - guarded file-open buttons so the UI avoids pointing users at paths that do not exist yet
+- calmer loaded-state UI on Imports, Find Imports, and Datasets so the first working view stays closer to the primary task instead of opening every secondary panel at once
 
 ## Use cases the project currently fits best
 
@@ -127,6 +129,23 @@ Quantum also contains internal and power-user workflows that support assurance, 
 - diagnostics and artifacts that may later be interpreted by a local assistant in plain language
 
 These workflows do not define the ordinary MVP journey. They should be reached deliberately through Advanced Tools, settings, contextual troubleshooting, or a future local assistant acting on the user's request.
+
+## Current UX note
+
+The current UI is materially better aligned to the MVP flow than earlier builds, but it still needs another polish stage before it is ready for a strong first external-user impression.
+
+What is working now:
+
+- vendor-first import guidance is clearer
+- mismatch versus ready-now states are more honest
+- archive, retrieval, and dataset screens keep more secondary detail behind optional reveals
+
+What still needs a future UX pass:
+
+- tighter visual hierarchy and spacing consistency
+- fewer moments where users feel they need to study the product before acting
+- clearer differentiation between primary actions and power-user inspection surfaces
+- continued simplification of loaded states once real data is present
 
 ## Current scripts
 

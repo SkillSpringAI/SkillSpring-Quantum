@@ -31,6 +31,10 @@ export default function MarkdownArchiveBrowser({
   onRefresh
 }: MarkdownArchiveBrowserProps) {
   const { openRetrievalInvestigation, openDatasetInvestigation } = useNavigation();
+  const [showArchiveGuide, setShowArchiveGuide] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [showFileDetails, setShowFileDetails] = useState(false);
+  const [showAttachmentDetails, setShowAttachmentDetails] = useState(false);
   const [filterText, setFilterText] = useState("");
   const [sortMode, setSortMode] = useState<ArchiveSortMode>("newest");
   const [activeTopic, setActiveTopic] = useState("");
@@ -161,6 +165,13 @@ export default function MarkdownArchiveBrowser({
     : null;
   const selectedContextBadges = selectedFile ? summarizeArchiveContextBadges(selectedFile) : [];
   const visibleFiles = visibleTopics.flatMap((topic) => topic.files);
+  const visibleConversationCount = countArchiveConversations(visibleFiles);
+  const visibleArchiveSummary = summarizeArchiveResultSummary(
+    visibleConversationCount,
+    visibleFiles.length,
+    visibleTopics.length,
+    activeFilterCount > 0
+  );
   const selectedIndex = selectedFile
     ? visibleFiles.findIndex((file) => file.path === selectedFile.path)
     : -1;
@@ -170,6 +181,8 @@ export default function MarkdownArchiveBrowser({
       ? visibleFiles[selectedIndex + 1]
       : null;
   const selectedFileDetails = selectedFile ? summarizeArchiveFileDetails(selectedFile) : [];
+  const selectedReviewSummary = selectedFile ? summarizeArchiveReviewSummary(selectedFile) : null;
+  const selectedNextStep = selectedFile ? buildArchiveNextStep(selectedFile) : null;
   const selectedAttachmentSummary =
     selectedFile?.source === "grok" || selectedFile?.source === "gemini"
       ? attachmentSummaries.find((summary) => summary.vendor === selectedFile.source)
@@ -193,6 +206,11 @@ export default function MarkdownArchiveBrowser({
     setSelectedAttachmentPreviewId(previewableAttachments[0]?.id ?? "");
   }, [selectedFile?.path]);
 
+  useEffect(() => {
+    setShowFileDetails(false);
+    setShowAttachmentDetails(false);
+  }, [selectedFile?.path]);
+
   return (
     <div className="panel large">
       <div className="panel-heading-row">
@@ -208,16 +226,30 @@ export default function MarkdownArchiveBrowser({
         <div className="markdown-archive-grid">
           <div className="markdown-topic-list">
             <label className="form-label tight">
-              Find archive files
+              Find archive conversations
               <input
                 className="text-input"
                 type="text"
                 value={filterText}
                 onChange={(event) => setFilterText(event.target.value)}
-                placeholder="topic, file name, path"
+                placeholder="title, topic, vendor, path"
               />
             </label>
             <div className="history-filter-grid archive-filter-grid">
+              <label className="form-label tight">
+                Source
+                <select
+                  value={sourceFilter}
+                  onChange={(event) => setSourceFilter(event.target.value)}
+                >
+                  <option value="">All sources</option>
+                  {allSources.map((source) => (
+                    <option key={source} value={source}>
+                      {formatArchiveSourceLabel(source)}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label className="form-label tight">
                 Sort
                 <select
@@ -246,85 +278,102 @@ export default function MarkdownArchiveBrowser({
                     ))}
                 </select>
               </label>
-              <label className="form-label tight">
-                Source
-                <select
-                  value={sourceFilter}
-                  onChange={(event) => setSourceFilter(event.target.value)}
-                >
-                  <option value="">All sources</option>
-                  {allSources.map((source) => (
-                    <option key={source} value={source}>
-                      {formatArchiveSourceLabel(source)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="form-label tight">
-                Trust
-                <select
-                  value={trustFilter}
-                  onChange={(event) => setTrustFilter(event.target.value as ArchiveTrustFilter)}
-                >
-                  <option value="">All trust states</option>
-                  <option value="mvp_first_class">MVP first-class</option>
-                  <option value="compatibility_fallback">Compatibility fallback</option>
-                  <option value="missing_attachments">Missing attachment risk</option>
-                </select>
-              </label>
-              <label className="form-label tight">
-                Attachments
-                <select
-                  value={attachmentFilter}
-                  onChange={(event) => setAttachmentFilter(event.target.value as ArchiveAttachmentFilter)}
-                >
-                  <option value="">All attachment states</option>
-                  <option value="with_attachments">References attachments</option>
-                  <option value="preserved">Preserved evidence</option>
-                  <option value="missing">Missing preservation risk</option>
-                </select>
-              </label>
-              <label className="form-label tight">
-                From
-                <input
-                  className="text-input"
-                  type="date"
-                  value={dateFrom}
-                  onChange={(event) => setDateFrom(event.target.value)}
-                />
-              </label>
-              <label className="form-label tight">
-                To
-                <input
-                  className="text-input"
-                  type="date"
-                  value={dateTo}
-                  onChange={(event) => setDateTo(event.target.value)}
-                />
-              </label>
             </div>
             <div className="retrieval-filter-toolbar">
               <span className="muted">
                 {activeFilterCount > 0 ? `${activeFilterCount} active filter(s)` : "No active filters"}
               </span>
-              <button className="secondary-btn chip-btn" type="button" onClick={clearFilters}>
-                Clear Filters
-              </button>
+              <div className="action-bar">
+                <button
+                  className="secondary-btn chip-btn"
+                  type="button"
+                  onClick={() => setShowAdvancedFilters((value) => !value)}
+                >
+                  {showAdvancedFilters ? "Hide Advanced Filters" : "Show Advanced Filters"}
+                </button>
+                <button className="secondary-btn chip-btn" type="button" onClick={clearFilters}>
+                  Clear Filters
+                </button>
+              </div>
             </div>
+            {showAdvancedFilters ? (
+              <div className="history-filter-grid archive-filter-grid">
+                <label className="form-label tight">
+                  Trust
+                  <select
+                    value={trustFilter}
+                    onChange={(event) => setTrustFilter(event.target.value as ArchiveTrustFilter)}
+                  >
+                    <option value="">All trust states</option>
+                    <option value="mvp_first_class">MVP first-class</option>
+                    <option value="compatibility_fallback">Compatibility fallback</option>
+                    <option value="missing_attachments">Missing attachment risk</option>
+                  </select>
+                </label>
+                <label className="form-label tight">
+                  Attachments
+                  <select
+                    value={attachmentFilter}
+                    onChange={(event) => setAttachmentFilter(event.target.value as ArchiveAttachmentFilter)}
+                  >
+                    <option value="">All attachment states</option>
+                    <option value="with_attachments">References attachments</option>
+                    <option value="preserved">Preserved evidence</option>
+                    <option value="missing">Missing preservation risk</option>
+                  </select>
+                </label>
+                <label className="form-label tight">
+                  From
+                  <input
+                    className="text-input"
+                    type="date"
+                    value={dateFrom}
+                    onChange={(event) => setDateFrom(event.target.value)}
+                  />
+                </label>
+                <label className="form-label tight">
+                  To
+                  <input
+                    className="text-input"
+                    type="date"
+                    value={dateTo}
+                    onChange={(event) => setDateTo(event.target.value)}
+                  />
+                </label>
+              </div>
+            ) : null}
             <p className="muted">
-              {activeFilterCount > 0
-                ? `${visibleTopics.reduce((sum, topic) => sum + topic.files.length, 0)} matching file(s) across readable archive content`
-                : `${topics.reduce((sum, topic) => sum + topic.files.length, 0)} archive file(s) across ${topics.length} topic folder(s)`}
+              {visibleArchiveSummary.headline}
             </p>
+            <p className="muted">{visibleArchiveSummary.note}</p>
             {visibleFiles.length > 0 ? (
               <p className="muted">
                 Trust clues in current results: {summarizeArchiveVisibleTrust(visibleFiles)}
               </p>
             ) : null}
+            <div className="action-bar">
+              <button
+                className="secondary-btn"
+                type="button"
+                onClick={() => setShowArchiveGuide((value) => !value)}
+              >
+                {showArchiveGuide ? "Hide Reading Tips" : "Show Reading Tips"}
+              </button>
+            </div>
+            {showArchiveGuide ? (
+              <div className="detail-box">
+                <strong>How To Read The Archive</strong>
+                <ul className="list">
+                  <li>Start with the newest conversation slice unless you are tracing a specific topic or vendor.</li>
+                  <li>Use the selected-slice panel to decide whether to keep reading here, inspect attachments, or jump to datasets.</li>
+                  <li>Open advanced filters only when you want to focus on recovery-path, missing-file risk, or date windows.</li>
+                </ul>
+              </div>
+            ) : null}
             {visibleTopics.map((topic) => (
               <div key={topic.path} className="markdown-topic-group">
                 <strong>{topic.name}</strong>
-                <span className="muted">{topic.fileCount} file(s)</span>
+                <span className="muted">{topic.fileCount} slice(s)</span>
                 <ul className="collection-list">
                   {topic.files.map((file) => (
                     <li
@@ -355,207 +404,265 @@ export default function MarkdownArchiveBrowser({
           </div>
 
           <div>
-            <h3>{selectedFile?.name ?? "Select a markdown file"}</h3>
-            {selectedFile ? <code>{selectedFile.path}</code> : null}
+            <h3>{selectedFile?.name ?? "Select a readable conversation slice"}</h3>
             {selectedFile ? (
-              <div className="detail-box">
-                <strong>Archive Context</strong>
-                <p className="muted">
-                  {summarizeArchiveContext(selectedFile)}
-                </p>
-                {selectedContextBadges.length > 0 ? (
-                  <p className="muted">{selectedContextBadges.join(" | ")}</p>
-                ) : null}
-                {selectedFileDetails.length > 0 ? (
-                  <div className="stats-grid two-col archive-detail-grid">
-                    {selectedFileDetails.map((detail) => (
-                      <div key={detail.label} className="stat-card">
-                        <span className="label">{detail.label}</span>
-                        <strong>{detail.value}</strong>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-                {selectedAttachmentSummary ? (
-                  <div className="detail-box">
-                    <strong>Attachment Preservation</strong>
-                    <p className="muted">
-                      {selectedAttachmentSummary.attachmentsArchived} preserved | {selectedAttachmentSummary.attachmentsMissing} missing | {selectedAttachmentSummary.attachmentsReferenced} referenced for this vendor export family in the current output folder.
-                    </p>
-                    <div className="action-bar">
-                      <button
-                        className="secondary-btn"
-                        type="button"
-                        onClick={() => revealDesktopPath(selectedAttachmentSummary.archiveRoot)}
-                      >
-                        Open Preserved Files
-                      </button>
-                      <button
-                        className="secondary-btn"
-                        type="button"
-                        onClick={() => revealDesktopPath(selectedAttachmentSummary.manifestPath)}
-                      >
-                        Open Preservation Manifest
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-                {selectedFileAttachments.length > 0 ? (
-                  <div className="detail-box">
-                    <strong>Referenced Attachments In This File</strong>
-                    <p className="muted">
-                      {selectedFileAttachments.length} attachment reference(s) were parsed from this markdown file.
-                    </p>
-                    {selectedPreservedAttachmentPaths.length > 0 ? (
-                      <div className="action-bar">
-                        <button
-                          className="secondary-btn"
-                          type="button"
-                          onClick={() => openAllPreservedAttachments()}
-                        >
-                          Open All Preserved Attachments
-                        </button>
-                      </div>
-                    ) : null}
+              <>
+                <div className="detail-box">
+                  <strong>Selected Archive Slice</strong>
+                  <p className="muted">{summarizeArchiveContext(selectedFile)}</p>
+                  {selectedReviewSummary ? (
                     <div className="stats-grid two-col archive-detail-grid">
-                      {selectedFileAttachments.map((attachment) => (
-                        <div key={attachment.id + attachment.label} className="stat-card">
-                          <span className="label">{attachment.label}</span>
-                          <strong>{formatAttachmentStatusLabel(attachment)}</strong>
-                          <p className="muted">
-                            {attachment.mimeType ?? attachment.id}
-                          </p>
-                          <div className="action-bar">
-                            {isInlinePreviewable(attachment) ? (
-                              <button
-                                className="primary-btn"
-                                type="button"
-                                onClick={() => setSelectedAttachmentPreviewId(attachment.id)}
-                              >
-                                Preview Inline
-                              </button>
-                            ) : null}
-                            {attachment.resolvedArchivePath ? (
-                              <button
-                                className="secondary-btn"
-                                type="button"
-                                onClick={() => revealDesktopPath(attachment.resolvedArchivePath!)}
-                              >
-                                Open Preserved File
-                              </button>
-                            ) : null}
-                            {!attachment.resolvedArchivePath && attachment.resolvedPreviewPath ? (
-                              <button
-                                className="secondary-btn"
-                                type="button"
-                                onClick={() => revealDesktopPath(attachment.resolvedPreviewPath!)}
-                              >
-                                Open Preview File
-                              </button>
-                            ) : null}
-                          </div>
+                      {selectedReviewSummary.map((detail) => (
+                        <div key={detail.label} className="stat-card">
+                          <span className="label">{detail.label}</span>
+                          <strong>{detail.value}</strong>
+                          <p className="muted">{detail.note}</p>
                         </div>
                       ))}
                     </div>
-                    {selectedAttachmentPreview ? (
-                      <div className="detail-box">
-                        <strong>Attachment Preview</strong>
-                        <p className="muted">
-                          Inline preview is available here for previewable preserved or preview-path files referenced by the selected archive record.
-                        </p>
-                        <div className="attachment-preview-shell">
-                          <div className="attachment-preview-toolbar">
-                            <strong>{selectedAttachmentPreview.label}</strong>
-                            <span className="muted">{describePreviewKind(selectedAttachmentPreview)}</span>
+                  ) : null}
+                  {selectedNextStep ? (
+                    <div className="context-tip">
+                      <strong>Best Next Step</strong>
+                      <p className="muted">{selectedNextStep}</p>
+                    </div>
+                  ) : null}
+                  {selectedContextBadges.length > 0 ? (
+                    <div className="signal-badge-row">
+                      {selectedContextBadges.map((badge) => (
+                        <span key={badge} className="signal-badge">
+                          {badge}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="action-bar">
+                  <button
+                    className="primary-btn"
+                    type="button"
+                    onClick={() => revealDesktopPath(selectedFile.path)}
+                  >
+                    Open Markdown File
+                  </button>
+                  <button
+                    className="primary-btn"
+                    type="button"
+                    onClick={() =>
+                      openDatasetInvestigation({
+                        vendor: selectedFile.source,
+                        topic: selectedFile.topic ?? selectedFile.rawTopic,
+                        rawTopic: selectedFile.rawTopic,
+                        createdAt: selectedFile.createdAt,
+                        archiveTitle: selectedFile.title ?? selectedFile.name,
+                        archivePath: selectedFile.path,
+                        supportTier: selectedFile.supportTier,
+                        hasAttachmentReferences: selectedFile.hasAttachmentReferences,
+                        hasPreservedAttachments: selectedFile.hasPreservedAttachments,
+                        hasMissingAttachments: selectedFile.hasMissingAttachments,
+                        preferredPreviewKind: inferArchivePreviewKind(selectedFile),
+                        previewReason: buildArchivePreviewReason(selectedFile)
+                      })
+                    }
+                  >
+                    Open Related Dataset Context
+                  </button>
+                  <button
+                    className="secondary-btn"
+                    type="button"
+                    onClick={() =>
+                      openRetrievalInvestigation({
+                        filters: {
+                          text: selectedFile.title ?? "",
+                          vendor: selectedFile.source ?? "",
+                          topic: selectedFile.topic ?? selectedFile.rawTopic ?? "",
+                          status: "all",
+                          from: selectedFile.createdAt ? toDateInputValue(selectedFile.createdAt) : "",
+                          to: selectedFile.createdAt ? toDateInputValue(selectedFile.createdAt) : ""
+                        },
+                        suggestedName: selectedFile.topic ?? selectedFile.title ?? "Archive investigation"
+                      })
+                    }
+                  >
+                    Find Related Import
+                  </button>
+                  {selectedTopic ? (
+                    <button
+                      className="secondary-btn"
+                      type="button"
+                      onClick={() => revealDesktopPath(selectedTopic.path)}
+                    >
+                      Open Topic Folder
+                    </button>
+                  ) : null}
+                </div>
+
+                <div className="action-bar">
+                  <button
+                    className="secondary-btn"
+                    type="button"
+                    onClick={() => previousFile && onSelectFile(previousFile)}
+                    disabled={!previousFile}
+                  >
+                    Previous File
+                  </button>
+                  <button
+                    className="secondary-btn"
+                    type="button"
+                    onClick={() => nextFile && onSelectFile(nextFile)}
+                    disabled={!nextFile}
+                  >
+                    Next File
+                  </button>
+                  <button
+                    className="secondary-btn"
+                    type="button"
+                    onClick={() => setShowFileDetails((value) => !value)}
+                  >
+                    {showFileDetails ? "Hide File Details" : "Show File Details"}
+                  </button>
+                  {(selectedAttachmentSummary || selectedFileAttachments.length > 0) ? (
+                    <button
+                      className="secondary-btn"
+                      type="button"
+                      onClick={() => setShowAttachmentDetails((value) => !value)}
+                    >
+                      {showAttachmentDetails ? "Hide Attachment Details" : "Show Attachment Details"}
+                    </button>
+                  ) : null}
+                </div>
+
+                {showFileDetails ? (
+                  <div className="detail-box">
+                    <strong>File Details</strong>
+                    <p className="muted">
+                      <code>{selectedFile.path}</code>
+                    </p>
+                    {selectedFileDetails.length > 0 ? (
+                      <div className="stats-grid two-col archive-detail-grid">
+                        {selectedFileDetails.map((detail) => (
+                          <div key={detail.label} className="stat-card">
+                            <span className="label">{detail.label}</span>
+                            <strong>{detail.value}</strong>
                           </div>
-                          {renderAttachmentPreview(selectedAttachmentPreview)}
-                        </div>
+                        ))}
                       </div>
                     ) : null}
                   </div>
                 ) : null}
-              </div>
-            ) : null}
-            {selectedFile ? (
-              <div className="action-bar">
-                <button
-                  className="secondary-btn"
-                  type="button"
-                  onClick={() => previousFile && onSelectFile(previousFile)}
-                  disabled={!previousFile}
-                >
-                  Previous File
-                </button>
-                <button
-                  className="secondary-btn"
-                  type="button"
-                  onClick={() => nextFile && onSelectFile(nextFile)}
-                  disabled={!nextFile}
-                >
-                  Next File
-                </button>
-                <button
-                  className="primary-btn"
-                  type="button"
-                  onClick={() => revealDesktopPath(selectedFile.path)}
-                >
-                  Open Markdown File
-                </button>
-                <button
-                  className="secondary-btn"
-                  type="button"
-                  onClick={() =>
-                    openRetrievalInvestigation({
-                      filters: {
-                        text: selectedFile.title ?? "",
-                        vendor: selectedFile.source ?? "",
-                        topic: selectedFile.topic ?? selectedFile.rawTopic ?? "",
-                        status: "all",
-                        from: selectedFile.createdAt ? toDateInputValue(selectedFile.createdAt) : "",
-                        to: selectedFile.createdAt ? toDateInputValue(selectedFile.createdAt) : ""
-                      },
-                      suggestedName: selectedFile.topic ?? selectedFile.title ?? "Archive investigation"
-                    })
-                  }
-                >
-                  Find Related Import
-                </button>
-                <button
-                  className="secondary-btn"
-                  type="button"
-                  onClick={() =>
-                    openDatasetInvestigation({
-                      vendor: selectedFile.source,
-                      topic: selectedFile.topic ?? selectedFile.rawTopic,
-                      rawTopic: selectedFile.rawTopic,
-                      createdAt: selectedFile.createdAt,
-                      archiveTitle: selectedFile.title ?? selectedFile.name,
-                      archivePath: selectedFile.path,
-                      supportTier: selectedFile.supportTier,
-                      hasAttachmentReferences: selectedFile.hasAttachmentReferences,
-                      hasPreservedAttachments: selectedFile.hasPreservedAttachments,
-                      hasMissingAttachments: selectedFile.hasMissingAttachments,
-                      preferredPreviewKind: inferArchivePreviewKind(selectedFile),
-                      previewReason: buildArchivePreviewReason(selectedFile)
-                    })
-                  }
-                >
-                  Open Related Dataset Context
-                </button>
-                {selectedTopic ? (
-                  <button
-                    className="secondary-btn"
-                    type="button"
-                    onClick={() => revealDesktopPath(selectedTopic.path)}
-                  >
-                    Open Topic Folder
-                  </button>
+
+                {showAttachmentDetails ? (
+                  <div className="detail-box">
+                    <strong>Attachment Evidence</strong>
+                    {selectedAttachmentSummary ? (
+                      <div className="detail-box">
+                        <strong>Vendor Preservation Summary</strong>
+                        <p className="muted">
+                          {selectedAttachmentSummary.attachmentsArchived} preserved | {selectedAttachmentSummary.attachmentsMissing} missing | {selectedAttachmentSummary.attachmentsReferenced} referenced for this vendor export family in the current output folder.
+                        </p>
+                        <div className="action-bar">
+                          <button
+                            className="secondary-btn"
+                            type="button"
+                            onClick={() => revealDesktopPath(selectedAttachmentSummary.archiveRoot)}
+                          >
+                            Open Preserved Files
+                          </button>
+                          <button
+                            className="secondary-btn"
+                            type="button"
+                            onClick={() => revealDesktopPath(selectedAttachmentSummary.manifestPath)}
+                          >
+                            Open Preservation Manifest
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                    {selectedFileAttachments.length > 0 ? (
+                      <>
+                        <p className="muted">
+                          {selectedFileAttachments.length} attachment reference(s) were parsed from this markdown file.
+                        </p>
+                        {selectedPreservedAttachmentPaths.length > 0 ? (
+                          <div className="action-bar">
+                            <button
+                              className="secondary-btn"
+                              type="button"
+                              onClick={() => openAllPreservedAttachments()}
+                            >
+                              Open All Preserved Attachments
+                            </button>
+                          </div>
+                        ) : null}
+                        <div className="stats-grid two-col archive-detail-grid">
+                          {selectedFileAttachments.map((attachment) => (
+                            <div key={attachment.id + attachment.label} className="stat-card">
+                              <span className="label">{attachment.label}</span>
+                              <strong>{formatAttachmentStatusLabel(attachment)}</strong>
+                              <p className="muted">
+                                {attachment.mimeType ?? attachment.id}
+                              </p>
+                              <div className="action-bar">
+                                {isInlinePreviewable(attachment) ? (
+                                  <button
+                                    className="primary-btn"
+                                    type="button"
+                                    onClick={() => setSelectedAttachmentPreviewId(attachment.id)}
+                                  >
+                                    Preview Inline
+                                  </button>
+                                ) : null}
+                                {attachment.resolvedArchivePath ? (
+                                  <button
+                                    className="secondary-btn"
+                                    type="button"
+                                    onClick={() => revealDesktopPath(attachment.resolvedArchivePath)}
+                                  >
+                                    Open Preserved File
+                                  </button>
+                                ) : null}
+                                {!attachment.resolvedArchivePath && attachment.resolvedPreviewPath ? (
+                                  <button
+                                    className="secondary-btn"
+                                    type="button"
+                                    onClick={() => revealDesktopPath(attachment.resolvedPreviewPath)}
+                                  >
+                                    Open Preview File
+                                  </button>
+                                ) : null}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {selectedAttachmentPreview ? (
+                          <div className="detail-box">
+                            <strong>Attachment Preview</strong>
+                            <p className="muted">
+                              Inline preview is available here for previewable preserved or preview-path files referenced by the selected archive record.
+                            </p>
+                            <div className="attachment-preview-shell">
+                              <div className="attachment-preview-toolbar">
+                                <strong>{selectedAttachmentPreview.label}</strong>
+                                <span className="muted">{describePreviewKind(selectedAttachmentPreview)}</span>
+                              </div>
+                              {renderAttachmentPreview(selectedAttachmentPreview)}
+                            </div>
+                          </div>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p className="muted">
+                        No attachment references were parsed from this archive file.
+                      </p>
+                    )}
+                  </div>
                 ) : null}
-              </div>
+              </>
             ) : null}
             {selectedFile && visibleFiles.length > 0 ? (
               <p className="muted">
-                Viewing file {selectedIndex + 1} of {visibleFiles.length} in the current archive result set.
+                Viewing slice {selectedIndex + 1} of {visibleFiles.length} in the current archive result set.
               </p>
             ) : null}
             {selectedFile ? (
@@ -597,6 +704,27 @@ function newestTimestamp(files: MarkdownArchiveFile[]): number {
     const value = Date.parse(file.modifiedAt);
     return Number.isNaN(value) ? latest : Math.max(latest, value);
   }, 0);
+}
+
+function countArchiveConversations(files: MarkdownArchiveFile[]): number {
+  return new Set(files.map((file) => file.conversationId).filter((value): value is string => Boolean(value))).size;
+}
+
+function summarizeArchiveResultSummary(
+  conversationCount: number,
+  fileCount: number,
+  topicCount: number,
+  filtered: boolean
+): { headline: string; note: string } {
+  const headline = conversationCount > 0
+    ? `${conversationCount} conversation(s) matched across ${fileCount} readable slice(s).`
+    : `${fileCount} readable slice(s) matched.`;
+
+  const note = filtered
+    ? `${topicCount} topic group(s) remain in view. Readable slices are review windows, so they are not always one-to-one with whole chats.`
+    : `${topicCount} topic group(s) are available. Readable slices are review windows, so longer conversations can appear more than once.`;
+
+  return { headline, note };
 }
 
 function summarizeArchiveContext(file: MarkdownArchiveFile): string {
@@ -700,6 +828,81 @@ function summarizeArchiveVisibleTrust(files: MarkdownArchiveFile[]): string {
     preserved ? `${preserved} with preserved evidence` : "",
     missing ? `${missing} with missing attachment risk` : ""
   ].filter(Boolean).join(" | ") || "no additional trust clues";
+}
+
+function summarizeArchiveReviewSummary(
+  file: MarkdownArchiveFile
+): Array<{ label: string; value: string; note: string }> {
+  const summary: Array<{ label: string; value: string; note: string }> = [
+    {
+      label: "Source",
+      value: file.source ? formatArchiveSourceLabel(file.source) : "Unknown",
+      note: "Use this to confirm the archive file still belongs to the export family you expected."
+    },
+    {
+      label: "Trust",
+      value:
+        file.supportTier === "mvp_first_class"
+          ? "Ready-now path"
+          : file.supportTier === "compatibility_fallback"
+            ? "Recovery path"
+            : "Unlabeled path",
+      note:
+        file.supportTier === "compatibility_fallback"
+          ? "This file came through a fallback import route, so it deserves a quick completeness check."
+          : "This file came through the normal import path for the detected export shape."
+    }
+  ];
+
+  if (file.topic || file.rawTopic) {
+    summary.push({
+      label: "Topic",
+      value: file.topic ?? file.rawTopic ?? "Unknown",
+      note: "This is the clearest clue for deciding whether to stay in archive review or open related dataset context."
+    });
+  }
+
+  summary.push({
+    label: "Attachments",
+    value:
+      file.hasMissingAttachments
+        ? "Missing risk"
+        : file.hasPreservedAttachments
+          ? "Preserved evidence"
+          : file.hasAttachmentReferences
+            ? "References only"
+            : "None referenced",
+    note:
+      file.hasMissingAttachments
+        ? "Some referenced files were not preserved, so this archive record may need higher-caution review."
+        : file.hasPreservedAttachments
+          ? "Referenced files were preserved and can be inspected from this screen."
+          : file.hasAttachmentReferences
+            ? "This file references attachments, but preserved evidence was not detected here."
+            : "No attachment evidence is shaping the trust level for this file."
+  });
+
+  return summary;
+}
+
+function buildArchiveNextStep(file: MarkdownArchiveFile): string {
+  if (file.hasMissingAttachments) {
+    return "Review the attachment evidence next, then open the related dataset context if you want the highest-caution structured view.";
+  }
+
+  if (file.supportTier === "compatibility_fallback") {
+    return "Read the markdown here first, then spot-check the related dataset context to confirm the recovery-path import still looks complete enough.";
+  }
+
+  if (file.hasPreservedAttachments) {
+    return "Read the markdown first, then open the preserved files if those attachments matter for understanding the conversation.";
+  }
+
+  if (file.topic || file.rawTopic) {
+    return "Read the markdown here first. If you want the structured version of the same conversation area, open the related dataset context next.";
+  }
+
+  return "Read the markdown here first, then use Find Related Import if you need broader run context.";
 }
 
 function inferArchivePreviewKind(file: MarkdownArchiveFile): DatasetPreviewIntentKind {

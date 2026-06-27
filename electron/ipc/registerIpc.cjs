@@ -11,19 +11,20 @@ function repoRoot() {
   return path.resolve(__dirname, "..", "..");
 }
 
+function nodeCommand() {
+  return process.env.npm_node_execpath || "node";
+}
+
 async function runTsx(scriptPath, args = []) {
   const root = repoRoot();
   const fullScriptPath = path.join(root, scriptPath);
 
   const result = await runCommand(
-    process.execPath,
+    nodeCommand(),
     [tsxCli(root), fullScriptPath, ...args],
     {
       cwd: root,
-      shell: false,
-      env: {
-        ELECTRON_RUN_AS_NODE: "1"
-      }
+      shell: false
     }
   );
 

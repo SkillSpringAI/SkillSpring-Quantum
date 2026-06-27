@@ -53,8 +53,10 @@ This is narrower than the full internal parser and document-ingestion surface al
 - vendor-first import entry that now starts moving the UI toward expected export source before file-mode reasoning
 - clearer import match feedback for ready-now, recovery-path, and mismatch states
 - desktop retrieval screen with vendor/topic/date narrowing, linked segment inspection, and saved investigations
+- retrieval loaded-state simplification so saved searches, tips, import details, and segment inspection stay optional until the user asks for them
 - desktop markdown archive browser grouped by inferred topic folder
 - archive-to-dataset handoff from selected markdown files into matched dataset context
+- calmer imports and datasets loaded states so secondary panels, deeper checks, and raw file actions do not all open by default
 - governance rule loading, validation, editing, and write reports
 - tiered database storage for raw, processed, curated, and private-review records
 - privacy-aware versioned dataset records derived from segmented conversation content
@@ -117,6 +119,7 @@ The desktop product now has a clearer end-to-end shape than earlier reference sn
 - Retrieval can search prior imports and linked dataset segments, save named investigations, and reopen them later
 - Readable Archive browsing now supports topic/source/date filtering, in-app file navigation, archive-event file opening, preserved-attachment handoff, direct dataset-context handoff from selected archive files, and lighter first-use guidance
 - Datasets now include source-context trust summaries, redaction/trust cards, in-app previews of topic segments, prompt/response pairs, micro segments, and private-review records, plus current-bundle versus historical-run handoff controls, lighter guide content, and fewer default file-action choices
+- Imports, Find Imports, and Datasets now lean more on progressive disclosure so the first loaded screen stays closer to the main next action and the denser operator surfaces open deliberately
 
 This means the current product is no longer just "pipeline wrappers plus file-open buttons." It now provides a more coherent local review workflow across imports, archives, and datasets.
 
@@ -131,6 +134,7 @@ The next explicit UX continuation slices are:
 - collapse secondary panels until the user has actual import output to work from
 - make mismatch and recovery-path states visually obvious enough that users can act quickly
 - keep smoothing visual density, hierarchy, and button emphasis across the general-user surface
+- keep fixing the remaining alignment, spacing, and "old operator screen" feel that still shows up once users start scrolling through loaded states
 - keep advanced assurance tools contextual and avoid making the ordinary flow feel like a product to be studied
 
 ## User and Governance Surface Model

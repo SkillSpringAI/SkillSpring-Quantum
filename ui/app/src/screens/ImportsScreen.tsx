@@ -305,6 +305,10 @@ export default function ImportsScreen() {
   const { settings, updateSettings } = useSettings();
   const [showImportHelp, setShowImportHelp] = useState(false);
   const [showSourceDetails, setShowSourceDetails] = useState(false);
+  const [showRecoveryGuidance, setShowRecoveryGuidance] = useState(false);
+  const [showImportHistoryDetails, setShowImportHistoryDetails] = useState(false);
+  const [showCheckResults, setShowCheckResults] = useState(false);
+  const [showRunLog, setShowRunLog] = useState(false);
   const [form, setForm] = useState<ImportJobForm>({
     mode: "single_file",
     expectedVendor: "auto_detect",
@@ -513,9 +517,12 @@ export default function ImportsScreen() {
   const runNeedsDiagnostics = runNeedsAttention(latestRunForNextSteps ?? null);
   const recoveryGuidance = buildRecoveryGuidance(latestRunForNextSteps ?? null);
   const showHistoryPanel = Boolean(importHistory?.runs.length || importHistory?.latest || historyMode === "query");
+  const showArchivePanel = Boolean(latestArchive || archiveEvents.length > 0);
   const expectedVendorSummary = findExpectedVendorSummary(sourceSummary, form.expectedVendor);
   const expectedVendorMessage = buildExpectedVendorMessage(sourceSummary, form.expectedVendor);
   const validationCard = buildValidationCard(sourceSummary, form.expectedVendor);
+  const showSourceResults = sourceSummary !== null;
+  const showFirstUseResultsPlaceholder = !showSourceResults && !showHistoryPanel && !showArchivePanel;
 
   function nextStepSummary(run: ImportRunSummary): string {
     if (run.filesImported === 0) {
@@ -554,11 +561,20 @@ export default function ImportsScreen() {
         message={statusMessage}
       />
 
-      <ArchiveNotificationPanel
-        latest={latestArchive}
-        events={archiveEvents}
-        onRefresh={refreshArchiveNotifications}
-      />
+      {showArchivePanel ? (
+        <ArchiveNotificationPanel
+          latest={latestArchive}
+          events={archiveEvents}
+          onRefresh={refreshArchiveNotifications}
+        />
+      ) : (
+        <div className="panel">
+          <h2>After Import</h2>
+          <p className="muted">
+            Your readable archive updates will appear here after the first successful import.
+          </p>
+        </div>
+      )}
 
       <div className="panel">
         <h2>Before You Import</h2>
@@ -591,10 +607,34 @@ export default function ImportsScreen() {
           </>
         ) : (
           <>
-            <div className={validationCard.toneClass}>
+            <div className={validationCard.toneClass + " match-card"}>
+              <span className="match-card-kicker">{validationCard.kicker}</span>
               <strong>{validationCard.title}</strong>
               <p className="muted">{expectedVendorMessage}</p>
               <p className="muted">{buildValidationNextStep(sourceSummary, form.expectedVendor)}</p>
+              <div className="signal-badge-row">
+                <span
+                  className={
+                    validationCard.state === "ready"
+                      ? "signal-badge success"
+                      : validationCard.state === "caution"
+                        ? "signal-badge warning"
+                        : validationCard.state === "mismatch"
+                          ? "signal-badge warning"
+                          : "signal-badge"
+                  }
+                >
+                  {validationCard.badge}
+                </span>
+                <span className="signal-badge">
+                  {sourceSummary.supportedFiles} ready
+                </span>
+                {sourceSummary.unsupportedFiles > 0 ? (
+                  <span className="signal-badge">
+                    {sourceSummary.unsupportedFiles} skipped
+                  </span>
+                ) : null}
+              </div>
               {expectedVendorSummary ? (
                 <p className="muted">
                   {formatVendorSummaryLabel(expectedVendorSummary.vendor)} readiness: {formatSupportTierLabel(expectedVendorSummary.supportTier)} | {expectedVendorSummary.detectedFiles} main import file(s)
@@ -662,14 +702,16 @@ export default function ImportsScreen() {
         <div className="panel">
           <h2>Needs Attention</h2>
           <p className="muted">
-            Use these checks before retrying an import or treating every record in this run as fully reliable.
+            This run needs a closer spot-check before you treat every output as fully reliable.
           </p>
-          <ul>
-            {recoveryGuidance.map((step) => (
-              <li key={step}>{step}</li>
-            ))}
-          </ul>
           <div className="action-bar">
+            <button
+              className="secondary-btn"
+              type="button"
+              onClick={() => setShowRecoveryGuidance((value) => !value)}
+            >
+              {showRecoveryGuidance ? "Hide Recovery Checks" : "Show Recovery Checks"}
+            </button>
             <button className="secondary-btn" type="button" onClick={refreshSourceSummary}>
               Re-Check Path
             </button>
@@ -679,160 +721,211 @@ export default function ImportsScreen() {
               </button>
             ) : null}
           </div>
+          {showRecoveryGuidance ? (
+            <ul>
+              {recoveryGuidance.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       ) : null}
 
-      {showHistoryPanel ? (
-        <ImportHistoryPanel
-          history={importHistory}
-          selectedRun={selectedRun}
-          onSelectRun={setSelectedRun}
-          onRefresh={refreshImportHistory}
-          onSearch={runHistorySearch}
-          onResetSearch={resetHistorySearch}
-          onOpenRunInRetrieval={handoffRunToRetrieval}
-          onOpenResultInRetrieval={handoffResultToRetrieval}
-          searchMode={historyMode}
-          searchBusy={historySearchBusy}
-        />
-      ) : (
-        <div className="panel large">
-          <h2>Import History</h2>
-          <p className="muted">
-            Your recent imports will appear here after the first successful run.
-          </p>
-        </div>
-      )}
-
       <div className="panel large">
-        <h2>Check Results</h2>
-        {!sourceSummary ? (
-          <p className="muted">Run the export check to see whether this path looks ready, incomplete, or unsupported.</p>
-        ) : (
+        <h2>Import History</h2>
+        {showHistoryPanel ? (
           <>
             <p className="muted">
-              {sourceSummary.inputType} found at <code>{sourceSummary.inputPath}</code>
+              Keep this collapsed unless you want to compare runs, search past imports, or hand a specific result into Find Imports.
             </p>
-            <p className="muted">
-              {buildSourceSummaryLead(sourceSummary)}
-            </p>
-            <div className="stats-grid two-col">
-              <div className="stat-card accent-card">
-                <span className="label">Main Export Files</span>
-                <strong>
-                  {sourceSummary.countsByKind.chatgpt_export + sourceSummary.countsByKind.conversation_json}
-                    + sourceSummary.countsByKind.gemini_activity_html
-                </strong>
-                <p className="muted">Recognized conversation export files in this path.</p>
-              </div>
-              <div className="stat-card">
-                <span className="label">Ready Now</span>
-                <strong>{sourceSummary.supportedFiles}</strong>
-                <p className="muted">Files Quantum can import from this path right now.</p>
-              </div>
-              <div className="stat-card">
-                <span className="label">Will Be Skipped</span>
-                <strong>{sourceSummary.unsupportedFiles}</strong>
-                <p className="muted">Files Quantum will ignore because they are outside the current import lane.</p>
-              </div>
-              <div className="stat-card subdued-card">
-                <span className="label">Supporting Docs</span>
-                <strong>
-                  {sourceSummary.countsByKind.text_document + sourceSummary.countsByKind.json_document}
-                </strong>
-                <p className="muted">Extra documents found next to the main export.</p>
-              </div>
-              <div className="stat-card subdued-card">
-                <span className="label">PDF Files</span>
-                <strong>{sourceSummary.countsByKind.pdf_document}</strong>
-                <p className="muted">PDFs found in the selected path.</p>
-              </div>
-              <div className="stat-card">
-                <span className="label">Total Files</span>
-                <strong>{sourceSummary.totalFiles}</strong>
-                <p className="muted">Everything Quantum saw in the selected file or folder.</p>
-              </div>
-            </div>
             <div className="action-bar">
-              <button className="secondary-btn" type="button" onClick={() => setShowSourceDetails((value) => !value)}>
-                {showSourceDetails ? "Hide File Details" : "Show File Details"}
+              <button
+                className="secondary-btn"
+                type="button"
+                onClick={() => setShowImportHistoryDetails((value) => !value)}
+              >
+                {showImportHistoryDetails ? "Hide Import History" : "Show Import History"}
               </button>
             </div>
-            {showSourceDetails ? (
-              <>
-                {sourceSummary.notes.length > 0 ? (
-                  <ul className="source-note-list">
-                    {orderedSourceSummaryNotes(sourceSummary.notes).map((note) => (
-                      <li
-                        key={note.text}
-                        className={note.tone === "priority" ? "source-note priority-note" : "source-note secondary-note"}
-                      >
-                        {note.text}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-                {sourceSummary.vendorSummaries.length > 0 ? (
-                  <>
-                    <p className="muted">
-                      Vendor readiness shows which export Quantum thinks this path most closely matches.
-                    </p>
-                    <div className="stats-grid two-col">
-                      {sourceSummary.vendorSummaries.map((summary) => (
-                        <div
-                          key={summary.vendor}
-                          className={
-                            "stat-card" +
-                            (isExpectedVendor(form.expectedVendor, summary.vendor) ? " vendor-match-card" : "") +
-                            (shouldDimVendorCard(form.expectedVendor, summary.vendor) ? " subdued-card" : "")
-                          }
-                        >
-                          <span className="label">{formatVendorSummaryLabel(summary.vendor)}</span>
-                          <strong>{formatSupportTierLabel(summary.supportTier)}</strong>
-                          <p className="muted">
-                            {summary.detectedFiles} main import file(s) detected
-                            {summary.companionFiles > 0 ? ` | ${summary.companionFiles} companion file(s)` : ""}
-                          </p>
-                          {isExpectedVendor(form.expectedVendor, summary.vendor) ? (
-                            <p className="muted">Matches the vendor you selected above.</p>
-                          ) : null}
-                          <p className="muted">{summary.recommendation}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                ) : null}
-                {sourceSummary.sampleFiles.length > 0 ? (
-                  <div className="table-wrap">
-                    <table className="review-table">
-                      <thead>
-                        <tr>
-                          <th>Detected Type</th>
-                          <th>Readiness</th>
-                          <th>Path</th>
-                          <th>What Happens If You Import</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sourceSummary.sampleFiles.map((entry) => (
-                          <tr key={entry.path} className={sourceEntryRowClassName(entry.kind)}>
-                            <td>{formatSourceEntryKindLabel(entry)}</td>
-                            <td>{formatSupportTierLabel(entry.supportTier)}</td>
-                            <td>{entry.path}</td>
-                            <td>{entry.reason}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : null}
-              </>
+            {showImportHistoryDetails ? (
+              <ImportHistoryPanel
+                history={importHistory}
+                selectedRun={selectedRun}
+                onSelectRun={setSelectedRun}
+                onRefresh={refreshImportHistory}
+                onSearch={runHistorySearch}
+                onResetSearch={resetHistorySearch}
+                onOpenRunInRetrieval={handoffRunToRetrieval}
+                onOpenResultInRetrieval={handoffResultToRetrieval}
+                searchMode={historyMode}
+                searchBusy={historySearchBusy}
+              />
             ) : null}
           </>
+        ) : (
+          <p className="muted">
+            Recent imports will appear here after the first successful run.
+          </p>
         )}
       </div>
 
-      <RunLogPanel entries={logEntries} />
+      {showSourceResults ? (
+        <div className="panel large">
+          <h2>Check Results</h2>
+          <p className="muted">
+            {sourceSummary.inputType} found at <code>{sourceSummary.inputPath}</code>
+          </p>
+          <p className="muted">
+            {buildSourceSummaryLead(sourceSummary)}
+          </p>
+          <div className="stats-grid two-col">
+            <div className="stat-card accent-card">
+              <span className="label">Main Export Files</span>
+              <strong>
+                {sourceSummary.countsByKind.chatgpt_export + sourceSummary.countsByKind.conversation_json}
+                  + sourceSummary.countsByKind.gemini_activity_html
+              </strong>
+              <p className="muted">Recognized conversation export files in this path.</p>
+            </div>
+            <div className="stat-card">
+              <span className="label">Ready Now</span>
+              <strong>{sourceSummary.supportedFiles}</strong>
+              <p className="muted">Files Quantum can import from this path right now.</p>
+            </div>
+            <div className="stat-card">
+              <span className="label">Will Be Skipped</span>
+              <strong>{sourceSummary.unsupportedFiles}</strong>
+              <p className="muted">Files Quantum will ignore because they are outside the current import lane.</p>
+            </div>
+            <div className="stat-card subdued-card">
+              <span className="label">Supporting Docs</span>
+              <strong>
+                {sourceSummary.countsByKind.text_document + sourceSummary.countsByKind.json_document}
+              </strong>
+              <p className="muted">Extra documents found next to the main export.</p>
+            </div>
+          </div>
+          <div className="action-bar">
+            <button className="secondary-btn" type="button" onClick={() => setShowCheckResults((value) => !value)}>
+              {showCheckResults ? "Hide Full Check Results" : "Show Full Check Results"}
+            </button>
+          </div>
+          {showCheckResults ? (
+            <>
+              <div className="stats-grid two-col">
+                <div className="stat-card subdued-card">
+                  <span className="label">PDF Files</span>
+                  <strong>{sourceSummary.countsByKind.pdf_document}</strong>
+                  <p className="muted">PDFs found in the selected path.</p>
+                </div>
+                <div className="stat-card">
+                  <span className="label">Total Files</span>
+                  <strong>{sourceSummary.totalFiles}</strong>
+                  <p className="muted">Everything Quantum saw in the selected file or folder.</p>
+                </div>
+              </div>
+              <div className="action-bar">
+                <button className="secondary-btn" type="button" onClick={() => setShowSourceDetails((value) => !value)}>
+                  {showSourceDetails ? "Hide File Details" : "Show File Details"}
+                </button>
+              </div>
+              {showSourceDetails ? (
+                <>
+                  {sourceSummary.notes.length > 0 ? (
+                    <ul className="source-note-list">
+                      {orderedSourceSummaryNotes(sourceSummary.notes).map((note) => (
+                        <li
+                          key={note.text}
+                          className={note.tone === "priority" ? "source-note priority-note" : "source-note secondary-note"}
+                        >
+                          {note.text}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {sourceSummary.vendorSummaries.length > 0 ? (
+                    <>
+                      <p className="muted">
+                        Vendor readiness shows which export Quantum thinks this path most closely matches.
+                      </p>
+                      <div className="stats-grid two-col">
+                        {sourceSummary.vendorSummaries.map((summary) => (
+                          <div
+                            key={summary.vendor}
+                            className={
+                              "stat-card" +
+                              (isExpectedVendor(form.expectedVendor, summary.vendor) ? " vendor-match-card" : "") +
+                              (shouldDimVendorCard(form.expectedVendor, summary.vendor) ? " subdued-card" : "")
+                            }
+                          >
+                            <span className="label">{formatVendorSummaryLabel(summary.vendor)}</span>
+                            <strong>{formatSupportTierLabel(summary.supportTier)}</strong>
+                            <p className="muted">
+                              {summary.detectedFiles} main import file(s) detected
+                              {summary.companionFiles > 0 ? ` | ${summary.companionFiles} companion file(s)` : ""}
+                            </p>
+                            {isExpectedVendor(form.expectedVendor, summary.vendor) ? (
+                              <p className="muted">Matches the vendor you selected above.</p>
+                            ) : null}
+                            <p className="muted">{summary.recommendation}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
+                  {sourceSummary.sampleFiles.length > 0 ? (
+                    <div className="table-wrap">
+                      <table className="review-table">
+                        <thead>
+                          <tr>
+                            <th>Detected Type</th>
+                            <th>Readiness</th>
+                            <th>Path</th>
+                            <th>What Happens If You Import</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sourceSummary.sampleFiles.map((entry) => (
+                            <tr key={entry.path} className={sourceEntryRowClassName(entry.kind)}>
+                              <td>{formatSourceEntryKindLabel(entry)}</td>
+                              <td>{formatSupportTierLabel(entry.supportTier)}</td>
+                              <td>{entry.path}</td>
+                              <td>{entry.reason}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
+            </>
+          ) : null}
+        </div>
+      ) : showFirstUseResultsPlaceholder ? (
+        <div className="panel large">
+          <h2>What Happens Next</h2>
+          <ul className="list">
+            <li>Choose the export source you want to import.</li>
+            <li>Browse to the downloaded file or folder.</li>
+            <li>Run the export check and look for a ready or caution result.</li>
+            <li>Import from the same path when it looks right.</li>
+          </ul>
+        </div>
+      ) : null}
+
+      <div className="panel large">
+        <h2>Activity Log</h2>
+        <p className="muted">
+          Keep this closed unless you are debugging a failed check or import run.
+        </p>
+        <div className="action-bar">
+          <button className="secondary-btn" type="button" onClick={() => setShowRunLog((value) => !value)}>
+            {showRunLog ? "Hide Activity Log" : "Show Activity Log"}
+          </button>
+        </div>
+        {showRunLog ? <RunLogPanel entries={logEntries} /> : null}
+      </div>
     </section>
   );
 }
@@ -906,45 +999,60 @@ const EXPECTED_VENDOR_LABELS: Record<Exclude<ImportVendorChoice, "auto_detect">,
 function buildValidationCard(
   sourceSummary: ImportSourceSummary | null,
   expectedVendor: ImportVendorChoice
-): { title: string; toneClass: string } {
+): { title: string; toneClass: string; state: "idle" | "ready" | "caution" | "mismatch"; kicker: string; badge: string } {
   if (!sourceSummary) {
     return {
       title: "Ready to check",
-      toneClass: "detail-box"
+      toneClass: "detail-box",
+      state: "idle",
+      kicker: "No export checked",
+      badge: "check required"
     };
   }
 
   if (expectedVendor === "auto_detect") {
     return sourceSummary.supportedFiles > 0
-      ? { title: "Usable export found", toneClass: "context-tip" }
-      : { title: "No usable export found yet", toneClass: "warning-box" };
+      ? { title: "Usable export found", toneClass: "context-tip", state: "ready", kicker: "Match result", badge: "ready now" }
+      : { title: "No usable export found yet", toneClass: "warning-box", state: "mismatch", kicker: "Match result", badge: "not ready" };
   }
 
   const match = sourceSummary.vendorSummaries.find((summary) => summary.vendor === expectedVendor);
   if (!match) {
     return {
       title: "Vendor mismatch",
-      toneClass: "warning-box"
+      toneClass: "warning-box",
+      state: "mismatch",
+      kicker: "Match result",
+      badge: "vendor mismatch"
     };
   }
 
   if (match.supportTier === "mvp_first_class") {
     return {
       title: "Ready to import",
-      toneClass: "context-tip"
+      toneClass: "context-tip",
+      state: "ready",
+      kicker: "Match result",
+      badge: "ready now"
     };
   }
 
   if (match.supportTier === "mvp_compatibility_fallback") {
     return {
       title: "Usable with caution",
-      toneClass: "warning-box"
+      toneClass: "warning-box",
+      state: "caution",
+      kicker: "Match result",
+      badge: "recovery path"
     };
   }
 
   return {
     title: "Detected, but not in the strongest shape",
-    toneClass: "warning-box"
+    toneClass: "warning-box",
+    state: "caution",
+    kicker: "Match result",
+    badge: "partial match"
   };
 }
 

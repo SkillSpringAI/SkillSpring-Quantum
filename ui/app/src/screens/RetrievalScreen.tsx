@@ -50,6 +50,12 @@ function formatEntryKindLabel(kind: string): string {
 export default function RetrievalScreen() {
   const { retrievalIntent, clearRetrievalIntent, setActiveScreen } = useNavigation();
   const { settings } = useSettings();
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [showSavedSearches, setShowSavedSearches] = useState(false);
+  const [showSearchTips, setShowSearchTips] = useState(false);
+  const [showImportDetails, setShowImportDetails] = useState(false);
+  const [showSegmentReview, setShowSegmentReview] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [indexResult, setIndexResult] = useState<ImportRetrievalIndexResult | null>(null);
   const [segmentIndexResult, setSegmentIndexResult] = useState<SegmentRetrievalIndexResult | null>(null);
   const [savedViewsResult, setSavedViewsResult] = useState<RetrievalSavedViewsResult | null>(null);
@@ -66,6 +72,7 @@ export default function RetrievalScreen() {
   });
 
   async function refreshIndex() {
+    setLoading(true);
     const [result, segmentResult, viewsResult] = await Promise.all([
       loadImportRetrievalIndex(settings.outputRoot),
       loadSegmentRetrievalIndex(settings.outputRoot),
@@ -94,6 +101,7 @@ export default function RetrievalScreen() {
         entry.endIndex === current.endIndex
       ) ?? segmentResult.latest.entries[0] ?? null;
     });
+    setLoading(false);
   }
 
   async function handleSaveCurrentView() {
@@ -293,6 +301,7 @@ export default function RetrievalScreen() {
   const vendorsVisible = [...new Set(visibleEntries.flatMap((entry) => entry.vendorSources))].sort();
   const topicsVisible = [...new Set(visibleEntries.flatMap((entry) => entry.topicHints))].sort();
   const conversationEntries = visibleEntries.filter((entry) => entry.sourceCategory === "conversation");
+  const totalConversations = conversationEntries.reduce((sum, entry) => sum + (entry.conversationCount ?? entry.conversationIds.length ?? 0), 0);
   const totalMessages = conversationEntries.reduce((sum, entry) => sum + (entry.messageCount ?? 0), 0);
   const activeFilterCount = [
     filters.text.trim(),
@@ -334,12 +343,21 @@ export default function RetrievalScreen() {
       <div className="panel large">
         <div className="panel-heading-row">
           <h2>Find Imports</h2>
-          <button className="secondary-btn" type="button" onClick={refreshIndex}>
-            Refresh
+          <button className="secondary-btn" type="button" onClick={refreshIndex} disabled={loading}>
+            {loading ? "Loading..." : "Refresh"}
           </button>
         </div>
 
-        {!indexResult?.latest ? (
+        {loading ? (
+          <>
+            <p className="muted">
+              Loading searchable imports, saved searches, and conversation segments for this output folder.
+            </p>
+            <p className="muted">
+              Quantum is reading the local indexes before this screen decides whether imports are available.
+            </p>
+          </>
+        ) : !indexResult?.latest ? (
           <>
             <p className="muted">
               No searchable imports are available yet. Start in Imports, run an import, then come back here to find past files by vendor, topic, or date.
@@ -353,8 +371,26 @@ export default function RetrievalScreen() {
         ) : (
           <>
             <p className="muted">
-              Search across imported files, narrow by vendor, topic, status, or date, then open the original file or the generated archive output.
+              Search imported conversations and files here. Start simple, then open filters only when you need to narrow by status or date.
             </p>
+            <div className="stats-grid two-col">
+              <div className="stat-card">
+                <span className="label">Searchable Imports</span>
+                <strong>{visibleEntries.length}</strong>
+              </div>
+              <div className="stat-card">
+                <span className="label">Conversation Records</span>
+                <strong>{totalConversations}</strong>
+              </div>
+              <div className="stat-card">
+                <span className="label">Messages Indexed</span>
+                <strong>{totalMessages}</strong>
+              </div>
+              <div className="stat-card">
+                <span className="label">Visible Vendors</span>
+                <strong>{vendorsVisible.length}</strong>
+              </div>
+            </div>
             <div className="history-filter-grid">
               <label className="form-label tight">
                 Search
@@ -386,46 +422,59 @@ export default function RetrievalScreen() {
                   placeholder="crypto, support, ai safety"
                 />
               </label>
-              <label className="form-label tight">
-                Status
-                <select
-                  value={filters.status}
-                  onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value as RetrievalFilters["status"] }))}
-                >
-                  <option value="all">All</option>
-                  <option value="imported">Imported</option>
-                  <option value="skipped">Skipped</option>
-                  <option value="failed">Failed</option>
-                </select>
-              </label>
-              <label className="form-label tight">
-                From
-                <input
-                  className="text-input"
-                  type="date"
-                  value={filters.from}
-                  onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))}
-                />
-              </label>
-              <label className="form-label tight">
-                To
-                <input
-                  className="text-input"
-                  type="date"
-                  value={filters.to}
-                  onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))}
-                />
-              </label>
             </div>
 
             <div className="retrieval-filter-toolbar">
               <span className="muted">
                 {activeFilterCount > 0 ? `${activeFilterCount} active filters` : "No active filters"}
               </span>
-              <button className="secondary-btn chip-btn" type="button" onClick={clearFilters}>
-                Clear Filters
-              </button>
+              <div className="action-bar">
+                <button
+                  className="secondary-btn chip-btn"
+                  type="button"
+                  onClick={() => setShowAdvancedFilters((current) => !current)}
+                >
+                  {showAdvancedFilters ? "Hide Advanced Filters" : "Show Advanced Filters"}
+                </button>
+                <button className="secondary-btn chip-btn" type="button" onClick={clearFilters}>
+                  Clear Filters
+                </button>
+              </div>
             </div>
+            {showAdvancedFilters ? (
+              <div className="history-filter-grid">
+                <label className="form-label tight">
+                  Status
+                  <select
+                    value={filters.status}
+                    onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value as RetrievalFilters["status"] }))}
+                  >
+                    <option value="all">All</option>
+                    <option value="imported">Imported</option>
+                    <option value="skipped">Skipped</option>
+                    <option value="failed">Failed</option>
+                  </select>
+                </label>
+                <label className="form-label tight">
+                  From
+                  <input
+                    className="text-input"
+                    type="date"
+                    value={filters.from}
+                    onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))}
+                  />
+                </label>
+                <label className="form-label tight">
+                  To
+                  <input
+                    className="text-input"
+                    type="date"
+                    value={filters.to}
+                    onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))}
+                  />
+                </label>
+              </div>
+            ) : null}
 
             {vendorsVisible.length > 0 ? (
               <div className="chip-group">
@@ -472,33 +521,9 @@ export default function RetrievalScreen() {
                 })}
               </div>
             ) : null}
-
-            <div className="stats-grid two-col">
-              <div className="stat-card">
-                <span className="label">Matched Imports</span>
-                <strong>{visibleEntries.length}</strong>
-              </div>
-              <div className="stat-card">
-                <span className="label">Conversation Imports</span>
-                <strong>{conversationEntries.length}</strong>
-              </div>
-              <div className="stat-card">
-                <span className="label">Visible Vendors</span>
-                <strong>{vendorsVisible.length}</strong>
-              </div>
-              <div className="stat-card">
-                <span className="label">Messages Indexed</span>
-                <strong>{totalMessages}</strong>
-              </div>
-              <div className="stat-card">
-                <span className="label">Related Segments</span>
-                <strong>{visibleSegments.length}</strong>
-              </div>
-              <div className="stat-card">
-                <span className="label">Selected Import Segments</span>
-                <strong>{linkedSegments.length}</strong>
-              </div>
-            </div>
+            <p className="muted">
+              Search records can be smaller review slices, so they are not always one-to-one with whole chats.
+            </p>
           </>
         )}
       </div>
@@ -533,8 +558,15 @@ export default function RetrievalScreen() {
           <button className="primary-btn" type="button" onClick={handleSaveCurrentView} disabled={!savedViewName.trim()}>
             Save Current Search
           </button>
+          <button className="secondary-btn" type="button" onClick={() => setShowSavedSearches((value) => !value)}>
+            {showSavedSearches ? "Hide Saved Searches" : "Show Saved Searches"}
+          </button>
         </div>
-        {!savedViewsResult?.latest?.views.length ? (
+        {!showSavedSearches ? (
+          <p className="muted">Saved searches are optional. Open them only if you want reusable filter presets.</p>
+        ) : loading ? (
+          <p className="muted">Loading saved searches...</p>
+        ) : !savedViewsResult?.latest?.views.length ? (
           <p className="muted">No saved searches yet.</p>
         ) : (
           <ul className="list collection-list retrieval-list">
@@ -565,20 +597,29 @@ export default function RetrievalScreen() {
 
       <div className="panel">
         <h2>Search Tips</h2>
-        {!indexResult?.latest ? (
+        <div className="action-bar">
+          <button className="secondary-btn" type="button" onClick={() => setShowSearchTips((value) => !value)}>
+            {showSearchTips ? "Hide Tips" : "Show Tips"}
+          </button>
+        </div>
+        {!showSearchTips ? (
+          <p className="muted">Keep this tucked away unless you want a quick reminder of how search behaves.</p>
+        ) : loading ? (
+          <p className="muted">Loading search tips...</p>
+        ) : !indexResult?.latest ? (
           <p className="muted">Suggestions appear once imports have been indexed.</p>
         ) : (
           <>
-            <p className="muted">Vendors: {vendorsVisible.join(", ") || "none visible"}</p>
-            <p className="muted">Topics: {topicsVisible.slice(0, 8).join(", ") || "none visible"}</p>
-            <p className="muted">Quick tip: click a vendor or topic chip above to narrow instantly.</p>
+            <p className="muted">Start with `Search` if you know a title, phrase, or path clue.</p>
+            <p className="muted">Use vendor chips for fast narrowing. Open advanced filters only when date or status actually matters.</p>
+            <p className="muted">Visible topics: {topicsVisible.slice(0, 6).join(", ") || "none visible"}</p>
             <p className="muted">Search index updated: {new Date(indexResult.latest.generatedAt).toLocaleString()}</p>
           </>
         )}
       </div>
 
       <div className="panel large">
-        {!indexResult?.latest ? null : visibleEntries.length === 0 ? (
+        {loading || !indexResult?.latest ? null : visibleEntries.length === 0 ? (
           <p className="muted">No imports match the current filters.</p>
         ) : (
           <div className="import-history-grid">
@@ -607,28 +648,26 @@ export default function RetrievalScreen() {
                 <>
                   <div className="detail-box">
                     <strong>Selected Import</strong>
-                    <p className="muted">File: {detailEntry.filePath}</p>
-                    <p className="muted">Imported from: {detailEntry.inputPath}</p>
-                    <p className="muted">Status: {detailEntry.status}</p>
-                    <p className="muted">Type: {formatEntryKindLabel(detailEntry.kind)}</p>
-                    <p className="muted">Vendor: {detailEntry.vendorSources.join(", ") || "document/generic"}</p>
-                    {detailEntry.titleHints.length > 0 ? (
-                      <p className="muted">Titles: {detailEntry.titleHints.join(", ")}</p>
-                    ) : null}
-                    {formatDateRange(detailEntry.startedAt, detailEntry.endedAt) ? (
-                      <p className="muted">Conversation date range: {formatDateRange(detailEntry.startedAt, detailEntry.endedAt)}</p>
-                    ) : null}
+                    <p className="muted">{detailEntry.message}</p>
+                    <p className="muted">
+                      {detailEntry.vendorSources.join(", ") || "document/generic"} | {formatEntryKindLabel(detailEntry.kind)} | {detailEntry.status}
+                    </p>
                     {detailEntry.topicHints.length > 0 ? (
-                      <p className="muted">Topic hints: {detailEntry.topicHints.join(", ")}</p>
+                      <p className="muted">Topic hints: {detailEntry.topicHints.slice(0, 3).join(", ")}</p>
                     ) : null}
                     {typeof detailEntry.messageCount === "number" ? (
                       <p className="muted">
-                        Conversations: {detailEntry.conversationCount ?? 0} | Messages: {detailEntry.messageCount} | Attachments: {detailEntry.attachmentCount ?? 0}
+                        Conversations: {detailEntry.conversationCount ?? 0} | Messages: {detailEntry.messageCount}
                       </p>
                     ) : null}
-                    <p className="muted">Linked conversation IDs: {detailEntry.conversationIds.length}</p>
-                    <p className="muted">{detailEntry.message}</p>
                     <div className="action-bar">
+                      <button
+                        className="secondary-btn"
+                        type="button"
+                        onClick={() => setShowImportDetails((value) => !value)}
+                      >
+                        {showImportDetails ? "Hide Details" : "Show Details"}
+                      </button>
                       <button
                         className="secondary-btn"
                         type="button"
@@ -652,42 +691,55 @@ export default function RetrievalScreen() {
                     </div>
                   </div>
 
-                  <div className="table-wrap">
-                    <table className="review-table">
-                      <thead>
-                        <tr>
-                          <th>Field</th>
-                          <th>Value</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td>Run time</td>
-                          <td>{new Date(detailEntry.runAt).toLocaleString()}</td>
-                        </tr>
-                        <tr>
-                          <td>Import type</td>
-                          <td>{formatEntryKindLabel(detailEntry.kind)}</td>
-                        </tr>
-                        <tr>
-                          <td>Content type</td>
-                          <td>{detailEntry.sourceCategory ?? "unknown"}</td>
-                        </tr>
-                        <tr>
-                          <td>Topic hints</td>
-                          <td>{detailEntry.topicHints.join(", ") || "none"}</td>
-                        </tr>
-                        <tr>
-                          <td>Related segments</td>
-                          <td>{linkedSegments.length}</td>
-                        </tr>
-                        <tr>
-                          <td>Output files</td>
-                          <td>{detailEntry.artifactPaths.length}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+                  {showImportDetails ? (
+                    <>
+                      <p className="muted">File: {detailEntry.filePath}</p>
+                      <p className="muted">Imported from: {detailEntry.inputPath}</p>
+                      {detailEntry.titleHints.length > 0 ? (
+                        <p className="muted">Titles: {detailEntry.titleHints.join(", ")}</p>
+                      ) : null}
+                      {formatDateRange(detailEntry.startedAt, detailEntry.endedAt) ? (
+                        <p className="muted">Conversation date range: {formatDateRange(detailEntry.startedAt, detailEntry.endedAt)}</p>
+                      ) : null}
+                      <p className="muted">Linked conversation IDs: {detailEntry.conversationIds.length}</p>
+                      <div className="table-wrap">
+                        <table className="review-table">
+                          <thead>
+                            <tr>
+                              <th>Field</th>
+                              <th>Value</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td>Run time</td>
+                              <td>{new Date(detailEntry.runAt).toLocaleString()}</td>
+                            </tr>
+                            <tr>
+                              <td>Import type</td>
+                              <td>{formatEntryKindLabel(detailEntry.kind)}</td>
+                            </tr>
+                            <tr>
+                              <td>Content type</td>
+                              <td>{detailEntry.sourceCategory ?? "unknown"}</td>
+                            </tr>
+                            <tr>
+                              <td>Topic hints</td>
+                              <td>{detailEntry.topicHints.join(", ") || "none"}</td>
+                            </tr>
+                            <tr>
+                              <td>Related segments</td>
+                              <td>{linkedSegments.length}</td>
+                            </tr>
+                            <tr>
+                              <td>Output files</td>
+                              <td>{detailEntry.artifactPaths.length}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  ) : null}
                 </>
               ) : (
                 <p className="muted">Select an import to inspect it.</p>
@@ -706,7 +758,21 @@ export default function RetrievalScreen() {
             </button>
           ) : null}
         </div>
-        {!segmentIndexResult?.latest ? (
+        <p className="muted">
+          Segment review is for deeper inspection after you already have the right import selected.
+        </p>
+        <div className="action-bar">
+          <button className="secondary-btn" type="button" onClick={() => setShowSegmentReview((value) => !value)}>
+            {showSegmentReview ? "Hide Segment Review" : "Show Segment Review"}
+          </button>
+        </div>
+        {!showSegmentReview ? (
+          <p className="muted">Leave this closed for a calmer search workflow.</p>
+        ) : loading ? (
+          <p className="muted">
+            Loading conversation segments...
+          </p>
+        ) : !segmentIndexResult?.latest ? (
           <p className="muted">
             Conversation segments will appear here after an import produces dataset output.
           </p>

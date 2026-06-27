@@ -79,6 +79,12 @@ export default function OrganizedOutputScreen() {
   }, [topics]);
 
   const archiveFileCount = topics.reduce((sum, topic) => sum + topic.files.length, 0);
+  const archiveConversationCount = countArchiveConversations(topics);
+  const archiveSummary = summarizeArchiveCollection(
+    archiveConversationCount,
+    archiveFileCount,
+    topics.length
+  );
 
   return (
     <section className="screen-grid">
@@ -109,8 +115,9 @@ export default function OrganizedOutputScreen() {
               Read back the imported conversations here.
             </p>
             <p className="muted">
-              {archiveFileCount} file(s) across {topics.length} topic folder(s). The latest file opens automatically.
+              {archiveSummary.headline}
             </p>
+            <p className="muted">{archiveSummary.note}</p>
             <div className="action-bar">
               <button className="secondary-btn" type="button" onClick={() => setShowArchiveHelp((value) => !value)}>
                 {showArchiveHelp ? "Hide Tips" : "Show Tips"}
@@ -186,4 +193,33 @@ export default function OrganizedOutputScreen() {
 
 function formatAttachmentVendorLabel(vendor: AttachmentArchiveSummary["vendor"]): string {
   return vendor === "grok" ? "Grok attachments" : "Gemini attachments";
+}
+
+function countArchiveConversations(topics: MarkdownArchiveTopic[]): number {
+  return new Set(
+    topics.flatMap((topic) =>
+      topic.files.map((file) => file.conversationId).filter((value): value is string => Boolean(value))
+    )
+  ).size;
+}
+
+function summarizeArchiveCollection(
+  conversationCount: number,
+  fileCount: number,
+  topicCount: number
+): { headline: string; note: string } {
+  if (conversationCount > 0) {
+    return {
+      headline: `${conversationCount} conversation(s) are represented here across ${fileCount} readable review slice(s).`,
+      note:
+        topicCount > 0
+          ? `${topicCount} topic group(s) are available. A single conversation can create more than one review slice when it is long or shifts topic.`
+          : "The latest readable slice opens automatically."
+    };
+  }
+
+  return {
+    headline: `${fileCount} readable review slice(s) are available here.`,
+    note: `${topicCount} topic group(s) are available. The latest readable slice opens automatically.`
+  };
 }

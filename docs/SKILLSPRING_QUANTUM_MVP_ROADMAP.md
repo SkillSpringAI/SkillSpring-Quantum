@@ -40,6 +40,7 @@ Tomorrow should continue from these explicit UX slices:
 - keep reducing dead-end output buttons by only surfacing raw file actions when the path exists and the action helps the current step
 - continue calming the visual hierarchy so primary actions stand out and secondary actions stop competing with them
 - keep diagnostics, governance, and other advanced surfaces subordinate and contextual
+- do a dedicated follow-up polish pass on Imports, Find Imports, and Datasets for minor spacing, alignment, and loaded-state clarity issues that are better handled in the UI's next evolution stage
 
 ### Priority 1: Archive usability
 

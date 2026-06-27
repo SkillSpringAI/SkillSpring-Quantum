@@ -46,6 +46,12 @@ export default function DatasetsScreen() {
   const { settings } = useSettings();
   const [showDatasetGuide, setShowDatasetGuide] = useState(false);
   const [showAllDatasetOutputCards, setShowAllDatasetOutputCards] = useState(false);
+  const [showArchiveHandoffDetails, setShowArchiveHandoffDetails] = useState(false);
+  const [showRunSwitcher, setShowRunSwitcher] = useState(false);
+  const [showImportContextDetails, setShowImportContextDetails] = useState(false);
+  const [showDatasetNotesDetails, setShowDatasetNotesDetails] = useState(false);
+  const [showOpenFiles, setShowOpenFiles] = useState(false);
+  const [showPreviewScopeDetails, setShowPreviewScopeDetails] = useState(false);
   const [datasetRun, setDatasetRun] = useState<DatasetRunResult | null>(null);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [previewKind, setPreviewKind] = useState<DatasetPreviewKind>("topic_segments");
@@ -188,7 +194,18 @@ export default function DatasetsScreen() {
     selectedRedactionSummary,
     selectedRun?.private_review_segments ?? 0
   );
+  const selectedReviewSummary = summarizeDatasetReviewSummary(
+    selectedRun,
+    selectedSourceNeedsAttention,
+    selectedRedactionSummary
+  );
   const previewConfig = DATASET_PREVIEW_CONFIG[previewKind];
+  const archiveLinkStatus = summarizeArchiveLinkStatus(
+    archiveHandoffSummary,
+    selectedRun?.run_id ?? null,
+    datasetRun?.latest?.run_id ?? null,
+    previewScope?.scope
+  );
   const datasetOutputCards = buildDatasetOutputCards(
     artifactPaths,
     selectedRunPaths,
@@ -273,65 +290,90 @@ export default function DatasetsScreen() {
             {archiveHandoffSummary ? (
               <div className="detail-box">
                 <strong>Archive Handoff</strong>
-                <p className="muted">
-                  Opened from archive file: {archiveHandoffSummary.archiveTitle}
-                </p>
-                <p className="muted">
-                  Dataset run: {archiveHandoffSummary.matchedConfidently
-                    ? `matched ${archiveHandoffSummary.matchedRunId ?? "selected run"} from archive context`
-                    : "no direct vendor/topic match found, so Quantum picked the closest available dataset run"}
-                </p>
-                <p className="muted">
-                  Handoff context:
-                  {" "}{[
-                    archiveHandoffSummary.vendor ? "vendor " + archiveHandoffSummary.vendor : "",
-                    archiveHandoffSummary.topic ? "topic " + archiveHandoffSummary.topic : "",
-                    archiveHandoffSummary.rawTopic && archiveHandoffSummary.rawTopic !== archiveHandoffSummary.topic
-                      ? "raw topic " + archiveHandoffSummary.rawTopic
-                      : "",
-                    archiveHandoffSummary.createdAt
-                      ? "conversation date " + new Date(archiveHandoffSummary.createdAt).toLocaleString()
-                      : "",
-                    formatArchiveHandoffSupportTier(archiveHandoffSummary.supportTier)
-                  ].filter(Boolean).join(" | ") || "limited archive metadata"}
-                </p>
-                <p className="muted">
-                  Match signals:
-                  {" "}{[
-                    archiveHandoffSummary.matchedVendor ? "vendor matched" : "",
-                    archiveHandoffSummary.matchedTopic ? "topic matched" : ""
-                  ].filter(Boolean).join(" | ") || "best available fallback only"}
-                </p>
-                {buildArchiveHandoffBadges(archiveHandoffSummary).length > 0 ? (
-                  <p className="muted">{buildArchiveHandoffBadges(archiveHandoffSummary).join(" | ")}</p>
-                ) : null}
+                <p className="muted">{archiveLinkStatus.headline}</p>
                 <div className="action-bar">
-                    {archiveHandoffSummary.archivePath ? (
-                      <OpenPathButton className="secondary-btn" targetPath={archiveHandoffSummary.archivePath}>
-                        Reopen Archive File
-                      </OpenPathButton>
-                    ) : null}
+                  <button
+                    className="secondary-btn"
+                    type="button"
+                    onClick={() => setShowArchiveHandoffDetails((value) => !value)}
+                  >
+                    {showArchiveHandoffDetails ? "Hide Handoff Details" : "Show Handoff Details"}
+                  </button>
+                  {archiveHandoffSummary.archivePath ? (
+                    <OpenPathButton className="secondary-btn" targetPath={archiveHandoffSummary.archivePath}>
+                      Reopen Archive File
+                    </OpenPathButton>
+                  ) : null}
                   <button className="secondary-btn" type="button" onClick={() => setArchiveHandoffSummary(null)}>
                     Clear Handoff
                   </button>
                 </div>
+                {showArchiveHandoffDetails ? (
+                  <>
+                    <div className="signal-badge-row">
+                      <span className={archiveLinkStatus.tone === "success" ? "signal-badge success" : "signal-badge warning"}>
+                        {archiveLinkStatus.badge}
+                      </span>
+                      {archiveHandoffSummary.matchedVendor ? (
+                        <span className="signal-badge">vendor matched</span>
+                      ) : null}
+                      {archiveHandoffSummary.matchedTopic ? (
+                        <span className="signal-badge">topic matched</span>
+                      ) : null}
+                      {archiveHandoffSummary.matchedRunId ? (
+                        <span className="signal-badge">{archiveHandoffSummary.matchedRunId}</span>
+                      ) : null}
+                    </div>
+                    <p className="muted">
+                      Opened from archive file: {archiveHandoffSummary.archiveTitle}
+                    </p>
+                    <p className="muted">
+                      Handoff context:
+                      {" "}{[
+                        archiveHandoffSummary.vendor ? "vendor " + archiveHandoffSummary.vendor : "",
+                        archiveHandoffSummary.topic ? "topic " + archiveHandoffSummary.topic : "",
+                        archiveHandoffSummary.rawTopic && archiveHandoffSummary.rawTopic !== archiveHandoffSummary.topic
+                          ? "raw topic " + archiveHandoffSummary.rawTopic
+                          : "",
+                        archiveHandoffSummary.createdAt
+                          ? "conversation date " + new Date(archiveHandoffSummary.createdAt).toLocaleString()
+                          : "",
+                        formatArchiveHandoffSupportTier(archiveHandoffSummary.supportTier)
+                      ].filter(Boolean).join(" | ") || "limited archive metadata"}
+                    </p>
+                    <p className="muted">{archiveLinkStatus.nextStep}</p>
+                    {buildArchiveHandoffBadges(archiveHandoffSummary).length > 0 ? (
+                      <p className="muted">{buildArchiveHandoffBadges(archiveHandoffSummary).join(" | ")}</p>
+                    ) : null}
+                  </>
+                ) : null}
               </div>
             ) : null}
             {datasetRun && datasetRun.runs.length > 1 ? (
               <div className="detail-box">
                 <strong>Recent Dataset Runs</strong>
+                <p className="muted">
+                  Stay on the selected run unless you intentionally want to compare an older or newer dataset build.
+                </p>
                 <div className="action-bar">
-                  {datasetRun.runs.slice(0, 6).map((run) => (
-                    <button
-                      key={run.run_id}
-                      className={selectedRun.run_id === run.run_id ? "primary-btn" : "secondary-btn"}
-                      type="button"
-                      onClick={() => setSelectedRunId(run.run_id)}
-                    >
-                      {formatDatasetRunLabel(run)}
-                    </button>
-                  ))}
+                  <button className="secondary-btn" type="button" onClick={() => setShowRunSwitcher((value) => !value)}>
+                    {showRunSwitcher ? "Hide Run Switcher" : "Show Run Switcher"}
+                  </button>
                 </div>
+                {showRunSwitcher ? (
+                  <div className="action-bar">
+                    {datasetRun.runs.slice(0, 6).map((run) => (
+                      <button
+                        key={run.run_id}
+                        className={selectedRun.run_id === run.run_id ? "primary-btn" : "secondary-btn"}
+                        type="button"
+                        onClick={() => setSelectedRunId(run.run_id)}
+                      >
+                        {formatDatasetRunLabel(run)}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ) : null}
             {selectedSourceContext ? (
@@ -348,58 +390,70 @@ export default function DatasetsScreen() {
                     ))}
                   </div>
                 ) : null}
-                <p className="muted">
-                  Imported from: {selectedSourceContext.source_input_path ?? "Source path unavailable"}
-                </p>
-                <p className="muted">
-                  Dataset source: {selectedSourceSummary}
-                </p>
-                <p className="muted">
-                  Dataset run: {selectedRun.run_id}
-                </p>
-                {selectedSourceContext.pipeline_run_id ? (
-                  <p className="muted">
-                    Pipeline run: {selectedSourceContext.pipeline_run_id}
-                  </p>
-                ) : null}
-                {selectedSourceTopics.length > 0 ? (
-                  <p className="muted">
-                    Topic hints: {selectedSourceTopics.join(", ")}
-                  </p>
-                ) : null}
+                <p className="muted">{selectedSourceSummary}</p>
                 {selectedSourceBadges.length > 0 ? (
-                  <p className="muted">
-                    {selectedSourceBadges.join(" | ")}
-                  </p>
-                ) : null}
-                {(selectedSourceContext.package_companion_files ?? 0) > 0 ? (
-                  <div className="context-tip">
-                    <strong>Vendor Package Handling</strong>
-                    <p className="muted">
-                      {selectedSourceContext.package_companion_files} companion file(s) were expected parts of the vendor export package and were handled through the main import file instead of being added as separate dataset sources.
-                    </p>
-                    <p className="muted">
-                      This is normal package routing, not a partial-import failure. The dataset above was built from the package's authoritative main file while companion files stayed out of the dataset flow.
-                    </p>
-                    {selectedSourceContext.package_companion_examples && selectedSourceContext.package_companion_examples.length > 0 ? (
-                      <p className="muted">
-                        Examples: {selectedSourceContext.package_companion_examples.join(", ")}
-                      </p>
-                    ) : null}
-                  </div>
-                ) : null}
-                {shouldRecommendGovernance(selectedRun) ? (
-                  <div className="context-tip">
-                    <strong>Power-user option</strong>
-                    <p className="muted">
-                      If you want to tune privacy handling or review thresholds, open <strong>More Tools</strong> in the sidebar, then choose <strong>Governance</strong>.
-                    </p>
+                  <div className="signal-badge-row">
+                    {selectedSourceBadges.map((badge) => (
+                      <span key={badge} className="signal-badge">
+                        {badge}
+                      </span>
+                    ))}
                   </div>
                 ) : null}
                 {selectedAttachmentSummary && (selectedSourceContext.attachment_count ?? 0) > 0 ? (
                   <p className="muted">
                     Attachment preservation: {selectedAttachmentSummary.attachmentsArchived} preserved | {selectedAttachmentSummary.attachmentsMissing} missing | {selectedAttachmentSummary.attachmentsReferenced} referenced for this vendor export family.
                   </p>
+                ) : null}
+                <div className="action-bar">
+                  <button
+                    className="secondary-btn"
+                    type="button"
+                    onClick={() => setShowImportContextDetails((value) => !value)}
+                  >
+                    {showImportContextDetails ? "Hide Import Details" : "Show Import Details"}
+                  </button>
+                </div>
+                {showImportContextDetails ? (
+                  <>
+                    <p className="muted">
+                      Imported from: {selectedSourceContext.source_input_path ?? "Source path unavailable"}
+                    </p>
+                    <p className="muted">
+                      Dataset run: {selectedRun.run_id}
+                    </p>
+                    {selectedSourceContext.pipeline_run_id ? (
+                      <p className="muted">
+                        Pipeline run: {selectedSourceContext.pipeline_run_id}
+                      </p>
+                    ) : null}
+                    {selectedSourceTopics.length > 0 ? (
+                      <p className="muted">
+                        Topic hints: {selectedSourceTopics.join(", ")}
+                      </p>
+                    ) : null}
+                    {(selectedSourceContext.package_companion_files ?? 0) > 0 ? (
+                      <div className="context-tip">
+                        <strong>Vendor Package Handling</strong>
+                        <p className="muted">
+                          {selectedSourceContext.package_companion_files} companion file(s) were expected parts of the vendor export package and were handled through the main import file instead of being added as separate dataset sources.
+                        </p>
+                        {selectedSourceContext.package_companion_examples && selectedSourceContext.package_companion_examples.length > 0 ? (
+                          <p className="muted">
+                            Examples: {selectedSourceContext.package_companion_examples.join(", ")}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {shouldRecommendGovernance(selectedRun) ? (
+                      <div className="context-tip">
+                        <strong>Power-user option</strong>
+                        <p className="muted">
+                          If you want to tune privacy handling or review thresholds, open <strong>More Tools</strong> in the sidebar, then choose <strong>Governance</strong>.
+                        </p>
+                      </div>
+                    ) : null}
+                  </>
                 ) : null}
                 <div className="action-bar">
                   <button className="secondary-btn" type="button" onClick={() => setActiveScreen("imports")}>
@@ -483,9 +537,9 @@ export default function DatasetsScreen() {
         <h2>Dataset Notes</h2>
         {selectedRun ? (
           <>
-            {selectedRedactionHighlights.length > 0 ? (
+            {selectedReviewSummary.length > 0 ? (
               <div className="stats-grid two-col">
-                {selectedRedactionHighlights.map((detail) => (
+                {selectedReviewSummary.map((detail) => (
                   <div key={detail.label} className="stat-card">
                     <span className="label">{detail.label}</span>
                     <strong>{detail.value}</strong>
@@ -494,52 +548,52 @@ export default function DatasetsScreen() {
                 ))}
               </div>
             ) : null}
-            <p className="muted">Selected dataset build: {selectedRun.run_id}</p>
-            <div className="detail-box">
-              <strong>What You Are Looking At</strong>
-              <p className="muted">
-                Selected historical run: {selectedRun.run_id}
-              </p>
-              <p className="muted">
-                Latest run in this output folder: {datasetRun?.latest?.run_id ?? selectedRun.run_id}
-              </p>
-              <p className="muted">
-                Preview currently reads from: {formatPreviewScopeLabel(previewScope?.scope)}
-              </p>
-              {selectedRun && datasetRun?.latest && selectedRun.run_id !== datasetRun.latest.run_id ? (
-                <p className="muted">
-                  You are reviewing an older run summary. Snapshot files keep this screen aligned to that older run, and any fallback to the current bundle is called out below.
-                </p>
-              ) : (
-                <p className="muted">
-                  You are reviewing the latest run, so the selected summary and current bundle should usually point at the same dataset build.
-                </p>
-              )}
-            </div>
-            <p className="muted">Format version: {selectedRun.dataset_version}</p>
-            <p className="muted">Filtered out during cleanup: {selectedRun.filtered_out_segments}</p>
-            <p className="muted">
-              High-signal sections: {selectedRun.tiers.high_signal ?? 0} | Low-signal sections: {selectedRun.tiers.low_signal ?? 0}
-            </p>
-            <p className="muted">
-              Private-review sections are separated so you can inspect them before treating them as normal reusable data.
-            </p>
             <p className="muted">
               Privacy handling: {selectedRedactionExplanation}
             </p>
-            {selectedSourceNeedsAttention ? (
-              <p className="muted">
-                This dataset came from a recovery-path import. That does not mean the import failed, but it does mean you should spot-check archive preservation, preview output, or diagnostics before treating every record as equally complete.
-              </p>
-            ) : (
-              <p className="muted">
-                This dataset came from the latest completed import run and is ready for normal review.
-              </p>
-            )}
-            {(selectedSourceContext?.package_companion_files ?? 0) > 0 ? (
-              <p className="muted">
-                Companion package files were handled intentionally through the main vendor export file, so they should not be read as missing dataset inputs or skipped failures.
-              </p>
+            <div className="action-bar">
+              <button
+                className="secondary-btn"
+                type="button"
+                onClick={() => setShowDatasetNotesDetails((value) => !value)}
+              >
+                {showDatasetNotesDetails ? "Hide Note Details" : "Show Note Details"}
+              </button>
+            </div>
+            {showDatasetNotesDetails ? (
+              <>
+                {selectedRedactionHighlights.length > 0 ? (
+                  <div className="detail-box">
+                    <strong>Redaction Details</strong>
+                    <div className="stats-grid two-col archive-detail-grid">
+                      {selectedRedactionHighlights.map((detail) => (
+                        <div key={detail.label} className="stat-card">
+                          <span className="label">{detail.label}</span>
+                          <strong>{detail.value}</strong>
+                          <p className="muted">{detail.note}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                <div className="detail-box">
+                  <strong>What You Are Looking At</strong>
+                  <p className="muted">
+                    Selected historical run: {selectedRun.run_id}
+                  </p>
+                  <p className="muted">
+                    Latest run in this output folder: {datasetRun?.latest?.run_id ?? selectedRun.run_id}
+                  </p>
+                  <p className="muted">
+                    Preview currently reads from: {formatPreviewScopeLabel(previewScope?.scope)}
+                  </p>
+                  <p className="muted">Format version: {selectedRun.dataset_version}</p>
+                  <p className="muted">Filtered out during cleanup: {selectedRun.filtered_out_segments}</p>
+                  <p className="muted">
+                    High-signal sections: {selectedRun.tiers.high_signal ?? 0} | Low-signal sections: {selectedRun.tiers.low_signal ?? 0}
+                  </p>
+                </div>
+              </>
             ) : null}
             <div className="action-bar">
                 <OpenPathButton className="secondary-btn" targetPath={artifactPaths.currentPrivateReview}>
@@ -565,86 +619,95 @@ export default function DatasetsScreen() {
         {selectedRun ? (
           <>
             <p className="muted">
-              Use this section when you want the raw files behind the summary and preview. Start with the selected run summary unless you already know which dataset format you need.
+              Use raw files only when the in-app preview is not enough. For most review, stay in Dataset Preview first.
             </p>
-            <div className="detail-box">
-              <strong>Start Here</strong>
-              <p className="muted">
-                Start with the selected run summary or snapshot folder. Only drop into individual dataset files when you already know which format you need.
-              </p>
-              {selectedRunPaths && datasetRun?.latest && selectedRun.run_id !== datasetRun.latest.run_id ? (
-                <p className="muted">
-                  You are inspecting an older dataset run summary right now. Quantum will use the selected run snapshot for preview when that snapshot file exists.
-                </p>
-              ) : null}
-              {selectedRunPaths ? (
-                <div className="artifact-handoff-grid">
-                  <div className="stat-card">
-                    <span className="label">Stable Snapshot</span>
-                    <strong>{selectedRun.run_id}</strong>
-                    <p className="muted">
-                      Use this when you want selected-run files that match the historical dataset summary and preview context shown on this screen.
-                    </p>
-                  </div>
-                  <div className="stat-card">
-                    <span className="label">Rolling Bundle</span>
-                    <strong>{datasetRun?.latest?.run_id ?? "Latest current bundle"}</strong>
-                    <p className="muted">
-                      Use this when another step should consume the newest accumulated files even if they no longer match the older run selected here.
-                    </p>
-                  </div>
-                </div>
-              ) : null}
-              <div className="action-bar">
-                <OpenPathButton className="primary-btn" targetPath={selectedManifestPath}>
-                  Open Selected Run Summary
-                </OpenPathButton>
-                {selectedRunPaths ? (
-                  <OpenPathButton className="secondary-btn" targetPath={selectedRunPaths.runRoot}>
-                    Open Run Snapshot Folder
-                  </OpenPathButton>
-                ) : null}
-                <OpenPathButton className="secondary-btn" targetPath={artifactPaths.currentRoot}>
-                  Open Current Bundle Folder
-                </OpenPathButton>
-                {selectedRunPaths && datasetRun?.latest && selectedRun.run_id !== datasetRun.latest.run_id ? (
-                  <button className="secondary-btn" type="button" onClick={() => setSelectedRunId(datasetRun.latest?.run_id ?? null)}>
-                    Switch To Latest Run
-                  </button>
-                ) : null}
-              </div>
+            <div className="action-bar">
+              <button className="secondary-btn" type="button" onClick={() => setShowOpenFiles((value) => !value)}>
+                {showOpenFiles ? "Hide File Actions" : "Show File Actions"}
+              </button>
             </div>
-            <div className="stats-grid two-col">
-              {visibleDatasetOutputCards.map((card) => (
-                <div key={card.label} className="stat-card">
-                  <span className="label">{card.label}</span>
-                  <strong>{card.title}</strong>
-                  <p className="muted">{card.note}</p>
-                  <p className="muted">{card.trustNote}</p>
+            {showOpenFiles ? (
+              <>
+                <div className="detail-box">
+                  <strong>Start Here</strong>
+                  <p className="muted">
+                    Start with the selected run summary or snapshot folder. Only drop into individual dataset files when you already know which format you need.
+                  </p>
+                  {selectedRunPaths && datasetRun?.latest && selectedRun.run_id !== datasetRun.latest.run_id ? (
+                    <p className="muted">
+                      You are inspecting an older dataset run summary right now. Quantum will use the selected run snapshot for preview when that snapshot file exists.
+                    </p>
+                  ) : null}
+                  {selectedRunPaths ? (
+                    <div className="artifact-handoff-grid">
+                      <div className="stat-card">
+                        <span className="label">Stable Snapshot</span>
+                        <strong>{selectedRun.run_id}</strong>
+                        <p className="muted">
+                          Use this when you want selected-run files that match the historical dataset summary and preview context shown on this screen.
+                        </p>
+                      </div>
+                      <div className="stat-card">
+                        <span className="label">Rolling Bundle</span>
+                        <strong>{datasetRun?.latest?.run_id ?? "Latest current bundle"}</strong>
+                        <p className="muted">
+                          Use this when another step should consume the newest accumulated files even if they no longer match the older run selected here.
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="action-bar">
-                    {card.runPath ? (
-                      <OpenPathButton className="primary-btn" targetPath={card.runPath}>
-                        Open Selected Run File
+                    <OpenPathButton className="primary-btn" targetPath={selectedManifestPath}>
+                      Open Selected Run Summary
+                    </OpenPathButton>
+                    {selectedRunPaths ? (
+                      <OpenPathButton className="secondary-btn" targetPath={selectedRunPaths.runRoot}>
+                        Open Run Snapshot Folder
                       </OpenPathButton>
                     ) : null}
-                    <OpenPathButton className="secondary-btn" targetPath={card.currentPath}>
-                      Open Current File
+                    <OpenPathButton className="secondary-btn" targetPath={artifactPaths.currentRoot}>
+                      Open Current Bundle Folder
                     </OpenPathButton>
+                    {selectedRunPaths && datasetRun?.latest && selectedRun.run_id !== datasetRun.latest.run_id ? (
+                      <button className="secondary-btn" type="button" onClick={() => setSelectedRunId(datasetRun.latest?.run_id ?? null)}>
+                        Switch To Latest Run
+                      </button>
+                    ) : null}
                   </div>
-                  <p className="muted">{card.handoffNote}</p>
                 </div>
-              ))}
-            </div>
-            {datasetOutputCards.length > 2 ? (
-              <div className="action-bar">
-                <button
-                  className="secondary-btn"
-                  type="button"
-                  onClick={() => setShowAllDatasetOutputCards((value) => !value)}
-                >
-                  {showAllDatasetOutputCards ? "Show Fewer Dataset Types" : "Show All Dataset Types"}
-                </button>
-              </div>
+                <div className="stats-grid two-col">
+                  {visibleDatasetOutputCards.map((card) => (
+                    <div key={card.label} className="stat-card">
+                      <span className="label">{card.label}</span>
+                      <strong>{card.title}</strong>
+                      <p className="muted">{card.note}</p>
+                      <p className="muted">{card.trustNote}</p>
+                      <div className="action-bar">
+                        {card.runPath ? (
+                          <OpenPathButton className="primary-btn" targetPath={card.runPath}>
+                            Open Selected Run File
+                          </OpenPathButton>
+                        ) : null}
+                        <OpenPathButton className="secondary-btn" targetPath={card.currentPath}>
+                          Open Current File
+                        </OpenPathButton>
+                      </div>
+                      <p className="muted">{card.handoffNote}</p>
+                    </div>
+                  ))}
+                </div>
+                {datasetOutputCards.length > 2 ? (
+                  <div className="action-bar">
+                    <button
+                      className="secondary-btn"
+                      type="button"
+                      onClick={() => setShowAllDatasetOutputCards((value) => !value)}
+                    >
+                      {showAllDatasetOutputCards ? "Show Fewer Dataset Types" : "Show All Dataset Types"}
+                    </button>
+                  </div>
+                ) : null}
+              </>
             ) : null}
           </>
         ) : (
@@ -696,36 +759,72 @@ export default function DatasetsScreen() {
         ) : null}
         <div className="detail-box">
           <strong>Preview Scope</strong>
-          <p className="muted">
-            Selected run summary: {selectedRun ? selectedRun.run_id : "No run selected"}
-          </p>
-          <p className="muted">
-            Preview source: {formatPreviewScopeLabel(previewScope?.scope)}
-          </p>
-          {previewScope?.sourcePath ? (
-            <p className="muted">
-              Preview source file: {previewScope.sourcePath}
-            </p>
-          ) : null}
-          {selectedRun && datasetRun?.latest && selectedRun.run_id !== datasetRun.latest.run_id ? (
-            previewScope?.scope === "historical_run" ? (
+          <p className="muted">{summarizePreviewScopeHeadline(selectedRun, datasetRun?.latest?.run_id ?? null, previewScope?.scope)}</p>
+          <div className="signal-badge-row">
+            <span
+              className={
+                previewScope?.scope === "historical_run"
+                  ? "signal-badge success"
+                  : previewScope?.scope === "latest_current_bundle"
+                    ? "signal-badge warning"
+                    : "signal-badge"
+              }
+            >
+              {previewScope?.scope === "historical_run"
+                ? "selected snapshot"
+                : previewScope?.scope === "latest_current_bundle"
+                  ? "current bundle fallback"
+                  : "scope unavailable"}
+            </span>
+            {archiveHandoffSummary?.matchedRunId ? (
+              <span className="signal-badge">
+                archive-linked run {archiveHandoffSummary.matchedRunId}
+              </span>
+            ) : null}
+          </div>
+          <div className="action-bar">
+            <button
+              className="secondary-btn"
+              type="button"
+              onClick={() => setShowPreviewScopeDetails((value) => !value)}
+            >
+              {showPreviewScopeDetails ? "Hide Scope Details" : "Show Scope Details"}
+            </button>
+          </div>
+          {showPreviewScopeDetails ? (
+            <>
               <p className="muted">
-                These preview cards are following the selected historical snapshot, so the preview stays aligned with the older run you chose.
+                Selected run summary: {selectedRun ? selectedRun.run_id : "No run selected"}
               </p>
-            ) : (
               <p className="muted">
-                The selected older run does not have the needed snapshot file for this preview mode, so Quantum is showing the latest current bundle instead.
+                Preview source: {formatPreviewScopeLabel(previewScope?.scope)}
               </p>
-            )
-          ) : (
-            <p className="muted">
-              The selected run summary and the in-app preview are aligned to the same dataset scope.
-            </p>
-          )}
-          {previewIntentSummary ? (
-            <p className="muted">
-              Preview mode was chosen from the selected archive file context, but you can switch modes below if you want a different dataset surface.
-            </p>
+              {previewScope?.sourcePath ? (
+                <p className="muted">
+                  Preview source file: {previewScope.sourcePath}
+                </p>
+              ) : null}
+              {selectedRun && datasetRun?.latest && selectedRun.run_id !== datasetRun.latest.run_id ? (
+                previewScope?.scope === "historical_run" ? (
+                  <p className="muted">
+                    These preview cards are following the selected historical snapshot, so the preview stays aligned with the older run you chose.
+                  </p>
+                ) : (
+                  <p className="muted">
+                    The selected older run does not have the needed snapshot file for this preview mode, so Quantum is showing the latest current bundle instead.
+                  </p>
+                )
+              ) : (
+                <p className="muted">
+                  The selected run summary and the in-app preview are aligned to the same dataset scope.
+                </p>
+              )}
+              {previewIntentSummary ? (
+                <p className="muted">
+                  Preview mode was chosen from the selected archive file context, but you can switch modes below if you want a different dataset surface.
+                </p>
+              ) : null}
+            </>
           ) : null}
         </div>
         <div className="action-bar">
@@ -748,9 +847,7 @@ export default function DatasetsScreen() {
         <div className="detail-box">
           <strong>{previewConfig.label}</strong>
           <p className="muted">{previewConfig.description}</p>
-          <p className="muted">
-            Import context: {selectedSourceSummary} | Privacy handling: {selectedRedactionExplanation}
-          </p>
+          <p className="muted">{buildPreviewModeLead(previewKind)}</p>
           {selectedSourceBadges.length > 0 ? (
             <p className="muted">{selectedSourceBadges.join(" | ")}</p>
           ) : null}
@@ -835,6 +932,134 @@ function formatArchiveHandoffSupportTier(
       return "unlabeled archive source";
     default:
       return "";
+  }
+}
+
+function summarizeDatasetReviewSummary(
+  run: DatasetRunResult["runs"][number] | null,
+  selectedSourceNeedsAttention: boolean,
+  redactionSummary: DatasetRedactionSummary | undefined
+): Array<{ label: string; value: string; note: string }> {
+  if (!run) {
+    return [];
+  }
+
+  return [
+    {
+      label: "Run Scope",
+      value: run.run_id,
+      note: "This is the dataset build your summary, preview, and file actions are centered on."
+    },
+    {
+      label: "Review State",
+      value: selectedSourceNeedsAttention ? "Spot-check recommended" : "Ready for normal review",
+      note: selectedSourceNeedsAttention
+        ? "This run came through a recovery path, so a quick archive or preview check is still worth doing."
+        : "This run came through the normal import path and is ready for ordinary dataset review."
+    },
+    {
+      label: "Privacy",
+      value:
+        (redactionSummary?.total_redactions ?? 0) > 0
+          ? `${redactionSummary?.total_redactions ?? 0} counted redactions`
+          : run.private_review_segments > 0
+            ? `${run.private_review_segments} private-review segment(s)`
+            : "No counted privacy issues",
+      note: "Use this to decide whether you can stay in normal preview modes or should check the higher-caution surfaces."
+    }
+  ];
+}
+
+function summarizePreviewScopeHeadline(
+  selectedRun: DatasetRunResult["runs"][number] | null,
+  latestRunId: string | null,
+  scope?: "historical_run" | "latest_current_bundle"
+): string {
+  if (!selectedRun) {
+    return "No run selected yet.";
+  }
+
+  if (selectedRun.run_id !== latestRunId && scope === "historical_run") {
+    return "Preview is following the older run you selected.";
+  }
+
+  if (selectedRun.run_id !== latestRunId && scope === "latest_current_bundle") {
+    return "Preview fell back to the latest current bundle for this mode.";
+  }
+
+  return "Preview is aligned with the run you are currently reviewing.";
+}
+
+function summarizeArchiveLinkStatus(
+  handoff: {
+    archiveTitle: string;
+    matchedRunId?: string;
+    matchedConfidently: boolean;
+    matchedVendor: boolean;
+    matchedTopic: boolean;
+  } | null,
+  selectedRunId: string | null,
+  latestRunId: string | null,
+  previewScope?: "historical_run" | "latest_current_bundle"
+): { headline: string; badge: string; tone: "success" | "warning"; nextStep: string } {
+  if (!handoff) {
+    return {
+      headline: "No archive-linked dataset handoff is active.",
+      badge: "no handoff",
+      tone: "warning",
+      nextStep: "Use the archive screen when you want Quantum to carry file context into dataset review."
+    };
+  }
+
+  if (handoff.matchedConfidently && selectedRunId && handoff.matchedRunId === selectedRunId && previewScope === "historical_run") {
+    return {
+      headline: "This dataset view is following the same historical run that Quantum matched from the selected archive file.",
+      badge: "archive-linked snapshot",
+      tone: "success",
+      nextStep: "You can review this preview as the closest structured companion to the archive file you opened from."
+    };
+  }
+
+  if (handoff.matchedConfidently && selectedRunId && handoff.matchedRunId === selectedRunId) {
+    return {
+      headline: "Quantum matched the archive file to this run, but the current preview mode had to fall back to the latest current bundle.",
+      badge: "preview fallback",
+      tone: "warning",
+      nextStep: "Use the run summary or run files for the cleanest historical handoff, and treat the preview as a latest-bundle convenience view for this mode."
+    };
+  }
+
+  if (handoff.matchedConfidently && handoff.matchedRunId && handoff.matchedRunId !== selectedRunId) {
+    return {
+      headline: "Quantum found an archive-linked run, but you are currently reviewing a different dataset run.",
+      badge: "different run selected",
+      tone: "warning",
+      nextStep: "Switch back to the matched run if you want the archive handoff and dataset review to stay tightly aligned."
+    };
+  }
+
+  return {
+    headline: latestRunId && selectedRunId === latestRunId
+      ? "Quantum could not confidently match the archive file, so this screen is using the best available latest dataset run."
+      : "Quantum could not confidently match the archive file, so this screen is using the closest available run you selected.",
+    badge: "best available fallback",
+    tone: "warning",
+    nextStep: "Use vendor, topic, and attachment clues here as guidance, but do not assume this is an exact one-to-one archive snapshot match."
+  };
+}
+
+function buildPreviewModeLead(kind: DatasetPreviewKind): string {
+  switch (kind) {
+    case "topic_segments":
+      return "This is the best first preview when you want the clearest topic-level reading surface.";
+    case "prompt_response_pairs":
+      return "This is the fastest preview for compact question-and-answer review.";
+    case "micro_segments":
+      return "This is the lightest preview for quick scanning and smaller conversation windows.";
+    case "private_review":
+      return "This is the highest-caution preview for records that need extra trust or privacy review.";
+    default:
+      return "This preview mode shows a structured slice of the selected dataset run.";
   }
 }
 

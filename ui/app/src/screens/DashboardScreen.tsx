@@ -31,6 +31,18 @@ export default function DashboardScreen() {
   const hasDatasetOutputs = !!latestRun?.retrievalSummary;
   const latestOutcomeSummary = latestRun ? summarizeRunOutcomeCounts(latestRun) : null;
   const latestPackageCompanionSkips = countPackageCompanionSkips(latestRun);
+  const latestConversationCount = latestRun?.retrievalSummary?.conversationCount ?? 0;
+  const latestMessageCount = latestRun?.retrievalSummary?.messageCount ?? 0;
+  const latestReviewState = runNeedsDiagnostics
+    ? "Needs check"
+    : hasConversationOutputs
+      ? "Ready"
+      : latestRun
+        ? "Imported"
+        : "None yet";
+  const latestSearchSummary = retrievalIndex?.latest
+    ? summarizeRetrievalIndexOverview(retrievalIndex.latest)
+    : null;
 
   return (
     <section className="screen-grid">
@@ -41,20 +53,20 @@ export default function DashboardScreen() {
         </p>
         <div className="stats-grid">
           <div className="stat-card">
-            <span className="label">Latest Import</span>
-            <strong>{latestRun ? latestRun.filesImported + " files" : "None yet"}</strong>
+            <span className="label">Latest Run</span>
+            <strong>{latestRun ? new Date(latestRun.runAt).toLocaleDateString() : "None yet"}</strong>
           </div>
           <div className="stat-card">
-            <span className="label">Document Imports</span>
-            <strong>{latestRun ? latestRun.genericDocumentsProcessed : 0}</strong>
+            <span className="label">Conversations</span>
+            <strong>{latestConversationCount || 0}</strong>
           </div>
           <div className="stat-card">
-            <span className="label">Conversation Imports</span>
-            <strong>{latestRun ? latestRun.conversationFilesProcessed : 0}</strong>
+            <span className="label">Messages</span>
+            <strong>{latestMessageCount || 0}</strong>
           </div>
           <div className="stat-card">
-            <span className="label">Failed Files</span>
-            <strong>{latestRun ? latestRun.filesFailed : 0}</strong>
+            <span className="label">Review State</span>
+            <strong>{latestReviewState}</strong>
           </div>
         </div>
         {latestTrustBadges.length > 0 ? (
@@ -106,13 +118,10 @@ export default function DashboardScreen() {
         ) : (
           <>
             <p className="muted">
-              {retrievalIndex.latest.entryCount} files are available across {retrievalIndex.latest.runCount} import run(s).
+              {latestSearchSummary?.headline}
             </p>
             <p className="muted">
-              Vendors: {retrievalIndex.latest.vendorSources.length > 0 ? retrievalIndex.latest.vendorSources.join(", ") : "none yet"}
-            </p>
-            <p className="muted">
-              Topics: {retrievalIndex.latest.topicHints.slice(0, 4).join(", ") || "none yet"}
+              {latestSearchSummary?.note}
             </p>
             <div className="action-bar">
               <button className="primary-btn" type="button" onClick={() => setActiveScreen("retrieval")}>
@@ -130,8 +139,13 @@ export default function DashboardScreen() {
             <p className="muted">{new Date(latestRun.runAt).toLocaleString()}</p>
             <p className="muted">{latestRun.inputPath}</p>
             <p className="muted">
-              Imported {latestRun.filesImported} of {latestRun.filesDiscovered} file(s). {latestOutcomeSummary}
+              Imported {latestRun.filesImported} of {latestRun.filesDiscovered} source file(s). {latestOutcomeSummary}
             </p>
+            {latestConversationCount > 0 ? (
+              <p className="muted">
+                {latestConversationCount} conversation(s) | {latestMessageCount} message(s) ready for archive and dataset review.
+              </p>
+            ) : null}
             {latestRun.retrievalSummary && latestRun.retrievalSummary.attachmentCount > 0 ? (
               <p className="muted">
                 {latestRun.retrievalSummary.attachmentCount} attachment reference(s) across conversation imports. Check the archive or import history for preservation status.
@@ -304,4 +318,29 @@ function collectResultSignals(
   if (normalizedMessage.includes("referenced blob(s) missing")) {
     handlers.onBlobMissing();
   }
+}
+
+function summarizeRetrievalIndexOverview(index: ImportRetrievalIndexResult["latest"]): {
+  headline: string;
+  note: string;
+} {
+  const totalConversations = index.runs.reduce(
+    (sum, run) => sum + (run.retrievalSummary?.conversationCount ?? 0),
+    0
+  );
+  const totalMessages = index.runs.reduce(
+    (sum, run) => sum + (run.retrievalSummary?.messageCount ?? 0),
+    0
+  );
+
+  return {
+    headline:
+      totalConversations > 0
+        ? `${totalConversations} conversation(s) across ${index.runCount} import run(s) are searchable here.`
+        : `${index.entryCount} search record(s) across ${index.runCount} import run(s) are available here.`,
+    note:
+      totalConversations > 0
+        ? `${totalMessages} message(s) indexed. Search records may be smaller review slices, so they are not always one-to-one with whole chats.`
+        : `Vendors: ${index.vendorSources.length > 0 ? index.vendorSources.join(", ") : "none yet"}`
+  };
 }

@@ -44,6 +44,8 @@ export default function DatasetsScreen() {
     clearDatasetIntent
   } = useNavigation();
   const { settings } = useSettings();
+  const [loadingDatasetState, setLoadingDatasetState] = useState(true);
+  const [datasetLoadError, setDatasetLoadError] = useState<string | null>(null);
   const [showDatasetGuide, setShowDatasetGuide] = useState(false);
   const [showAllDatasetOutputCards, setShowAllDatasetOutputCards] = useState(false);
   const [showArchiveHandoffDetails, setShowArchiveHandoffDetails] = useState(false);
@@ -93,14 +95,34 @@ export default function DatasetsScreen() {
     matchedTopic: boolean;
   } | null>(null);
 
+  async function refreshDatasetState() {
+    setLoadingDatasetState(true);
+    setDatasetLoadError(null);
+
+    try {
+      const [datasetResult, archiveResult] = await Promise.all([
+        loadLatestDatasetRun(settings.outputRoot, 8),
+        loadMarkdownArchive(settings.outputRoot)
+      ]);
+      setDatasetRun(datasetResult);
+      setSelectedRunId((current) => current ?? datasetResult.latest?.run_id ?? datasetResult.runs[0]?.run_id ?? null);
+      setAttachmentSummaries(archiveResult.attachmentSummaries);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Quantum could not load dataset state for this output root.";
+      setDatasetLoadError(message);
+      setDatasetRun(null);
+      setSelectedRunId(null);
+      setAttachmentSummaries([]);
+    } finally {
+      setLoadingDatasetState(false);
+    }
+  }
+
   useEffect(() => {
-    loadLatestDatasetRun(settings.outputRoot, 8).then((result) => {
-      setDatasetRun(result);
-      setSelectedRunId(result.latest?.run_id ?? result.runs[0]?.run_id ?? null);
-    });
-    loadMarkdownArchive(settings.outputRoot).then((result) => {
-      setAttachmentSummaries(result.attachmentSummaries);
-    });
+    setDatasetRun(null);
+    setSelectedRunId(null);
+    setAttachmentSummaries([]);
+    refreshDatasetState();
   }, [settings.outputRoot]);
 
   useEffect(() => {
@@ -276,11 +298,46 @@ export default function DatasetsScreen() {
   return (
     <section className="screen-grid">
       <div className="panel">
-        <h2>Datasets</h2>
-        {!selectedRun ? (
+        <div className="panel-heading-row">
+          <h2>Datasets</h2>
+          <button className="secondary-btn" type="button" onClick={refreshDatasetState} disabled={loadingDatasetState}>
+            {loadingDatasetState ? "Loading..." : "Refresh"}
+          </button>
+        </div>
+        {loadingDatasetState ? (
+          <>
+            <p className="muted">
+              Loading dataset output for this output root.
+            </p>
+            <p className="muted">
+              Current output root: {describeOutputRoot(settings.outputRoot)}
+            </p>
+          </>
+        ) : datasetLoadError ? (
+          <>
+            <p className="muted">
+              Quantum could not load dataset output for this output root yet.
+            </p>
+            <p className="muted">
+              Current output root: {describeOutputRoot(settings.outputRoot)}
+            </p>
+            <p className="muted">{datasetLoadError}</p>
+            <div className="action-bar">
+              <button className="secondary-btn" type="button" onClick={refreshDatasetState}>
+                Try Refresh Again
+              </button>
+              <button className="primary-btn" type="button" onClick={() => setActiveScreen("imports")}>
+                Go To Imports
+              </button>
+            </div>
+          </>
+        ) : !selectedRun ? (
           <>
             <p className="muted">
               No dataset output yet. Import a conversation export first, then come back here to review it.
+            </p>
+            <p className="muted">
+              Current output root: {describeOutputRoot(settings.outputRoot)}
             </p>
             <div className="action-bar">
               <button className="primary-btn" type="button" onClick={() => setActiveScreen("imports")}>
@@ -292,6 +349,9 @@ export default function DatasetsScreen() {
           <>
             <p className="muted">
               Review the structured output from imported conversations here, starting with the clearest human-readable view.
+            </p>
+            <p className="muted">
+              Current output root: {describeOutputRoot(settings.outputRoot)}
             </p>
             {archiveHandoffSummary ? (
               <div className="detail-box">
@@ -937,6 +997,13 @@ export default function DatasetsScreen() {
       </div>
     </section>
   );
+}
+
+function describeOutputRoot(outputRoot: string): string {
+  const normalized = outputRoot.replace(/[\\/]+$/, "");
+  const segments = normalized.split(/[\\/]/).filter(Boolean);
+  const label = segments[segments.length - 1] ?? outputRoot;
+  return label === outputRoot ? outputRoot : `${label} (${outputRoot})`;
 }
 
 function formatArchiveHandoffSupportTier(

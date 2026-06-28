@@ -3,6 +3,7 @@ import type { ImportJobForm, ImportMode, ImportVendorChoice } from "../types/imp
 interface ImportFormProps {
   value: ImportJobForm;
   onChange: (next: ImportJobForm) => void;
+  onOutputRootChange: (nextOutputRoot: string) => void;
   onSubmit: () => void;
   onBrowseSource: () => void;
   onBrowseOutput: () => void;
@@ -18,6 +19,10 @@ export default function ImportForm(props: ImportFormProps) {
       ...props.value,
       [key]: nextValue
     });
+  }
+
+  function updateOutputRoot(nextValue: string) {
+    props.onOutputRootChange(nextValue);
   }
 
   function updateVendor(nextVendor: ImportVendorChoice) {
@@ -111,7 +116,7 @@ export default function ImportForm(props: ImportFormProps) {
           <input
             className="text-input"
             value={props.value.outputRoot}
-            onChange={(e) => update("outputRoot", e.target.value)}
+            onChange={(e) => updateOutputRoot(e.target.value)}
             placeholder="organized_output"
             disabled={props.disabled}
           />
@@ -125,7 +130,7 @@ export default function ImportForm(props: ImportFormProps) {
         <button
           className="primary-btn"
           type="button"
-          onClick={props.onInspectSource}
+          onClick={() => props.onInspectSource()}
           disabled={props.disabled}
         >
           Check This Export

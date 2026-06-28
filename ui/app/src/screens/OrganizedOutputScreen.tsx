@@ -103,6 +103,9 @@ export default function OrganizedOutputScreen() {
             <p className="muted">
               No readable archive yet. Import a conversation export first, then come back here to read it.
             </p>
+            <p className="muted">
+              Current output root: {describeOutputRoot(settings.outputRoot)}
+            </p>
             <div className="action-bar">
               <button className="primary-btn" type="button" onClick={() => setActiveScreen("imports")}>
                 Go To Imports
@@ -113,6 +116,9 @@ export default function OrganizedOutputScreen() {
           <>
             <p className="muted">
               Read back the imported conversations here.
+            </p>
+            <p className="muted">
+              Current output root: {describeOutputRoot(settings.outputRoot)}
             </p>
             <p className="muted">
               {archiveSummary.headline}
@@ -189,6 +195,13 @@ export default function OrganizedOutputScreen() {
       />
     </section>
   );
+}
+
+function describeOutputRoot(outputRoot: string): string {
+  const normalized = outputRoot.replace(/[\\/]+$/, "");
+  const segments = normalized.split(/[\\/]/).filter(Boolean);
+  const label = segments[segments.length - 1] ?? outputRoot;
+  return label === outputRoot ? outputRoot : `${label} (${outputRoot})`;
 }
 
 function formatAttachmentVendorLabel(vendor: AttachmentArchiveSummary["vendor"]): string {

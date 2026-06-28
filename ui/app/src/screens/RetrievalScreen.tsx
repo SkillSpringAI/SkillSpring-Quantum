@@ -56,6 +56,7 @@ export default function RetrievalScreen() {
   const [showImportDetails, setShowImportDetails] = useState(false);
   const [showSegmentReview, setShowSegmentReview] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [indexResult, setIndexResult] = useState<ImportRetrievalIndexResult | null>(null);
   const [segmentIndexResult, setSegmentIndexResult] = useState<SegmentRetrievalIndexResult | null>(null);
   const [savedViewsResult, setSavedViewsResult] = useState<RetrievalSavedViewsResult | null>(null);
@@ -73,35 +74,48 @@ export default function RetrievalScreen() {
 
   async function refreshIndex() {
     setLoading(true);
-    const [result, segmentResult, viewsResult] = await Promise.all([
-      loadImportRetrievalIndex(settings.outputRoot),
-      loadSegmentRetrievalIndex(settings.outputRoot),
-      loadRetrievalSavedViews(settings.outputRoot)
-    ]);
+    setLoadError(null);
 
-    setIndexResult(result);
-    setSegmentIndexResult(segmentResult);
-    setSavedViewsResult(viewsResult);
+    try {
+      const [result, segmentResult, viewsResult] = await Promise.all([
+        loadImportRetrievalIndex(settings.outputRoot),
+        loadSegmentRetrievalIndex(settings.outputRoot),
+        loadRetrievalSavedViews(settings.outputRoot)
+      ]);
 
-    setSelectedEntry((current) => {
-      if (!result.latest) return null;
-      if (!current) return result.latest.entries[0] ?? null;
-      return result.latest.entries.find((entry) => entry.filePath === current.filePath && entry.runAt === current.runAt)
-        ?? result.latest.entries[0]
-        ?? null;
-    });
+      setIndexResult(result);
+      setSegmentIndexResult(segmentResult);
+      setSavedViewsResult(viewsResult);
 
-    setSelectedSegment((current) => {
-      if (!segmentResult.latest) return null;
-      if (!current) return segmentResult.latest.entries[0] ?? null;
-      return segmentResult.latest.entries.find((entry) =>
-        entry.runId === current.runId &&
-        entry.conversationId === current.conversationId &&
-        entry.startIndex === current.startIndex &&
-        entry.endIndex === current.endIndex
-      ) ?? segmentResult.latest.entries[0] ?? null;
-    });
-    setLoading(false);
+      setSelectedEntry((current) => {
+        if (!result.latest) return null;
+        if (!current) return result.latest.entries[0] ?? null;
+        return result.latest.entries.find((entry) => entry.filePath === current.filePath && entry.runAt === current.runAt)
+          ?? result.latest.entries[0]
+          ?? null;
+      });
+
+      setSelectedSegment((current) => {
+        if (!segmentResult.latest) return null;
+        if (!current) return segmentResult.latest.entries[0] ?? null;
+        return segmentResult.latest.entries.find((entry) =>
+          entry.runId === current.runId &&
+          entry.conversationId === current.conversationId &&
+          entry.startIndex === current.startIndex &&
+          entry.endIndex === current.endIndex
+        ) ?? segmentResult.latest.entries[0] ?? null;
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Quantum could not load this output root yet.";
+      setLoadError(message);
+      setIndexResult(null);
+      setSegmentIndexResult(null);
+      setSavedViewsResult(null);
+      setSelectedEntry(null);
+      setSelectedSegment(null);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleSaveCurrentView() {
@@ -339,7 +353,7 @@ export default function RetrievalScreen() {
     };
   }
 
-  return (
+    return (
     <section className="screen-grid retrieval-layout">
       <div className="panel large">
         <div className="panel-heading-row">
@@ -357,11 +371,35 @@ export default function RetrievalScreen() {
             <p className="muted">
               Quantum is reading the local indexes before this screen decides whether imports are available.
             </p>
+            <p className="muted">
+              Current output root: {describeOutputRoot(settings.outputRoot)}
+            </p>
+          </>
+        ) : loadError ? (
+          <>
+            <p className="muted">
+              Quantum could not finish loading Find Imports for this output root.
+            </p>
+            <p className="muted">
+              Current output root: {describeOutputRoot(settings.outputRoot)}
+            </p>
+            <p className="muted">{loadError}</p>
+            <div className="action-bar">
+              <button className="secondary-btn" type="button" onClick={refreshIndex}>
+                Try Refresh Again
+              </button>
+              <button className="primary-btn" type="button" onClick={() => setActiveScreen("imports")}>
+                Go To Imports
+              </button>
+            </div>
           </>
         ) : !indexResult?.latest ? (
           <>
             <p className="muted">
               No searchable imports are available yet. Start in Imports, run an import, then come back here to find past files by vendor, topic, or date.
+            </p>
+            <p className="muted">
+              Current output root: {describeOutputRoot(settings.outputRoot)}
             </p>
             <div className="action-bar">
               <button className="primary-btn" type="button" onClick={() => setActiveScreen("imports")}>
@@ -373,6 +411,9 @@ export default function RetrievalScreen() {
           <>
             <p className="muted">
               Search imported conversations and files here. Start simple, then open filters only when you need to narrow by status or date.
+            </p>
+            <p className="muted">
+              Current output root: {describeOutputRoot(settings.outputRoot)}
             </p>
             <div className="stats-grid two-col">
               <div className="stat-card">
@@ -845,4 +886,11 @@ export default function RetrievalScreen() {
       </div>
     </section>
   );
+}
+
+function describeOutputRoot(outputRoot: string): string {
+  const normalized = outputRoot.replace(/[\\/]+$/, "");
+  const segments = normalized.split(/[\\/]/).filter(Boolean);
+  const label = segments[segments.length - 1] ?? outputRoot;
+  return label === outputRoot ? outputRoot : `${label} (${outputRoot})`;
 }

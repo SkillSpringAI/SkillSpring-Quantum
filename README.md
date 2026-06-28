@@ -169,6 +169,12 @@ The goal is not only to check correctness. It is also to document the interactio
 
 Use [docs/MORNING_MANUAL_TEST_NOTE.md](docs/MORNING_MANUAL_TEST_NOTE.md) as the checklist and capture template for that walkthrough.
 
+The first walkthrough pass has now been recorded here:
+
+- [docs/MANUAL_WALKTHROUGH_2026-06-28.md](docs/MANUAL_WALKTHROUGH_2026-06-28.md)
+
+The next morning retest should start from that record and confirm the import-to-archive-to-dataset handoff in a fresh Electron session.
+
 ## Current scripts
 
 ### Process a single ChatGPT export shard
@@ -262,4 +268,5 @@ npm run purge:restore -- "organized_output\purge\some_folder\some_file.md" "orga
 - checkable MVP roadmap: [docs/SKILLSPRING_QUANTUM_MVP_ROADMAP.md](docs/SKILLSPRING_QUANTUM_MVP_ROADMAP.md)
 - future-scope PIE boundary: [docs/SKILLSPRING_PIE_FUTURE_SCOPE.md](docs/SKILLSPRING_PIE_FUTURE_SCOPE.md)
 - morning manual walkthrough note: [docs/MORNING_MANUAL_TEST_NOTE.md](docs/MORNING_MANUAL_TEST_NOTE.md)
+- first walkthrough record: [docs/MANUAL_WALKTHROUGH_2026-06-28.md](docs/MANUAL_WALKTHROUGH_2026-06-28.md)
 

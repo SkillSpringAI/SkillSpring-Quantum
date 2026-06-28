@@ -7,6 +7,7 @@ ui/app/dist/
 # Local processing output and exports
 organized_output/
 organized_output_*/
+manual_test_output/
 /data/
 /db/
 Exports/

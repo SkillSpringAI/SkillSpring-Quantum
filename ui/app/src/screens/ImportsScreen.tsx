@@ -408,7 +408,10 @@ export default function ImportsScreen() {
     });
   }
 
-  async function refreshSourceSummary(nextPath?: string) {
+  async function refreshSourceSummary(
+    nextPath?: string,
+    options?: { preserveStatusMessage?: boolean }
+  ) {
     const sourcePath = nextPath ?? activeImportPath(form);
     if (!sourcePath.trim()) {
       setSourceSummary(null);
@@ -420,7 +423,9 @@ export default function ImportsScreen() {
       setSourceSummary(result);
 
       if (result) {
-        setStatusMessage("Source path checked.");
+        if (!options?.preserveStatusMessage) {
+          setStatusMessage("Source path checked.");
+        }
         setLogEntries((prev) => [
           makeLogEntry(
             "info",
@@ -459,8 +464,7 @@ export default function ImportsScreen() {
   async function handleBrowseOutput() {
     const nextPath = await chooseFolder();
     if (!nextPath) return;
-    setForm((prev) => ({ ...prev, outputRoot: nextPath }));
-    updateSettings({ outputRoot: nextPath });
+    handleOutputRootChange(nextPath);
   }
 
   async function handleSubmit() {
@@ -471,6 +475,7 @@ export default function ImportsScreen() {
       ...prev
     ]);
 
+    updateSettings({ outputRoot: form.outputRoot });
     const result = await submitImportJob(form);
 
     if (result.ok) {
@@ -482,7 +487,7 @@ export default function ImportsScreen() {
         ...prev
       ]);
       await refreshArchiveNotifications();
-      await refreshSourceSummary();
+      await refreshSourceSummary(undefined, { preserveStatusMessage: true });
       return;
     }
 
@@ -498,6 +503,11 @@ export default function ImportsScreen() {
     refreshImportHistory();
     refreshArchiveNotifications();
   }, [form.outputRoot]);
+
+  function handleOutputRootChange(nextOutputRoot: string) {
+    setForm((prev) => ({ ...prev, outputRoot: nextOutputRoot }));
+    updateSettings({ outputRoot: nextOutputRoot });
+  }
 
   useEffect(() => {
     if (!desktopBridgeAvailable()) {
@@ -549,10 +559,11 @@ export default function ImportsScreen() {
       <ImportForm
         value={form}
         onChange={setForm}
+        onOutputRootChange={handleOutputRootChange}
         onSubmit={handleSubmit}
         onBrowseSource={handleBrowseSource}
         onBrowseOutput={handleBrowseOutput}
-        onInspectSource={refreshSourceSummary}
+        onInspectSource={() => refreshSourceSummary()}
         disabled={runState === "running"}
       />
 
@@ -644,7 +655,7 @@ export default function ImportsScreen() {
               ) : null}
             </div>
             <div className="action-bar">
-              <button className="primary-btn" type="button" onClick={refreshSourceSummary}>
+              <button className="primary-btn" type="button" onClick={() => refreshSourceSummary()}>
                 Re-Check This Path
               </button>
               {sourceSummary.supportedFiles > 0 ? (
@@ -713,7 +724,7 @@ export default function ImportsScreen() {
             >
               {showRecoveryGuidance ? "Hide What To Check" : "Show What To Check"}
             </button>
-            <button className="secondary-btn" type="button" onClick={refreshSourceSummary}>
+            <button className="secondary-btn" type="button" onClick={() => refreshSourceSummary()}>
               Re-Check Path
             </button>
             {runNeedsDiagnostics ? (

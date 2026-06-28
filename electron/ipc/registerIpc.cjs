@@ -313,7 +313,15 @@ function registerIpc() {
 
   ipcMain.handle("archive:markdown", async (_event, payload = {}) => {
     const args = [payload.outputRoot || "organized_output"];
-    if (payload.filePath) args.push(payload.filePath);
+    if (payload.filePath) {
+      args.push("--file", payload.filePath);
+    }
+    if (payload.includeContent) {
+      args.push("--include-content");
+    }
+    if (payload.includeTopics === false) {
+      args.push("--skip-topics");
+    }
 
     const result = await runTsx("core/notifications/readMarkdownArchive.ts", args);
     return result.ok ? ok(result, "Markdown archive loaded.") : fail(result, "Failed to load markdown archive.");

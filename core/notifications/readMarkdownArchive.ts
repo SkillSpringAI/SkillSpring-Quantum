@@ -52,6 +52,12 @@ interface AttachmentArchiveSummary {
   archiveRoot: string;
 }
 
+interface MarkdownArchiveCliOptions {
+  requestedFile?: string;
+  includeContent: boolean;
+  includeTopics: boolean;
+}
+
 const SYSTEM_FOLDERS = new Set([
   "archive",
   "backup",
@@ -64,12 +70,19 @@ const SYSTEM_FOLDERS = new Set([
   "restore_queue"
 ]);
 
+const PREVIEW_CHUNK_BYTES = 16 * 1024;
+
 function isTopicFolder(name: string): boolean {
   if (SYSTEM_FOLDERS.has(name)) return false;
   return /^\d{4}-\d{2}_/.test(name);
 }
 
-async function listMarkdownFiles(outputRoot: string, topicPath: string, topicFolder: string): Promise<MarkdownArchiveFile[]> {
+async function listMarkdownFiles(
+  outputRoot: string,
+  topicPath: string,
+  topicFolder: string,
+  options: { includeContent: boolean }
+): Promise<MarkdownArchiveFile[]> {
   const entries = await fs.readdir(topicPath, { withFileTypes: true });
   const files: MarkdownArchiveFile[] = [];
 
@@ -78,7 +91,7 @@ async function listMarkdownFiles(outputRoot: string, topicPath: string, topicFol
 
     const filePath = path.join(topicPath, entry.name);
     const stats = await fs.stat(filePath);
-    const details = await readMarkdownFileDetails(outputRoot, filePath);
+    const details = await readMarkdownFileDetails(outputRoot, filePath, options);
 
     files.push({
       name: entry.name,
@@ -105,7 +118,7 @@ async function listMarkdownFiles(outputRoot: string, topicPath: string, topicFol
 
 async function main(): Promise<void> {
   const outputRoot = resolveOutputRoot(process.argv[2]);
-  const requestedFile = process.argv[3];
+  const options = parseCliArgs(process.argv.slice(3));
 
   if (!(await fileExists(outputRoot))) {
     console.log(JSON.stringify({
@@ -118,6 +131,26 @@ async function main(): Promise<void> {
     return;
   }
 
+  const attachmentSummaries = await readAttachmentArchiveSummaries(outputRoot);
+
+  if (!options.includeTopics && options.requestedFile) {
+    const selectedFile = await buildSingleFileRecord(outputRoot, options.requestedFile, attachmentSummaries, {
+      includeContent: options.includeContent
+    });
+    const content = selectedFile && options.includeContent
+      ? await fs.readFile(selectedFile.path, "utf-8")
+      : "";
+
+    console.log(JSON.stringify({
+      outputRoot,
+      topics: [],
+      selectedFile,
+      content,
+      attachmentSummaries
+    }, null, 2));
+    return;
+  }
+
   const entries = await fs.readdir(outputRoot, { withFileTypes: true });
   const topics: MarkdownArchiveTopic[] = [];
 
@@ -125,7 +158,9 @@ async function main(): Promise<void> {
     if (!entry.isDirectory() || !isTopicFolder(entry.name)) continue;
 
     const topicPath = path.join(outputRoot, entry.name);
-    const files = await listMarkdownFiles(outputRoot, topicPath, entry.name);
+    const files = await listMarkdownFiles(outputRoot, topicPath, entry.name, {
+      includeContent: false
+    });
 
     if (files.length === 0) continue;
 
@@ -139,26 +174,24 @@ async function main(): Promise<void> {
 
   topics.sort((a, b) => a.name.localeCompare(b.name));
 
-  let selectedFile: MarkdownArchiveFile | null = null;
-  let content = "";
-  const attachmentSummaries = await readAttachmentArchiveSummaries(outputRoot);
   const topicsWithTrust = topics.map((topic) => ({
     ...topic,
     files: topic.files.map((file) => addTrustSignals(file, attachmentSummaries))
   }));
   const allFiles = topicsWithTrust.flatMap((topic) => topic.files);
 
-  if (requestedFile) {
-    selectedFile = allFiles.find(file => file.path === requestedFile) ?? null;
+  let selectedFile: MarkdownArchiveFile | null = null;
+  if (options.requestedFile) {
+    selectedFile = allFiles.find((file) => file.path === options.requestedFile) ?? null;
   } else {
     selectedFile = allFiles
       .slice()
       .sort((left, right) => right.modifiedAt.localeCompare(left.modifiedAt))[0] ?? null;
   }
 
-  if (selectedFile) {
-    content = await fs.readFile(selectedFile.path, "utf-8");
-  }
+  const content = selectedFile && options.includeContent
+    ? await fs.readFile(selectedFile.path, "utf-8")
+    : "";
 
   console.log(JSON.stringify({
     outputRoot,
@@ -169,7 +202,73 @@ async function main(): Promise<void> {
   }, null, 2));
 }
 
-async function readMarkdownFileDetails(outputRoot: string, filePath: string): Promise<{
+function parseCliArgs(args: string[]): MarkdownArchiveCliOptions {
+  const options: MarkdownArchiveCliOptions = {
+    includeContent: false,
+    includeTopics: true
+  };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const value = args[index];
+
+    if (value === "--file") {
+      options.requestedFile = args[index + 1];
+      index += 1;
+      continue;
+    }
+
+    if (value === "--include-content") {
+      options.includeContent = true;
+      continue;
+    }
+
+    if (value === "--skip-topics") {
+      options.includeTopics = false;
+    }
+  }
+
+  return options;
+}
+
+async function buildSingleFileRecord(
+  outputRoot: string,
+  filePath: string,
+  attachmentSummaries: AttachmentArchiveSummary[],
+  options: { includeContent: boolean }
+): Promise<MarkdownArchiveFile | null> {
+  if (!(await fileExists(filePath))) {
+    return null;
+  }
+
+  const stats = await fs.stat(filePath);
+  const topicFolder = path.basename(path.dirname(filePath));
+  const details = await readMarkdownFileDetails(outputRoot, filePath, options);
+
+  return addTrustSignals({
+    name: path.basename(filePath),
+    path: filePath,
+    topicFolder,
+    sizeBytes: stats.size,
+    modifiedAt: stats.mtime.toISOString(),
+    previewText: details.previewText,
+    source: details.source,
+    title: details.title,
+    createdAt: details.createdAt,
+    topic: details.topic,
+    rawTopic: details.rawTopic,
+    conversationId: details.conversationId,
+    startIndex: details.startIndex,
+    endIndex: details.endIndex,
+    hasAttachmentReferences: details.attachmentReferenceCount > 0,
+    attachments: details.attachments
+  }, attachmentSummaries);
+}
+
+async function readMarkdownFileDetails(
+  outputRoot: string,
+  filePath: string,
+  options: { includeContent: boolean }
+): Promise<{
   previewText: string;
   source?: string;
   title?: string;
@@ -183,6 +282,24 @@ async function readMarkdownFileDetails(outputRoot: string, filePath: string): Pr
   attachments: MarkdownArchiveAttachment[];
 }> {
   try {
+    if (!options.includeContent) {
+      const previewChunk = await readPreviewChunk(filePath);
+      const metadata = extractMarkdownFrontmatter(previewChunk);
+      return {
+        previewText: extractMarkdownPreview(previewChunk),
+        source: metadata.source,
+        title: metadata.title,
+        createdAt: metadata.createdAt,
+        topic: metadata.topic,
+        rawTopic: metadata.rawTopic,
+        conversationId: metadata.conversationId,
+        startIndex: metadata.startIndex,
+        endIndex: metadata.endIndex,
+        attachmentReferenceCount: 0,
+        attachments: []
+      };
+    }
+
     const raw = await fs.readFile(filePath, "utf-8");
     const metadata = extractMarkdownFrontmatter(raw);
     const attachments = extractMarkdownAttachments(raw, outputRoot);
@@ -204,6 +321,18 @@ async function readMarkdownFileDetails(outputRoot: string, filePath: string): Pr
   }
 }
 
+async function readPreviewChunk(filePath: string): Promise<string> {
+  const handle = await fs.open(filePath, "r");
+
+  try {
+    const buffer = Buffer.alloc(PREVIEW_CHUNK_BYTES);
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    return buffer.subarray(0, bytesRead).toString("utf-8");
+  } finally {
+    await handle.close();
+  }
+}
+
 function extractMarkdownPreview(raw: string): string {
   const withoutFrontmatter = raw.startsWith("---")
     ? raw.replace(/^---[\s\S]*?---\s*/u, "")
@@ -216,7 +345,7 @@ function extractMarkdownPreview(raw: string): string {
     .replace(/[*_>`~-]/g, " ")
     .replace(/\s+/g, " ")
     .trim()
-    .slice(0, 240);
+    .slice(0, 140);
 }
 
 function extractMarkdownFrontmatter(raw: string): {

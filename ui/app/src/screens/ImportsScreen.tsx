@@ -592,6 +592,14 @@ export default function ImportsScreen() {
         <p className="muted">
           Start with the export you actually downloaded. Quantum will check whether this path looks ready before it imports anything.
         </p>
+        <div className="detail-box flow-summary-card">
+          <strong>{buildValidationChecklistLead(sourceSummary, form.expectedVendor)}</strong>
+          <div className="signal-badge-row">
+            <span className="signal-badge">vendor {formatExpectedVendorLabel(form.expectedVendor)}</span>
+            <span className="signal-badge">mode {form.mode === "batch" ? "folder" : "file"}</span>
+            <span className="signal-badge">output {describeOutputRoot(form.outputRoot)}</span>
+          </div>
+        </div>
         <div className="action-bar">
           <button className="secondary-btn" type="button" onClick={() => setShowImportHelp((value) => !value)}>
             {showImportHelp ? "Hide Steps" : "Show Steps"}
@@ -610,20 +618,25 @@ export default function ImportsScreen() {
       <div className="panel">
         <h2>Export Check</h2>
         {!sourceSummary ? (
-          <>
+          <div className="detail-box validation-summary-card idle">
+            <span className="match-card-kicker">Check required</span>
+            <strong>Run the export check before importing anything.</strong>
             <p className="muted">
               Pick a vendor and export path, then use <strong>Check This Export</strong> before you import.
             </p>
             <p className="muted">{buildPreInspectVendorHint(form.expectedVendor)}</p>
-          </>
+          </div>
         ) : (
           <>
-            <div className={validationCard.toneClass + " match-card"}>
+            <div className={"match-card validation-summary-card " + validationCard.toneClass}>
               <span className="match-card-kicker">{validationCard.kicker}</span>
               <strong>{validationCard.title}</strong>
-              <p className="muted">{buildValidationOutcomeLead(sourceSummary, form.expectedVendor)}</p>
+              <p>{buildValidationOutcomeLead(sourceSummary, form.expectedVendor)}</p>
               <p className="muted">{expectedVendorMessage}</p>
-              <p className="muted">{buildValidationNextStep(sourceSummary, form.expectedVendor)}</p>
+              <div className="detail-box validation-next-step-box">
+                <span className="label">Best next move</span>
+                <strong>{buildValidationNextStep(sourceSummary, form.expectedVendor)}</strong>
+              </div>
               <div className="signal-badge-row">
                 <span
                   className={
@@ -671,10 +684,19 @@ export default function ImportsScreen() {
       {latestRunForNextSteps ? (
         <div className="panel">
           <h2>Next Step</h2>
-          <p className="muted">{nextStepSummary(latestRunForNextSteps)}</p>
-          <p className="muted">
-            Latest run: {new Date(latestRunForNextSteps.runAt).toLocaleString()} | {latestRunOutcomeSummary}
-          </p>
+          <div className="detail-box follow-up-card">
+            <strong>{nextStepSummary(latestRunForNextSteps)}</strong>
+            <p className="muted">
+              Latest run: {new Date(latestRunForNextSteps.runAt).toLocaleString()} | {latestRunOutcomeSummary}
+            </p>
+            <div className="signal-badge-row">
+              <span className={runNeedsDiagnostics ? "signal-badge warning" : "signal-badge success"}>
+                {runNeedsDiagnostics ? "review recommended" : "ready to continue"}
+              </span>
+              {hasConversationOutputs ? <span className="signal-badge">archive available</span> : null}
+              {hasDatasetOutputs ? <span className="signal-badge">structured view available</span> : null}
+            </div>
+          </div>
           {latestPackageCompanionSkips > 0 ? (
             <p className="muted">
               Vendor package note: {latestPackageCompanionSkips} companion file(s) were expected and were handled through the main package import instead of being added as separate dataset sources.
@@ -970,6 +992,34 @@ function buildPreInspectVendorHint(expectedVendor: ImportVendorChoice): string {
   }
 }
 
+function buildValidationChecklistLead(
+  sourceSummary: ImportSourceSummary | null,
+  expectedVendor: ImportVendorChoice
+): string {
+  if (!sourceSummary) {
+    return "Choose the export you downloaded, check it once, then import from that same path.";
+  }
+
+  if (sourceSummary.supportedFiles === 0) {
+    return "This path still needs adjustment before import.";
+  }
+
+  if (expectedVendor === "auto_detect") {
+    return "Quantum found something usable here. Keep this path if it matches the export you meant to import.";
+  }
+
+  const match = sourceSummary.vendorSummaries.find((summary) => summary.vendor === expectedVendor);
+  if (!match) {
+    return "The selected vendor and the checked path do not line up yet.";
+  }
+
+  if (match.supportTier === "mvp_first_class") {
+    return "This export matches the selected vendor and is ready for the normal import path.";
+  }
+
+  return "This export can still move forward, but it deserves a closer spot-check after import.";
+}
+
 function buildExpectedVendorMessage(
   sourceSummary: ImportSourceSummary | null,
   expectedVendor: ImportVendorChoice
@@ -1007,6 +1057,10 @@ const EXPECTED_VENDOR_LABELS: Record<Exclude<ImportVendorChoice, "auto_detect">,
   gemini: "Gemini",
   copilot: "Microsoft Copilot"
 };
+
+function formatExpectedVendorLabel(expectedVendor: ImportVendorChoice): string {
+  return expectedVendor === "auto_detect" ? "Auto Detect" : EXPECTED_VENDOR_LABELS[expectedVendor];
+}
 
 function buildValidationCard(
   sourceSummary: ImportSourceSummary | null,
@@ -1162,4 +1216,10 @@ function shouldDimVendorCard(
   vendor: ImportSourceVendorSummary["vendor"]
 ): boolean {
   return expectedVendor !== "auto_detect" && expectedVendor !== vendor;
+}
+
+function describeOutputRoot(outputRoot: string): string {
+  const normalized = outputRoot.replace(/[\\/]+$/, "");
+  const segments = normalized.split(/[\\/]/).filter(Boolean);
+  return segments[segments.length - 1] ?? outputRoot;
 }

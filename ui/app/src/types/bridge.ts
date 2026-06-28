@@ -130,6 +130,8 @@ export interface ArchiveNotificationsPayload {
 export interface MarkdownArchivePayload {
   outputRoot: string;
   filePath?: string;
+  includeContent?: boolean;
+  includeTopics?: boolean;
 }
 
 export interface InspectImportSourcePayload {

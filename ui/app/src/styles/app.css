@@ -544,6 +544,47 @@ select {
   border: 1px solid var(--border);
 }
 
+.status-summary-card,
+.flow-summary-card,
+.loaded-state-card,
+.follow-up-card {
+  background: linear-gradient(180deg, rgba(110, 168, 254, 0.12), rgba(110, 168, 254, 0.04));
+  border-color: rgba(110, 168, 254, 0.28);
+}
+
+.status-summary-card strong,
+.flow-summary-card strong,
+.loaded-state-card strong,
+.follow-up-card strong,
+.validation-summary-card strong,
+.validation-next-step-box strong {
+  display: block;
+  line-height: 1.45;
+}
+
+.validation-summary-card {
+  margin-top: 12px;
+}
+
+.validation-summary-card.idle {
+  border-color: rgba(110, 168, 254, 0.24);
+}
+
+.validation-summary-card > p {
+  margin: 10px 0 0;
+}
+
+.validation-next-step-box {
+  margin-top: 14px;
+  background: rgba(9, 16, 28, 0.22);
+}
+
+.follow-up-card .signal-badge-row,
+.flow-summary-card .signal-badge-row,
+.loaded-state-card .signal-badge-row {
+  margin-top: 12px;
+}
+
 .match-card {
   position: relative;
   overflow: hidden;
@@ -686,6 +727,12 @@ select {
   flex-direction: column;
   gap: 10px;
   margin-top: 12px;
+}
+
+.archive-handoff-card,
+.archive-handoff-status-card {
+  background: linear-gradient(180deg, rgba(73, 209, 125, 0.1), rgba(110, 168, 254, 0.04));
+  border-color: rgba(73, 209, 125, 0.26);
 }
 
 .artifact-handoff-grid {

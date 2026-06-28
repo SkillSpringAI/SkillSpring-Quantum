@@ -13,6 +13,7 @@ interface MarkdownArchiveBrowserProps {
   topics: MarkdownArchiveTopic[];
   selectedFile: MarkdownArchiveFile | null;
   content: string;
+  loadingSelectedContent?: boolean;
   attachmentSummaries: AttachmentArchiveSummary[];
   onSelectFile: (file: MarkdownArchiveFile) => void;
   onRefresh: () => void;
@@ -26,6 +27,7 @@ export default function MarkdownArchiveBrowser({
   topics,
   selectedFile,
   content,
+  loadingSelectedContent = false,
   attachmentSummaries,
   onSelectFile,
   onRefresh
@@ -184,6 +186,7 @@ export default function MarkdownArchiveBrowser({
   const selectedReviewSummary = selectedFile ? summarizeArchiveReviewSummary(selectedFile) : null;
   const selectedNextStep = selectedFile ? buildArchiveNextStep(selectedFile) : null;
   const selectedReviewFlow = selectedFile ? buildArchiveReviewFlow(selectedFile) : [];
+  const selectedDatasetHandoff = selectedFile ? summarizeArchiveDatasetHandoff(selectedFile) : null;
   const selectedAttachmentLead = selectedFile ? summarizeArchiveAttachmentLead(selectedFile) : null;
   const selectedAttachmentSummary =
     selectedFile?.source === "grok" || selectedFile?.source === "gemini"
@@ -453,6 +456,25 @@ export default function MarkdownArchiveBrowser({
                   ) : null}
                 </div>
 
+                {selectedDatasetHandoff ? (
+                  <div className="detail-box archive-handoff-card">
+                    <strong>Dataset Handoff</strong>
+                    <p className="muted">{selectedDatasetHandoff.headline}</p>
+                    <div className="signal-badge-row">
+                      <span className="signal-badge success">{selectedDatasetHandoff.previewLabel}</span>
+                      {selectedFile.supportTier === "mvp_first_class" ? (
+                        <span className="signal-badge">ready-now import</span>
+                      ) : selectedFile.supportTier === "compatibility_fallback" ? (
+                        <span className="signal-badge warning">recovery-path import</span>
+                      ) : null}
+                      {selectedFile.hasAttachmentReferences ? (
+                        <span className="signal-badge">attachment context</span>
+                      ) : null}
+                    </div>
+                    <p className="muted">{selectedDatasetHandoff.note}</p>
+                  </div>
+                ) : null}
+
                 <div className="action-bar">
                   <button
                     className="primary-btn"
@@ -686,7 +708,9 @@ export default function MarkdownArchiveBrowser({
               </p>
             ) : null}
             <pre className="record-block markdown-preview">
-              {content || "No markdown content loaded."}
+              {loadingSelectedContent
+                ? "Loading markdown content for the selected archive slice..."
+                : content || "No markdown content loaded."}
             </pre>
           </div>
         </div>
@@ -719,6 +743,42 @@ function newestTimestamp(files: MarkdownArchiveFile[]): number {
     const value = Date.parse(file.modifiedAt);
     return Number.isNaN(value) ? latest : Math.max(latest, value);
   }, 0);
+}
+
+function summarizeArchiveDatasetHandoff(
+  file: MarkdownArchiveFile
+): { headline: string; note: string; previewLabel: string } {
+  const preferredKind = inferArchivePreviewKind(file);
+  const previewLabel = formatDatasetPreviewIntentLabel(preferredKind);
+
+  if (file.supportTier === "compatibility_fallback") {
+    return {
+      headline: "Quantum will carry this archive slice into the closest structured dataset view, but this import came through a recovery path.",
+      note: "Start with the matched dataset run and spot-check the preview before treating it as a one-to-one companion to this archive slice.",
+      previewLabel
+    };
+  }
+
+  return {
+    headline: "Quantum will carry this archive slice into the closest structured dataset view for the same vendor, topic, and conversation date clues.",
+    note: "Start with the matched dataset run if one is found. If preview mode has to fall back, the dataset screen will call that out explicitly.",
+    previewLabel
+  };
+}
+
+function formatDatasetPreviewIntentLabel(kind: DatasetPreviewIntentKind): string {
+  switch (kind) {
+    case "topic_segments":
+      return "topic preview";
+    case "prompt_response_pairs":
+      return "prompt/response preview";
+    case "micro_segments":
+      return "micro-segment preview";
+    case "private_review":
+      return "extra-care preview";
+    default:
+      return "dataset preview";
+  }
 }
 
 function countArchiveConversations(files: MarkdownArchiveFile[]): number {

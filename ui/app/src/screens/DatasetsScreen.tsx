@@ -221,6 +221,11 @@ export default function DatasetsScreen() {
     selectedSourceNeedsAttention,
     selectedRedactionSummary
   );
+  const loadedStateSummary = summarizeDatasetLoadedState(
+    selectedRun,
+    selectedSourceNeedsAttention,
+    previewConfigLabel(previewKind)
+  );
   const previewConfig = DATASET_PREVIEW_CONFIG[previewKind];
   const archiveLinkStatus = summarizeArchiveLinkStatus(
     archiveHandoffSummary,
@@ -238,6 +243,19 @@ export default function DatasetsScreen() {
     selectedRun?.run_id ?? null,
     datasetRun?.latest?.run_id ?? null,
     previewScope?.scope
+  );
+  const matchedRunIsSelected = Boolean(
+    archiveHandoffSummary?.matchedRunId &&
+    selectedRun?.run_id &&
+    archiveHandoffSummary.matchedRunId === selectedRun.run_id
+  );
+  const canSwitchToMatchedRun = Boolean(
+    archiveHandoffSummary?.matchedRunId &&
+    selectedRun?.run_id &&
+    archiveHandoffSummary.matchedRunId !== selectedRun.run_id
+  );
+  const canRestoreArchivePreviewKind = Boolean(
+    previewIntentSummary?.preferredKind && previewIntentSummary.preferredKind !== previewKind
   );
   const visibleDatasetOutputCards = showAllDatasetOutputCards
     ? datasetOutputCards
@@ -347,17 +365,65 @@ export default function DatasetsScreen() {
           </>
         ) : (
           <>
-            <p className="muted">
-              Review the structured output from imported conversations here, starting with the clearest human-readable view.
-            </p>
-            <p className="muted">
-              Current output root: {describeOutputRoot(settings.outputRoot)}
-            </p>
+            <div className="detail-box loaded-state-card">
+              <strong>{loadedStateSummary.headline}</strong>
+              <p className="muted">Current output root: {describeOutputRoot(settings.outputRoot)}</p>
+              <p className="muted">{loadedStateSummary.note}</p>
+              <div className="signal-badge-row">
+                <span className={selectedSourceNeedsAttention ? "signal-badge warning" : "signal-badge success"}>
+                  {selectedSourceNeedsAttention ? "spot-check recommended" : "dataset loaded"}
+                </span>
+                <span className="signal-badge">{previewConfig.label}</span>
+                <span className="signal-badge">{selectedRun.run_id}</span>
+              </div>
+            </div>
             {archiveHandoffSummary ? (
-              <div className="detail-box">
+              <div className="detail-box archive-handoff-status-card">
                 <strong>Opened From Archive</strong>
                 <p className="muted">{archiveLinkStatus.headline}</p>
+                <p className="muted">{previewAlignment.headline}</p>
+                <div className="signal-badge-row">
+                  <span className={archiveLinkStatus.tone === "success" ? "signal-badge success" : "signal-badge warning"}>
+                    {archiveLinkStatus.badge}
+                  </span>
+                  <span className={previewAlignment.tone === "success" ? "signal-badge success" : "signal-badge warning"}>
+                    {previewAlignment.badge}
+                  </span>
+                  {previewAlignment.secondaryBadge ? (
+                    <span className="signal-badge">{previewAlignment.secondaryBadge}</span>
+                  ) : null}
+                  {matchedRunIsSelected ? (
+                    <span className="signal-badge success">matched run selected</span>
+                  ) : null}
+                </div>
+                <p className="muted">{pickArchiveHandoffLead(archiveLinkStatus.nextStep, previewAlignment.nextStep)}</p>
                 <div className="action-bar">
+                  {canSwitchToMatchedRun && archiveHandoffSummary.matchedRunId ? (
+                    <button
+                      className="primary-btn"
+                      type="button"
+                      onClick={() => setSelectedRunId(archiveHandoffSummary.matchedRunId ?? null)}
+                    >
+                      Switch To Matched Run
+                    </button>
+                  ) : null}
+                  {canRestoreArchivePreviewKind && previewIntentSummary ? (
+                    <button
+                      className="secondary-btn"
+                      type="button"
+                      onClick={() => {
+                        setPreviewKind(previewIntentSummary.preferredKind);
+                        setPreviewOffset(0);
+                      }}
+                    >
+                      Use Archive-Chosen Preview
+                    </button>
+                  ) : null}
+                  {matchedRunIsSelected && previewScope?.scope === "latest_current_bundle" && selectedRunPaths ? (
+                    <OpenPathButton className="secondary-btn" targetPath={selectedRunPaths.runRoot}>
+                      Open Matched Run Snapshot
+                    </OpenPathButton>
+                  ) : null}
                   <button
                     className="secondary-btn"
                     type="button"
@@ -808,6 +874,9 @@ export default function DatasetsScreen() {
             {previewAlignment.secondaryBadge ? (
               <span className="signal-badge">{previewAlignment.secondaryBadge}</span>
             ) : null}
+            {matchedRunIsSelected ? (
+              <span className="signal-badge success">archive-linked run selected</span>
+            ) : null}
           </div>
           <p className="muted">{previewAlignment.nextStep}</p>
         </div>
@@ -1056,6 +1125,30 @@ function summarizeDatasetReviewSummary(
   ];
 }
 
+function summarizeDatasetLoadedState(
+  run: DatasetRunResult["runs"][number] | null,
+  selectedSourceNeedsAttention: boolean,
+  previewLabel: string
+): { headline: string; note: string } {
+  if (!run) {
+    return {
+      headline: "No dataset run loaded yet.",
+      note: "Import a conversation export first, then return here."
+    };
+  }
+
+  return {
+    headline: selectedSourceNeedsAttention
+      ? "Structured output is loaded, but this run deserves a quick spot-check."
+      : "Structured output is loaded and ready for normal review.",
+    note: `${previewLabel} is the active preview lane for this run.`
+  };
+}
+
+function previewConfigLabel(kind: DatasetPreviewKind): string {
+  return DATASET_PREVIEW_CONFIG[kind].label;
+}
+
 function summarizePreviewScopeHeadline(
   selectedRun: DatasetRunResult["runs"][number] | null,
   latestRunId: string | null,
@@ -1132,6 +1225,10 @@ function summarizeArchiveLinkStatus(
     tone: "warning",
     nextStep: "Use vendor, topic, and attachment clues here as guidance, but do not assume this is an exact one-to-one archive snapshot match."
   };
+}
+
+function pickArchiveHandoffLead(primary: string, secondary: string): string {
+  return primary === secondary ? primary : `${primary} ${secondary}`;
 }
 
 function summarizePreviewAlignment(

@@ -16,6 +16,9 @@ import { useSettings } from "../state/settingsContext";
 export default function OrganizedOutputScreen() {
   const { setActiveScreen } = useNavigation();
   const { settings } = useSettings();
+  const [loadingArchiveState, setLoadingArchiveState] = useState(true);
+  const [loadingSelectedContent, setLoadingSelectedContent] = useState(false);
+  const [archiveLoadError, setArchiveLoadError] = useState<string | null>(null);
   const [showArchiveHelp, setShowArchiveHelp] = useState(false);
   const [latestArchive, setLatestArchive] = useState<ArchiveNotification | null>(null);
   const [archiveEvents, setArchiveEvents] = useState<ArchiveNotification[]>([]);
@@ -34,8 +37,34 @@ export default function OrganizedOutputScreen() {
     setArchiveLatestFile(result.latestFile);
   }
 
-  async function refreshMarkdownArchive(filePath?: string) {
-    const result = await loadMarkdownArchive(settings.outputRoot, filePath);
+  async function refreshMarkdownArchive(
+    filePath?: string,
+    options: { includeContent?: boolean; includeTopics?: boolean } = {}
+  ) {
+    const result = await loadMarkdownArchive(settings.outputRoot, filePath, options);
+
+    if (result.attachmentSummaries.length > 0) {
+      setAttachmentSummaries(result.attachmentSummaries);
+    }
+
+    if (options.includeTopics === false) {
+      if (result.selectedFile) {
+        setSelectedFile((previous) => {
+          if (previous && previous.path === result.selectedFile?.path) {
+            return {
+              ...previous,
+              ...result.selectedFile,
+              attachments: result.selectedFile.attachments ?? previous.attachments ?? []
+            };
+          }
+
+          return result.selectedFile;
+        });
+      }
+      setContent(result.content);
+      return;
+    }
+
     setTopics(result.topics);
     setSelectedFile(result.selectedFile);
     setContent(result.content);
@@ -43,15 +72,47 @@ export default function OrganizedOutputScreen() {
   }
 
   async function handleSelectFile(file: MarkdownArchiveFile) {
-    await refreshMarkdownArchive(file.path);
+    setSelectedFile(file);
+    setContent("");
+    setLoadingSelectedContent(true);
+    try {
+      await refreshMarkdownArchive(file.path, {
+        includeContent: true,
+        includeTopics: false
+      });
+    } finally {
+      setLoadingSelectedContent(false);
+    }
   }
 
   async function refreshAll() {
-    await refreshArchiveNotifications();
-    await refreshMarkdownArchive(selectedFile?.path);
+    setLoadingArchiveState(true);
+    setArchiveLoadError(null);
+
+    try {
+      await Promise.all([
+        refreshArchiveNotifications(),
+        refreshMarkdownArchive(undefined, {
+          includeContent: false,
+          includeTopics: true
+        })
+      ]);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Quantum could not load the readable archive for this output root.";
+      setArchiveLoadError(message);
+      setTopics([]);
+      setSelectedFile(null);
+      setContent("");
+      setAttachmentSummaries([]);
+      setLoadingSelectedContent(false);
+    } finally {
+      setLoadingArchiveState(false);
+    }
   }
 
   useEffect(() => {
+    setLoadingArchiveState(true);
+    setArchiveLoadError(null);
     setLatestArchive(null);
     setArchiveEvents([]);
     setArchiveEventsFile("");
@@ -60,23 +121,35 @@ export default function OrganizedOutputScreen() {
     setSelectedFile(null);
     setContent("");
     setAttachmentSummaries([]);
-    refreshArchiveNotifications();
-    refreshMarkdownArchive();
+    setLoadingSelectedContent(false);
+    refreshAll();
   }, [settings.outputRoot]);
 
   useEffect(() => {
-    if (selectedFile || topics.length === 0) return;
-    const allFiles = topics.flatMap((topic) => topic.files);
-    if (allFiles.length === 0) return;
-    const newest = allFiles.reduce((best, file) => {
-      const bestTime = Date.parse(best.modifiedAt);
-      const fileTime = Date.parse(file.modifiedAt);
-      return fileTime > bestTime ? file : best;
-    }, allFiles[0]);
-    if (newest) {
-      handleSelectFile(newest);
+    if (!selectedFile || content || loadingArchiveState || loadingSelectedContent) return;
+
+    let cancelled = false;
+
+    async function loadSelectedContent() {
+      setLoadingSelectedContent(true);
+      try {
+        await refreshMarkdownArchive(selectedFile.path, {
+          includeContent: true,
+          includeTopics: false
+        });
+      } finally {
+        if (!cancelled) {
+          setLoadingSelectedContent(false);
+        }
+      }
     }
-  }, [topics]);
+
+    void loadSelectedContent();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedFile?.path, content, loadingArchiveState, loadingSelectedContent]);
 
   const archiveFileCount = topics.reduce((sum, topic) => sum + topic.files.length, 0);
   const archiveConversationCount = countArchiveConversations(topics);
@@ -98,7 +171,39 @@ export default function OrganizedOutputScreen() {
 
       <div className="panel">
         <h2>Readable Archive</h2>
-        {topics.length === 0 ? (
+        {loadingArchiveState ? (
+          <>
+            <p className="muted">
+              Reading the readable archive for this output root.
+            </p>
+            <p className="muted">
+              Current output root: {describeOutputRoot(settings.outputRoot)}
+            </p>
+            {latestArchive ? (
+              <p className="muted">
+                Latest archive activity was found, so Quantum is still loading the readable conversation list.
+              </p>
+            ) : null}
+          </>
+        ) : archiveLoadError ? (
+          <>
+            <p className="muted">
+              Quantum could not load the readable archive for this output root yet.
+            </p>
+            <p className="muted">
+              Current output root: {describeOutputRoot(settings.outputRoot)}
+            </p>
+            <p className="muted">{archiveLoadError}</p>
+            <div className="action-bar">
+              <button className="secondary-btn" type="button" onClick={refreshAll}>
+                Try Refresh Again
+              </button>
+              <button className="primary-btn" type="button" onClick={() => setActiveScreen("imports")}>
+                Go To Imports
+              </button>
+            </div>
+          </>
+        ) : topics.length === 0 ? (
           <>
             <p className="muted">
               No readable archive yet. Import a conversation export first, then come back here to read it.
@@ -106,6 +211,11 @@ export default function OrganizedOutputScreen() {
             <p className="muted">
               Current output root: {describeOutputRoot(settings.outputRoot)}
             </p>
+            {latestArchive ? (
+              <p className="muted">
+                Quantum did find recent archive activity for this root, but no readable topic folders were available to open yet.
+              </p>
+            ) : null}
             <div className="action-bar">
               <button className="primary-btn" type="button" onClick={() => setActiveScreen("imports")}>
                 Go To Imports
@@ -114,16 +224,16 @@ export default function OrganizedOutputScreen() {
           </>
         ) : (
           <>
-            <p className="muted">
-              Read back the imported conversations here.
-            </p>
-            <p className="muted">
-              Current output root: {describeOutputRoot(settings.outputRoot)}
-            </p>
-            <p className="muted">
-              {archiveSummary.headline}
-            </p>
-            <p className="muted">{archiveSummary.note}</p>
+            <div className="detail-box loaded-state-card">
+              <strong>{archiveSummary.headline}</strong>
+              <p className="muted">Current output root: {describeOutputRoot(settings.outputRoot)}</p>
+              <p className="muted">{archiveSummary.note}</p>
+              <div className="signal-badge-row">
+                <span className="signal-badge success">archive loaded</span>
+                <span className="signal-badge">{topics.length} topic group(s)</span>
+                <span className="signal-badge">{archiveFileCount} readable file(s)</span>
+              </div>
+            </div>
             <div className="action-bar">
               <button className="secondary-btn" type="button" onClick={() => setShowArchiveHelp((value) => !value)}>
                 {showArchiveHelp ? "Hide Tips" : "Show Tips"}
@@ -189,6 +299,7 @@ export default function OrganizedOutputScreen() {
         topics={topics}
         selectedFile={selectedFile}
         content={content}
+        loadingSelectedContent={loadingSelectedContent}
         attachmentSummaries={attachmentSummaries}
         onSelectFile={handleSelectFile}
         onRefresh={refreshAll}

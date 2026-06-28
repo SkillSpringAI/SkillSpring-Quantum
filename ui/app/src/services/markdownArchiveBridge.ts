@@ -1,16 +1,27 @@
 import type { MarkdownArchiveResult } from "../types/markdownArchive";
 import { invokeDesktopCommand } from "./desktopBridge";
 
+interface LoadMarkdownArchiveOptions {
+  includeContent?: boolean;
+  includeTopics?: boolean;
+}
+
 export async function loadMarkdownArchive(
   outputRoot = "organized_output",
-  filePath?: string
+  filePath?: string,
+  options: LoadMarkdownArchiveOptions = {}
 ): Promise<MarkdownArchiveResult> {
   const response = await invokeDesktopCommand<
-    { outputRoot: string; filePath?: string },
+    { outputRoot: string; filePath?: string; includeContent?: boolean; includeTopics?: boolean },
     MarkdownArchiveResult
   >({
     command: "archive.markdown",
-    payload: { outputRoot, filePath }
+    payload: {
+      outputRoot,
+      filePath,
+      includeContent: options.includeContent,
+      includeTopics: options.includeTopics
+    }
   });
 
   if (!response.ok) {

@@ -90,7 +90,7 @@ Focus:
 
 ## Advanced surface rule
 
-These remain real product capabilities, but should stay behind deliberate Advanced Tools access or contextual troubleshooting:
+These remain real product capabilities, but should stay behind deliberate Extra Tools access or contextual troubleshooting:
 
 - diagnostics
 - governance

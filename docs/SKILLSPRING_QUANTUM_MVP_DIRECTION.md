@@ -138,7 +138,7 @@ Priority items:
 
 - maintain deterministic rules, manifests, diagnostics, and audit artifacts where they protect or explain the import workflow
 - present ordinary users with plain-language results and recovery actions
-- keep governance editors, tiered database inspection, review queues, and promotion controls behind deliberate Advanced Tools access
+- keep governance editors, tiered database inspection, review queues, and promotion controls behind deliberate Extra Tools access
 - design diagnostic artifacts so a future local assistant can interpret them without bypassing evidence
 - ensure any assistant explanation identifies what happened, why, where outputs are, and what can be done next
 
@@ -149,6 +149,8 @@ General users need trustworthy outcomes. Power users and enterprise operators ma
 There is still a language and tone gap to close across the product. Even when the workflow is technically valid, too much governance-heavy or internal-sounding wording makes Quantum feel aimed at a narrower operator community than the broader audience it could serve.
 
 Future UX and copy work should keep reducing internal vocabulary in default user-facing interactions. The mass-market opportunity is more likely to come from simple, outcome-first language than from exposing more of the system's internal terminology up front.
+
+Once the main flow is internally stable, the next major UX simplification decisions should be informed by outside test users. Internal walkthroughs are good for finding obvious friction, but they cannot fully substitute for watching fresh users interpret the product without prior implementation context.
 
 ### 7. Defer adjacent ingestion and advanced workflow expansion until the above are solid
 

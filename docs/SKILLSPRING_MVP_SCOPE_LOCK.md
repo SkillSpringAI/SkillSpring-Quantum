@@ -27,7 +27,9 @@ Expected vendor-package companion files should be explained as normal handling, 
 
 If a feature does not make that loop clearer, more trustworthy, more recoverable, or more complete, it should not block MVP.
 
-Ordinary users should receive plain-language outcomes. Detailed governance rules, tiered records, review controls, manifests, and diagnostics should remain available through deliberate Advanced Tools access, contextual troubleshooting, or future agent-assisted explanation.
+Ordinary users should receive plain-language outcomes. Detailed governance rules, tiered records, review controls, manifests, and diagnostics should remain available through deliberate Extra Tools access, contextual troubleshooting, or future agent-assisted explanation.
+
+As the UX gets closer to a public MVP shape, use internal walkthroughs to remove obvious friction first, then prefer outside test-user observation for the next deeper round of simplification. The goal is to avoid tuning only for people who already understand the product's internal model.
 
 ## Current support tiers
 

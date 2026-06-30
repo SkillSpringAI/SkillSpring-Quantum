@@ -75,7 +75,7 @@ This is narrower than the full internal parser and document-ingestion surface al
 - deterministic processing before smart enrichment
 - internal assurance through manifests, diagnostics, governance rules, and traceable reports
 - ordinary-user explanations before visible governance machinery
-- deliberate Advanced Tools access for power-user, enterprise, maintainer, and diagnostic workflows
+- deliberate Extra Tools access for power-user, enterprise, maintainer, and diagnostic workflows
 - UI controls mapped to real backend workflows, not placeholder lifecycle actions
 - user-visible capability growth should stay ahead of governance/documentation drag
 - diagnostic artifacts structured for future local-assistant interpretation
@@ -89,13 +89,14 @@ This is narrower than the full internal parser and document-ingestion surface al
 - keep hardening the now-expanded first-class vendor set so the app promise and real behavior stay matched at the exact export-shape level
 - continue reshaping the imports screen so ordinary users can choose a vendor, check the export shape, and import without learning Quantum vocabulary first
 - keep simplifying empty states and first-read density across imports, archive, and datasets before broader external-user exposure
+- use the current internal walkthrough records to remove obvious friction first, then let outside test users shape the next heavier UX pass
 - make schema-match outcomes more visual and decisive than text-only explanation
 - carry archive-selected trust context deeper into dataset review and preview layers so users can tell exactly what came from the archive handoff versus the latest current bundle
 - improve archive usability further so preserved attachments and source references are directly useful during review, not only summarized
 - connect import summaries, archive browsing, and dataset browsing even more tightly across screens, especially around stable historical versus rolling-current dataset scope
 - continue clarifying historical-run versus rolling-current dataset scope
 - keep reducing dead-end file actions by only surfacing secondary artifact actions when the backing path exists and the user actually needs them
-- keep curated promotion, purge restore, folder merge, governance editing, and tiered database inspection behind deliberate Advanced Tools access
+- keep curated promotion, purge restore, folder merge, governance editing, and tiered database inspection behind deliberate Extra Tools access
 - define a stable diagnostic explanation contract for future local-assistant use without making assistant integration an MVP blocker
 - decide whether archive-only versus archive-plus-dataset import controls are worth exposing after the current dataset clarity work settles
 
@@ -119,7 +120,7 @@ The desktop product now has a clearer end-to-end shape than earlier reference sn
 - Imports and import history now explain recovery-path, failed, and skipped outcomes with concrete next-step guidance
 - Retrieval can search prior imports and linked dataset segments, save named investigations, and reopen them later
 - Readable Archive browsing now supports topic/source/date filtering, in-app file navigation, archive-event file opening, preserved-attachment handoff, direct dataset-context handoff from selected archive files, and lighter first-use guidance
-- Readable Archive selected-file review now adds clearer next-step guidance, attachment cues, and matching dataset/import actions so the chosen slice feels closer to a guided review flow than a technical dump
+- Readable Archive selected-file review now adds clearer next-step guidance, attachment cues, matching dataset/import actions, and a read-first layout that puts the markdown body ahead of the denser downstream actions
 - Datasets now include source-context trust summaries, redaction/trust cards, in-app previews of topic segments, prompt/response pairs, micro segments, and private-review records, plus current-bundle versus historical-run handoff controls, clearer preview-alignment explanation, lighter guide content, and fewer default file-action choices
 - Imports, Find Imports, and Datasets now lean more on progressive disclosure so the first loaded screen stays closer to the main next action and the denser operator surfaces open deliberately
 
@@ -139,6 +140,7 @@ The next explicit UX continuation slices are:
 - keep fixing the remaining alignment, spacing, and "old operator screen" feel that still shows up once users start scrolling through loaded states
 - keep advanced assurance tools contextual and avoid making the ordinary flow feel like a product to be studied
 - run a full manual Electron walkthrough across Imports, Readable Archive, Datasets, Find Imports, and contextual diagnostics, documenting the interaction flow and friction points for the next UI/UX pass
+- after the next internal stabilization pass, run a small outside test-user walkthrough round so the next UX decisions are based on fresh-user behavior instead of maintainer familiarity
 
 ## User and Governance Surface Model
 

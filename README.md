@@ -131,7 +131,7 @@ Quantum also contains internal and power-user workflows that support assurance, 
 - private-review separation for more sensitive dataset segments
 - diagnostics and artifacts that may later be interpreted by a local assistant in plain language
 
-These workflows do not define the ordinary MVP journey. They should be reached deliberately through Advanced Tools, settings, contextual troubleshooting, or a future local assistant acting on the user's request.
+These workflows do not define the ordinary MVP journey. They should be reached deliberately through Extra Tools, settings, contextual troubleshooting, or a future local assistant acting on the user's request.
 
 ## Current UX note
 
@@ -141,7 +141,7 @@ What is working now:
 
 - vendor-first import guidance is clearer
 - import-ready versus mismatch and recovery-path states are more honest
-- archive selected-file review is more guided
+- archive selected-file review is more guided and now gets users to the markdown body sooner before asking for downstream decisions
 - archive, retrieval, and dataset screens keep more secondary detail behind optional reveals
 - dataset preview makes historical-run versus latest-bundle alignment easier to understand
 
@@ -151,6 +151,8 @@ What still needs a future UX pass:
 - fewer moments where users feel they need to study the product before acting
 - clearer differentiation between primary actions and power-user inspection surfaces
 - continued simplification of loaded states once real data is present
+
+The next heavier UX round should likely happen after some outside test-user sessions, not only internal walkthroughs. Internal passes are still useful for obvious friction, but broader simplification decisions will be stronger once they are grounded in how fresh users actually move through the product.
 
 ## Morning Note
 
@@ -172,8 +174,11 @@ Use [docs/MORNING_MANUAL_TEST_NOTE.md](docs/MORNING_MANUAL_TEST_NOTE.md) as the 
 The first walkthrough pass has now been recorded here:
 
 - [docs/MANUAL_WALKTHROUGH_2026-06-28.md](docs/MANUAL_WALKTHROUGH_2026-06-28.md)
+- [docs/MANUAL_WALKTHROUGH_2026-06-30.md](docs/MANUAL_WALKTHROUGH_2026-06-30.md)
 
 The next morning retest should start from that record and confirm the import-to-archive-to-dataset handoff in a fresh Electron session.
+
+After another internal pass or two, the next best validation step is likely a small external-user walkthrough round so we can see where the product still feels too dense, too internal, or too easy to misread without prior context.
 
 ## Current scripts
 

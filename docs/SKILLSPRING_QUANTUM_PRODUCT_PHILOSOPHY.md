@@ -147,7 +147,7 @@ The user sees what happened, why it happened, what was created, what was skipped
 
 Power users, maintainers, enterprise operators, and future local assistants may inspect governance rules, diagnostics, manifests, review records, tiered storage, and other evidence directly.
 
-The ordinary workflow should remain simple. Advanced governance should be deliberately entered through settings, Advanced Tools, contextual troubleshooting, or an explicit user request.
+The ordinary workflow should remain simple. Advanced governance should be deliberately entered through settings, Extra Tools, contextual troubleshooting, or an explicit user request.
 
 ## Agent-Assisted Explanation
 

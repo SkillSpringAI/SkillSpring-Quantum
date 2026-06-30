@@ -169,7 +169,7 @@ export default function OrganizedOutputScreen() {
         onRefresh={refreshAll}
       />
 
-      <div className="panel">
+      <div className="panel workspace-anchor-panel">
         <h2>Readable Archive</h2>
         {loadingArchiveState ? (
           <>
@@ -334,16 +334,16 @@ function summarizeArchiveCollection(
 ): { headline: string; note: string } {
   if (conversationCount > 0) {
     return {
-      headline: `${conversationCount} conversation(s) are represented here across ${fileCount} readable review slice(s).`,
+      headline: `${conversationCount} conversation(s) are represented here across ${fileCount} readable slice(s).`,
       note:
         topicCount > 0
-          ? `${topicCount} topic group(s) are available. A single conversation can create more than one review slice when it is long or shifts topic.`
+          ? `${topicCount} topic group(s) are available. A single conversation can create more than one readable slice when it is long or shifts topic.`
           : "The latest readable slice opens automatically."
     };
   }
 
   return {
-    headline: `${fileCount} readable review slice(s) are available here.`,
+    headline: `${fileCount} readable slice(s) are available here.`,
     note: `${topicCount} topic group(s) are available. The latest readable slice opens automatically.`
   };
 }

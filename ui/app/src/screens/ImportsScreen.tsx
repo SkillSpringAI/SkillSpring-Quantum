@@ -6,6 +6,7 @@ import RunLogPanel from "../components/RunLogPanel";
 import ArchiveNotificationPanel from "../components/ArchiveNotificationPanel";
 import type {
   ImportJobForm,
+  ImportMode,
   ImportSourceSummary,
   ImportSourceVendorSummary,
   ImportVendorChoice,
@@ -34,6 +35,8 @@ import {
   countUnexpectedSkippedFiles,
   runNeedsAttention
 } from "../utils/importTrust";
+
+const IMPORT_FORM_DRAFT_KEY = "skillspring-quantum-import-form-draft";
 
 function makeLogEntry(
   level: RunLogEntry["level"],
@@ -309,13 +312,7 @@ export default function ImportsScreen() {
   const [showImportHistoryDetails, setShowImportHistoryDetails] = useState(false);
   const [showCheckResults, setShowCheckResults] = useState(false);
   const [showRunLog, setShowRunLog] = useState(false);
-  const [form, setForm] = useState<ImportJobForm>({
-    mode: "single_file",
-    expectedVendor: "auto_detect",
-    inputFile: "",
-    inputFolder: "",
-    outputRoot: settings.outputRoot
-  });
+  const [form, setForm] = useState<ImportJobForm>(() => loadImportFormDraft(settings.outputRoot));
 
   const [runState, setRunState] = useState<RunState>("idle");
   const [statusMessage, setStatusMessage] = useState("Ready to inspect or import.");
@@ -504,9 +501,27 @@ export default function ImportsScreen() {
     refreshArchiveNotifications();
   }, [form.outputRoot]);
 
+  useEffect(() => {
+    saveImportFormDraft(form);
+  }, [form]);
+
   function handleOutputRootChange(nextOutputRoot: string) {
     setForm((prev) => ({ ...prev, outputRoot: nextOutputRoot }));
     updateSettings({ outputRoot: nextOutputRoot });
+  }
+
+  function restoreLatestRunContext() {
+    if (!latestRunForNextSteps) {
+      return;
+    }
+
+    setForm(buildFormFromLatestRun(form, latestRunForNextSteps));
+    setSourceSummary(null);
+    setStatusMessage("Latest import path restored. Re-check it if you want to confirm the export again before rerunning.");
+    setLogEntries((prev) => [
+      makeLogEntry("info", "Restored the latest import path into Start Here."),
+      ...prev
+    ]);
   }
 
   useEffect(() => {
@@ -533,6 +548,40 @@ export default function ImportsScreen() {
   const validationCard = buildValidationCard(sourceSummary, form.expectedVendor);
   const showSourceResults = sourceSummary !== null;
   const showFirstUseResultsPlaceholder = !showSourceResults && !showHistoryPanel && !showArchivePanel;
+  const effectiveRunState = deriveVisibleRunState(runState, latestRunForNextSteps ?? null);
+  const effectiveStatusMessage =
+    runState === "idle" && latestRunForNextSteps
+      ? buildPostRunStatusMessage(latestRunForNextSteps, statusMessage)
+      : statusMessage;
+  const statusDetail =
+    latestRunForNextSteps && runState !== "running"
+      ? `Latest run: ${new Date(latestRunForNextSteps.runAt).toLocaleString()} | output ${describeOutputRoot(latestRunForNextSteps.outputRoot)}`
+      : undefined;
+  const statusBadges =
+    latestRunForNextSteps && runState !== "running"
+      ? [
+          latestRunOutcomeSummary ?? "",
+          hasConversationOutputs ? "archive available" : "",
+          hasDatasetOutputs ? "structured view available" : ""
+        ].filter(Boolean)
+      : [];
+  const latestRunFormSummary = latestRunForNextSteps
+    ? {
+        runAt: latestRunForNextSteps.runAt,
+        vendorLabel: formatImportRunVendorLabel(latestRunForNextSteps),
+        path: latestRunForNextSteps.inputPath,
+        outputLabel: describeOutputRoot(latestRunForNextSteps.outputRoot),
+        modeLabel: inferImportModeFromRun(latestRunForNextSteps) === "batch" ? "folder flow" : "file flow"
+      }
+    : null;
+
+  useEffect(() => {
+    if (!shouldHydrateFormFromLatestRun(form, latestRunForNextSteps ?? null, sourceSummary)) {
+      return;
+    }
+
+    setForm(buildFormFromLatestRun(form, latestRunForNextSteps!));
+  }, [form, latestRunForNextSteps, sourceSummary]);
 
   function nextStepSummary(run: ImportRunSummary): string {
     if (run.filesImported === 0) {
@@ -558,8 +607,10 @@ export default function ImportsScreen() {
     <section className="screen-grid imports-layout">
       <ImportForm
         value={form}
+        latestRunSummary={latestRunFormSummary}
         onChange={setForm}
         onOutputRootChange={handleOutputRootChange}
+        onRestoreLatestRun={latestRunForNextSteps ? restoreLatestRunContext : undefined}
         onSubmit={handleSubmit}
         onBrowseSource={handleBrowseSource}
         onBrowseOutput={handleBrowseOutput}
@@ -568,9 +619,63 @@ export default function ImportsScreen() {
       />
 
       <RunStatusPanel
-        state={runState}
-        message={statusMessage}
+        className="workspace-anchor-panel"
+        state={effectiveRunState}
+        message={effectiveStatusMessage}
+        detail={statusDetail}
+        badges={statusBadges}
       />
+
+      {latestRunForNextSteps ? (
+        <div className="panel workspace-anchor-panel">
+          <h2>Next Step</h2>
+          <div className="detail-box follow-up-card">
+            <strong>{nextStepSummary(latestRunForNextSteps)}</strong>
+            <p className="muted">
+              Latest run: {new Date(latestRunForNextSteps.runAt).toLocaleString()} | {latestRunOutcomeSummary}
+            </p>
+            <div className="signal-badge-row">
+              <span className={runNeedsDiagnostics ? "signal-badge warning" : "signal-badge success"}>
+                {runNeedsDiagnostics ? "spot-check next" : "ready to continue"}
+              </span>
+              {hasConversationOutputs ? <span className="signal-badge">archive available</span> : null}
+              {hasDatasetOutputs ? <span className="signal-badge">dataset view ready</span> : null}
+            </div>
+          </div>
+          {latestPackageCompanionSkips > 0 ? (
+            <p className="muted">
+              Package note: {latestPackageCompanionSkips} companion file(s) were expected and were handled through the main import automatically instead of being treated like separate sources.
+            </p>
+          ) : null}
+          <div className="action-bar">
+            {hasConversationOutputs ? (
+              <button className="primary-btn" type="button" onClick={() => setActiveScreen("organized-output")}>
+                Open Readable Archive
+              </button>
+            ) : null}
+            {hasDatasetOutputs ? (
+              <button className="primary-btn" type="button" onClick={() => setActiveScreen("datasets")}>
+                Open Dataset View
+              </button>
+            ) : null}
+            {runNeedsDiagnostics ? (
+              <button className="secondary-btn" type="button" onClick={() => setActiveScreen("diagnostics")}>
+                Open Diagnostics
+              </button>
+            ) : null}
+            {latestArchiveArtifactPath ? (
+              <OpenPathButton className="secondary-btn" targetPath={latestArchiveArtifactPath}>
+                Open Latest Archive File
+              </OpenPathButton>
+            ) : null}
+            {latestDatasetArtifactPath ? (
+              <OpenPathButton className="secondary-btn" targetPath={latestDatasetArtifactPath}>
+                Open Latest Dataset File
+              </OpenPathButton>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       {showArchivePanel ? (
         <ArchiveNotificationPanel
@@ -582,7 +687,7 @@ export default function ImportsScreen() {
         <div className="panel">
           <h2>After Import</h2>
           <p className="muted">
-            Your readable archive updates will appear here after the first successful import.
+            Your latest archive update will appear here after a successful import.
           </p>
         </div>
       )}
@@ -610,7 +715,7 @@ export default function ImportsScreen() {
             <li>Pick the vendor first so Quantum knows which export shape to look for.</li>
             <li>Use the downloaded folder when the export came as a package, not just a single file.</li>
             <li>Run the check first. If it looks good, import from the same path without changing anything.</li>
-            <li>After import, start in Readable Archive. Open Structured View only when you want structured output.</li>
+            <li>After import, start in Readable Archive. Open Dataset View only when you want the structured version.</li>
           </ul>
         ) : null}
       </div>
@@ -681,62 +786,11 @@ export default function ImportsScreen() {
         )}
       </div>
 
-      {latestRunForNextSteps ? (
-        <div className="panel">
-          <h2>Next Step</h2>
-          <div className="detail-box follow-up-card">
-            <strong>{nextStepSummary(latestRunForNextSteps)}</strong>
-            <p className="muted">
-              Latest run: {new Date(latestRunForNextSteps.runAt).toLocaleString()} | {latestRunOutcomeSummary}
-            </p>
-            <div className="signal-badge-row">
-              <span className={runNeedsDiagnostics ? "signal-badge warning" : "signal-badge success"}>
-                {runNeedsDiagnostics ? "review recommended" : "ready to continue"}
-              </span>
-              {hasConversationOutputs ? <span className="signal-badge">archive available</span> : null}
-              {hasDatasetOutputs ? <span className="signal-badge">structured view available</span> : null}
-            </div>
-          </div>
-          {latestPackageCompanionSkips > 0 ? (
-            <p className="muted">
-              Vendor package note: {latestPackageCompanionSkips} companion file(s) were expected and were handled through the main package import instead of being added as separate dataset sources.
-            </p>
-          ) : null}
-          <div className="action-bar">
-            {hasConversationOutputs ? (
-              <button className="primary-btn" type="button" onClick={() => setActiveScreen("organized-output")}>
-                Open Readable Archive
-              </button>
-            ) : null}
-            {hasDatasetOutputs ? (
-              <button className="primary-btn" type="button" onClick={() => setActiveScreen("datasets")}>
-                Open Structured View
-              </button>
-            ) : null}
-            {runNeedsDiagnostics ? (
-              <button className="secondary-btn" type="button" onClick={() => setActiveScreen("diagnostics")}>
-                Check Diagnostics
-              </button>
-            ) : null}
-            {latestArchiveArtifactPath ? (
-              <OpenPathButton className="secondary-btn" targetPath={latestArchiveArtifactPath}>
-                Open Latest Archive File
-              </OpenPathButton>
-            ) : null}
-            {latestDatasetArtifactPath ? (
-              <OpenPathButton className="secondary-btn" targetPath={latestDatasetArtifactPath}>
-                Open Latest Dataset File
-              </OpenPathButton>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
-
       {latestRunForNextSteps && recoveryGuidance.length > 0 ? (
         <div className="panel">
           <h2>Check Before You Move On</h2>
           <p className="muted">
-            This run deserves a closer spot-check before you rely on every output.
+            This run deserves a quick closer look before you rely on every output.
           </p>
           <div className="action-bar">
             <button
@@ -770,7 +824,7 @@ export default function ImportsScreen() {
         {showHistoryPanel ? (
           <>
             <p className="muted">
-              Keep this collapsed unless you want to compare runs, search past imports, or hand a specific result into Find Imports.
+              Leave this tucked away unless you want to compare runs, reopen an older one, or send a specific result into Find Imports.
             </p>
             <div className="action-bar">
               <button
@@ -951,7 +1005,7 @@ export default function ImportsScreen() {
       <div className="panel large">
         <h2>Activity Log</h2>
         <p className="muted">
-          Keep this closed unless you are debugging a failed check or import run.
+          Leave this closed unless a check or import went wrong and you want the step-by-step details.
         </p>
         <div className="action-bar">
           <button className="secondary-btn" type="button" onClick={() => setShowRunLog((value) => !value)}>
@@ -1222,4 +1276,134 @@ function describeOutputRoot(outputRoot: string): string {
   const normalized = outputRoot.replace(/[\\/]+$/, "");
   const segments = normalized.split(/[\\/]/).filter(Boolean);
   return segments[segments.length - 1] ?? outputRoot;
+}
+
+function loadImportFormDraft(outputRoot: string): ImportJobForm {
+  try {
+    const raw = localStorage.getItem(IMPORT_FORM_DRAFT_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<ImportJobForm>;
+      return {
+        mode: parsed.mode === "batch" ? "batch" : "single_file",
+        expectedVendor: isImportVendorChoice(parsed.expectedVendor) ? parsed.expectedVendor : "auto_detect",
+        inputFile: typeof parsed.inputFile === "string" ? parsed.inputFile : "",
+        inputFolder: typeof parsed.inputFolder === "string" ? parsed.inputFolder : "",
+        outputRoot: typeof parsed.outputRoot === "string" && parsed.outputRoot.trim() ? parsed.outputRoot : outputRoot
+      };
+    }
+  } catch {
+    // ignore saved draft errors
+  }
+
+  return {
+    mode: "single_file",
+    expectedVendor: "auto_detect",
+    inputFile: "",
+    inputFolder: "",
+    outputRoot
+  };
+}
+
+function saveImportFormDraft(form: ImportJobForm) {
+  try {
+    localStorage.setItem(IMPORT_FORM_DRAFT_KEY, JSON.stringify(form));
+  } catch {
+    // ignore localStorage errors
+  }
+}
+
+function isImportVendorChoice(value: unknown): value is ImportVendorChoice {
+  return (
+    value === "auto_detect" ||
+    value === "chatgpt" ||
+    value === "claude" ||
+    value === "grok" ||
+    value === "gemini" ||
+    value === "copilot"
+  );
+}
+
+function deriveVisibleRunState(runState: RunState, latestRun: ImportRunSummary | null): RunState {
+  if (runState !== "idle") {
+    return runState;
+  }
+
+  if (!latestRun) {
+    return "idle";
+  }
+
+  if (latestRun.filesImported > 0) {
+    return "success";
+  }
+
+  return "failed";
+}
+
+function shouldHydrateFormFromLatestRun(
+  form: ImportJobForm,
+  latestRun: ImportRunSummary | null,
+  sourceSummary: ImportSourceSummary | null
+): boolean {
+  if (!latestRun || sourceSummary) {
+    return false;
+  }
+
+  if (form.outputRoot !== latestRun.outputRoot) {
+    return false;
+  }
+
+  if (activeImportPath(form) === latestRun.inputPath) {
+    return false;
+  }
+
+  return (
+    form.expectedVendor === "auto_detect" &&
+    form.mode === "single_file" &&
+    !form.inputFolder.trim()
+  );
+}
+
+function buildFormFromLatestRun(currentForm: ImportJobForm, latestRun: ImportRunSummary): ImportJobForm {
+  const mode = inferImportModeFromRun(latestRun);
+  const expectedVendor = inferImportVendorFromRun(latestRun);
+
+  return {
+    mode,
+    expectedVendor,
+    inputFile: mode === "single_file" ? latestRun.inputPath : "",
+    inputFolder: mode === "batch" ? latestRun.inputPath : "",
+    outputRoot: latestRun.outputRoot || currentForm.outputRoot
+  };
+}
+
+function inferImportModeFromRun(latestRun: ImportRunSummary): ImportMode {
+  const normalized = latestRun.inputPath.trim();
+  const lastSegment = normalized.split(/[\\/]/).filter(Boolean).pop() ?? normalized;
+  const looksLikeFile = /\.[A-Za-z0-9]{1,10}$/.test(lastSegment);
+
+  if (looksLikeFile && latestRun.filesDiscovered <= 1 && countPackageCompanionSkips(latestRun) === 0) {
+    return "single_file";
+  }
+
+  return "batch";
+}
+
+function inferImportVendorFromRun(latestRun: ImportRunSummary): ImportVendorChoice {
+  const firstVendor = latestRun.retrievalSummary?.vendorSources[0]?.toLowerCase();
+
+  switch (firstVendor) {
+    case "chatgpt":
+    case "claude":
+    case "grok":
+    case "gemini":
+    case "copilot":
+      return firstVendor;
+    default:
+      return "auto_detect";
+  }
+}
+
+function formatImportRunVendorLabel(latestRun: ImportRunSummary): string {
+  const vendor = inferImportVendorFromRun(latestRun);
+  return formatExpectedVendorLabel(vendor);
 }

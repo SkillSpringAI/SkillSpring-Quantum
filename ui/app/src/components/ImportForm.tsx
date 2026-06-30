@@ -2,8 +2,16 @@ import type { ImportJobForm, ImportMode, ImportVendorChoice } from "../types/imp
 
 interface ImportFormProps {
   value: ImportJobForm;
+  latestRunSummary?: {
+    runAt: string;
+    vendorLabel: string;
+    path: string;
+    outputLabel: string;
+    modeLabel: string;
+  } | null;
   onChange: (next: ImportJobForm) => void;
   onOutputRootChange: (nextOutputRoot: string) => void;
+  onRestoreLatestRun?: () => void;
   onSubmit: () => void;
   onBrowseSource: () => void;
   onBrowseOutput: () => void;
@@ -42,8 +50,32 @@ export default function ImportForm(props: ImportFormProps) {
     <div className="panel">
       <h2>Start Here</h2>
       <p className="muted">
-        Pick the export source, choose the downloaded file or folder, then check it before you import.
+        {props.latestRunSummary
+          ? "Keep going from the latest import below, or switch to a different export when you want to start a fresh check."
+          : "Pick the export source, choose the downloaded file or folder, then check it before you import."}
       </p>
+
+      {props.latestRunSummary ? (
+        <div className="detail-box follow-up-card">
+          <strong>Latest import still available</strong>
+          <p className="muted">
+            {new Date(props.latestRunSummary.runAt).toLocaleString()} | {props.latestRunSummary.vendorLabel} | {props.latestRunSummary.modeLabel}
+          </p>
+          <p className="muted">
+            Path: {props.latestRunSummary.path}
+          </p>
+          <p className="muted">
+            Output: {props.latestRunSummary.outputLabel}
+          </p>
+          {props.onRestoreLatestRun ? (
+            <div className="action-bar">
+              <button className="secondary-btn" type="button" onClick={props.onRestoreLatestRun} disabled={props.disabled}>
+                Use Latest Import Path
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="detail-box">
         <strong>1. Pick export source</strong>

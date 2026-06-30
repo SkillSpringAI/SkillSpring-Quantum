@@ -3,6 +3,9 @@ import type { RunState } from "../types/imports";
 interface RunStatusPanelProps {
   state: RunState;
   message: string;
+  detail?: string;
+  badges?: string[];
+  className?: string;
 }
 
 function formatRunStateLead(state: RunState): string {
@@ -37,7 +40,7 @@ function formatRunStateLabel(state: RunState): string {
 
 export default function RunStatusPanel(props: RunStatusPanelProps) {
   return (
-    <div className="panel">
+    <div className={props.className ? "panel " + props.className : "panel"}>
       <div className="panel-heading-row">
         <h2>Import Status</h2>
         <span className={"status-pill " + props.state}>{formatRunStateLabel(props.state)}</span>
@@ -45,6 +48,16 @@ export default function RunStatusPanel(props: RunStatusPanelProps) {
       <div className="detail-box status-summary-card">
         <strong>{formatRunStateLead(props.state)}</strong>
         <p className="muted">{props.message}</p>
+        {props.detail ? <p className="muted">{props.detail}</p> : null}
+        {props.badges && props.badges.length > 0 ? (
+          <div className="signal-badge-row">
+            {props.badges.map((badge) => (
+              <span key={badge} className="signal-badge">
+                {badge}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   );

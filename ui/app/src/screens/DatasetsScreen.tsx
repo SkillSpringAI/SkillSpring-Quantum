@@ -315,7 +315,7 @@ export default function DatasetsScreen() {
 
   return (
     <section className="screen-grid">
-      <div className="panel">
+      <div className="panel workspace-anchor-panel">
         <div className="panel-heading-row">
           <h2>Datasets</h2>
           <button className="secondary-btn" type="button" onClick={refreshDatasetState} disabled={loadingDatasetState}>
@@ -581,7 +581,7 @@ export default function DatasetsScreen() {
                       <div className="context-tip">
                         <strong>Power-user option</strong>
                         <p className="muted">
-                          If you want to tune privacy handling or review thresholds, open <strong>More Tools</strong> in the sidebar, then choose <strong>Governance</strong>. We still need to keep more of this language out of general-use flows.
+                          If you want to tune privacy handling or threshold rules, open <strong>Extra Tools</strong> in the sidebar, then choose <strong>Governance</strong>. We still need to keep more of this language out of general-use flows.
                         </p>
                       </div>
                     ) : null}

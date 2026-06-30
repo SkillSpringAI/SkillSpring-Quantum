@@ -33,10 +33,10 @@ export default function Sidebar() {
           type="button"
           onClick={() => setAdvancedOpen((current) => !current)}
         >
-          {advancedOpen ? "Hide Advanced Tools" : "Advanced Tools"}
+          {advancedOpen ? "Hide Extra Tools" : "Extra Tools"}
         </button>
         <p className="muted sidebar-note">
-          Deeper diagnostics, governance, review, and database tools live here when the main import, archive, and dataset flow needs closer inspection.
+          Open these only when you want deeper troubleshooting, review, or file-level details beyond the main import, archive, and dataset flow.
         </p>
         {advancedOpen ? (
           <nav className="nav nav-secondary">

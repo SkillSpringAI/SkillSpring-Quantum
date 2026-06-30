@@ -326,6 +326,14 @@ export default function RetrievalScreen() {
     filters.from,
     filters.to
   ].filter(Boolean).length;
+  const retrievalSummaryLead =
+    activeFilterCount > 0
+      ? `${visibleEntries.length} import record(s) match the current filter set across ${vendorsVisible.length} visible vendor group(s).`
+      : `${visibleEntries.length} import record(s) are searchable here across ${vendorsVisible.length} visible vendor group(s).`;
+  const retrievalSummaryNote =
+    totalConversations > 0
+      ? `${totalConversations} conversation(s) and ${totalMessages} message(s) are currently in view.`
+      : "Search records can be smaller slices, so they are not always one-to-one with whole chats.";
 
   function formatDateRange(startedAt?: string, endedAt?: string): string | null {
     if (!startedAt && !endedAt) return null;
@@ -355,7 +363,7 @@ export default function RetrievalScreen() {
 
     return (
     <section className="screen-grid retrieval-layout">
-      <div className="panel large">
+      <div className="panel large workspace-anchor-panel">
         <div className="panel-heading-row">
           <h2>Find Imports</h2>
           <button className="secondary-btn" type="button" onClick={refreshIndex} disabled={loading}>
@@ -366,7 +374,7 @@ export default function RetrievalScreen() {
         {loading ? (
           <>
             <p className="muted">
-              Loading searchable imports, saved searches, and conversation segments for this output folder.
+              Loading searchable imports, saved searches, and related conversation snippets for this output folder.
             </p>
             <p className="muted">
               Quantum is reading the local indexes before this screen decides whether imports are available.
@@ -396,7 +404,7 @@ export default function RetrievalScreen() {
         ) : !indexResult?.latest ? (
           <>
             <p className="muted">
-              No searchable imports are available yet. Start in Imports, run an import, then come back here to find past files by vendor, topic, or date.
+              Nothing is searchable here yet. Run an import first, then come back to find past files by topic, vendor, or date.
             </p>
             <p className="muted">
               Current output root: {describeOutputRoot(settings.outputRoot)}
@@ -409,12 +417,16 @@ export default function RetrievalScreen() {
           </>
         ) : (
           <>
-            <p className="muted">
-              Search imported conversations and files here. Start simple, then open filters only when you need to narrow by status or date.
-            </p>
-            <p className="muted">
-              Current output root: {describeOutputRoot(settings.outputRoot)}
-            </p>
+            <div className="detail-box loaded-state-card">
+              <strong>{retrievalSummaryLead}</strong>
+              <p className="muted">Current output root: {describeOutputRoot(settings.outputRoot)}</p>
+              <p className="muted">{retrievalSummaryNote}</p>
+              <div className="signal-badge-row">
+                <span className="signal-badge success">search ready</span>
+                <span className="signal-badge">{activeFilterCount > 0 ? `${activeFilterCount} active filter(s)` : "no active filters"}</span>
+                <span className="signal-badge">{visibleSegments.length} related segment(s)</span>
+              </div>
+            </div>
             <div className="stats-grid two-col">
               <div className="stat-card">
                 <span className="label">Searchable Imports</span>
@@ -468,7 +480,7 @@ export default function RetrievalScreen() {
 
             <div className="retrieval-filter-toolbar">
               <span className="muted">
-                {activeFilterCount > 0 ? `${activeFilterCount} active filters` : "No active filters"}
+                Start with Search, Vendor, or Topic. Open the extra filters only when you really need them.
               </span>
               <div className="action-bar">
                 <button
@@ -476,10 +488,24 @@ export default function RetrievalScreen() {
                   type="button"
                   onClick={() => setShowAdvancedFilters((current) => !current)}
                 >
-                  {showAdvancedFilters ? "Hide Advanced Filters" : "Show Advanced Filters"}
+                  {showAdvancedFilters ? "Hide Extra Filters" : "Show Extra Filters"}
                 </button>
                 <button className="secondary-btn chip-btn" type="button" onClick={clearFilters}>
                   Clear Filters
+                </button>
+                <button
+                  className="secondary-btn chip-btn"
+                  type="button"
+                  onClick={() => setShowSavedSearches((value) => !value)}
+                >
+                  {showSavedSearches ? "Hide Saved Searches" : "Show Saved Searches"}
+                </button>
+                <button
+                  className="secondary-btn chip-btn"
+                  type="button"
+                  onClick={() => setShowSearchTips((value) => !value)}
+                >
+                  {showSearchTips ? "Hide Tips" : "Show Tips"}
                 </button>
               </div>
             </div>
@@ -564,7 +590,7 @@ export default function RetrievalScreen() {
               </div>
             ) : null}
             <p className="muted">
-              Search records can be smaller review slices, so they are not always one-to-one with whole chats.
+              Search records can be smaller slices, so they are not always one-to-one with whole chats.
             </p>
           </>
         )}
@@ -594,18 +620,15 @@ export default function RetrievalScreen() {
           />
         </label>
         <p className="muted">
-          Optional. Save a useful filter set if you expect to revisit the same group of imports.
+          Optional. Save a filter set only if you expect to come back to the same group of results.
         </p>
         <div className="action-bar">
           <button className="primary-btn" type="button" onClick={handleSaveCurrentView} disabled={!savedViewName.trim()}>
             Save Current Search
           </button>
-          <button className="secondary-btn" type="button" onClick={() => setShowSavedSearches((value) => !value)}>
-            {showSavedSearches ? "Hide Saved Searches" : "Show Saved Searches"}
-          </button>
         </div>
         {!showSavedSearches ? (
-          <p className="muted">Saved searches are optional. Open them only if you want reusable filter presets.</p>
+          <p className="muted">Saved searches are optional. Open them only if you want a reusable shortcut.</p>
         ) : loading ? (
           <p className="muted">Loading saved searches...</p>
         ) : !savedViewsResult?.latest?.views.length ? (
@@ -639,13 +662,8 @@ export default function RetrievalScreen() {
 
       <div className="panel">
         <h2>Search Tips</h2>
-        <div className="action-bar">
-          <button className="secondary-btn" type="button" onClick={() => setShowSearchTips((value) => !value)}>
-            {showSearchTips ? "Hide Tips" : "Show Tips"}
-          </button>
-        </div>
         {!showSearchTips ? (
-          <p className="muted">Keep this tucked away unless you want a quick reminder of how search behaves.</p>
+          <p className="muted">Leave this tucked away unless you want a quick reminder.</p>
         ) : loading ? (
           <p className="muted">Loading search tips...</p>
         ) : !indexResult?.latest ? (
@@ -653,7 +671,7 @@ export default function RetrievalScreen() {
         ) : (
           <>
             <p className="muted">Start with `Search` if you know a title, phrase, or path clue.</p>
-            <p className="muted">Use vendor chips for fast narrowing. Open advanced filters only when date or status actually matters.</p>
+            <p className="muted">Use vendor chips for fast narrowing. Open extra filters only when date or status actually matters.</p>
             <p className="muted">Visible topics: {topicsVisible.slice(0, 6).join(", ") || "none visible"}</p>
             <p className="muted">Search index updated: {new Date(indexResult.latest.generatedAt).toLocaleString()}</p>
           </>
@@ -715,7 +733,7 @@ export default function RetrievalScreen() {
                         type="button"
                         onClick={() => setSavedViewName(detailEntry.titleHints[0] || detailEntry.topicHints[0] || "Saved search")}
                       >
-                        Use As Search Name
+                        Use As Saved Search Name
                       </button>
                       <button className="primary-btn" type="button" onClick={() => revealDesktopPath(detailEntry.filePath)}>
                         Open Source File
@@ -801,7 +819,7 @@ export default function RetrievalScreen() {
           ) : null}
         </div>
         <p className="muted">
-          Segment review is for deeper inspection after you already have the right import selected.
+          Related snippets are for a deeper look after you already have the right import selected.
         </p>
         <div className="action-bar">
           <button className="secondary-btn" type="button" onClick={() => setShowSegmentReview((value) => !value)}>
@@ -809,7 +827,7 @@ export default function RetrievalScreen() {
           </button>
         </div>
         {!showSegmentReview ? (
-          <p className="muted">Leave this closed for a calmer search workflow.</p>
+          <p className="muted">Leave this closed unless you want the deeper segment-level view.</p>
         ) : loading ? (
           <p className="muted">
             Loading conversation segments...

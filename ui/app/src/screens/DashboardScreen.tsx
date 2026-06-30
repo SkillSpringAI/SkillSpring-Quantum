@@ -143,7 +143,7 @@ export default function DashboardScreen() {
             </p>
             {latestConversationCount > 0 ? (
               <p className="muted">
-                {latestConversationCount} conversation(s) | {latestMessageCount} message(s) ready for archive and dataset review.
+                {latestConversationCount} conversation(s) | {latestMessageCount} message(s) ready to open in the archive and dataset view.
               </p>
             ) : null}
             {latestRun.retrievalSummary && latestRun.retrievalSummary.attachmentCount > 0 ? (
@@ -157,8 +157,8 @@ export default function DashboardScreen() {
                 : latestPackageCompanionSkips > 0
                   ? "This run handled a vendor export package cleanly and kept companion files out of the dataset flow."
                 : hasConversationOutputs
-                  ? "This run is ready to review in the readable archive."
-                  : "This run completed and is ready for output review."}
+                  ? "This run is ready to open in the readable archive."
+                  : "This run completed and is ready to open."}
             </p>
             {latestTrustBadges.length > 0 ? (
               <p className="muted">
@@ -173,7 +173,7 @@ export default function DashboardScreen() {
 
       <div className="panel">
         <h2>Main Flow</h2>
-        <p className="muted">Inspect export → import locally → read archive → review datasets → check diagnostics only when needed.</p>
+        <p className="muted">Check the export → import locally → read the archive → open the dataset view → check deeper details only when needed.</p>
       </div>
     </section>
   );
@@ -340,7 +340,7 @@ function summarizeRetrievalIndexOverview(index: ImportRetrievalIndexResult["late
         : `${index.entryCount} search record(s) across ${index.runCount} import run(s) are available here.`,
     note:
       totalConversations > 0
-        ? `${totalMessages} message(s) indexed. Search records may be smaller review slices, so they are not always one-to-one with whole chats.`
+        ? `${totalMessages} message(s) indexed. Search records can be smaller slices, so they are not always one-to-one with whole chats.`
         : `Vendors: ${index.vendorSources.length > 0 ? index.vendorSources.join(", ") : "none yet"}`
   };
 }

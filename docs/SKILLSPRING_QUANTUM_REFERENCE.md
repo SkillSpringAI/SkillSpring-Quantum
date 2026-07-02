@@ -100,6 +100,15 @@ This is narrower than the full internal parser and document-ingestion surface al
 - define a stable diagnostic explanation contract for future local-assistant use without making assistant integration an MVP blocker
 - decide whether archive-only versus archive-plus-dataset import controls are worth exposing after the current dataset clarity work settles
 
+The latest internal pass on July 2, 2026 also clarified an important sequencing point:
+
+- major layout collision issues on the core four-screen flow were resolved well enough that the next work should prioritize beta-legibility, interpretation quality, and first-run clarity over more large layout surgery
+- topic and intent segmentation remain promising deterministic foundations, but they are also a likely future leverage point for a local retrieval assistant or chat-style interface layered on top of Quantum's evidence artifacts
+- parser and retrieval hardening now need an explicit cross-user generalization pass so the current quality does not depend too heavily on the maintainer's own conversation patterns, favorite topics, or recurring vocabulary
+- the next parser-quality bar should be corpus-agnostic behavior across technical, personal-admin, hobby, and mixed-topic exports rather than only stronger performance on today's internal fixtures
+- if a future assistant layer is added, it should refine interpretation of grounded records rather than replace the deterministic import, archive, and dataset spine
+- first-run onboarding may benefit from a short walkthrough or tutorial video that demonstrates the ordinary import -> archive -> dataset path, especially for outside users who would otherwise face too much explanatory text on first contact
+
 ## Internal Coverage Beyond MVP
 
 Quantum already contains internal or experimental coverage that is broader than the first user-facing promise, including:
@@ -128,7 +137,9 @@ This means the current product is no longer just "pipeline wrappers plus file-op
 
 ## Continue Tomorrow
 
-The current UX is improved and materially more honest than earlier builds, but it is still not ready for a first external-user impression without more simplification.
+The current UX is improved, the visible collision regression from the July 2, 2026 pass was resolved, and the ordinary screen sequence is holding together better after a real import.
+
+That means the next phase should be framed less as "repair the shell" and more as "prepare the product for a small outside beta without losing traceability."
 
 The next explicit UX continuation slices are:
 
@@ -141,6 +152,12 @@ The next explicit UX continuation slices are:
 - keep advanced assurance tools contextual and avoid making the ordinary flow feel like a product to be studied
 - run a full manual Electron walkthrough across Imports, Readable Archive, Datasets, Find Imports, and contextual diagnostics, documenting the interaction flow and friction points for the next UI/UX pass
 - after the next internal stabilization pass, run a small outside test-user walkthrough round so the next UX decisions are based on fresh-user behavior instead of maintainer familiarity
+
+The highest-value next slices toward that beta goal are:
+
+1. corpus-agnostic parser and segmentation hardening across more varied user export shapes
+2. user-natural topic/intent interpretation and retrieval labeling improvements grounded in deterministic evidence
+3. first-run import clarity plus a reusable walkthrough or tutorial path for outside beta sessions
 
 ## User and Governance Surface Model
 

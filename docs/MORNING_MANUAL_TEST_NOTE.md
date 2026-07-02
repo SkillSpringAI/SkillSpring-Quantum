@@ -48,6 +48,7 @@ Capture notes screen by screen:
 - where alignment, spacing, or hierarchy makes the next action less obvious
 - where cross-screen handoff is strong
 - where cross-screen handoff is still confusing
+- whether the product would benefit more from a first-use walkthrough video, a guided checklist, or simple in-place UI cues
 
 ## Deliverable
 

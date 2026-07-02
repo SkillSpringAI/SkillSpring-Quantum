@@ -293,14 +293,14 @@ function buildPostRunStatusMessage(run: ImportRunSummary | null, fallbackMessage
   }
 
   if (recoveryPathFiles > 0) {
-    return "Import finished through a recovery path. Spot-check the archive and dataset context before treating the run like a first-class export.";
+    return "Import finished with a fallback path. Spot-check the archive and dataset view before treating this run like a clean standard import.";
   }
 
   if (countPackageCompanionSkips(run) > 0) {
     return "Import finished cleanly. Vendor package companion files were handled automatically, so you can move straight into archive and dataset review.";
   }
 
-  return "Import finished cleanly. Open the readable archive first, then use datasets if you want structured output.";
+  return "Import finished cleanly. Open Readable Archive first, then use Datasets when you want the structured version.";
 }
 
 export default function ImportsScreen() {
@@ -597,7 +597,7 @@ export default function ImportsScreen() {
     }
 
     if (hasConversationOutputs) {
-      return "The import finished cleanly. Open the readable archive first for the easiest review, then open datasets if you want structured output.";
+      return "The import finished cleanly. Start in Readable Archive, then open Datasets if you want the structured version.";
     }
 
     return "The import finished. Open the imported outputs to review what Quantum produced from this run.";
@@ -607,6 +607,7 @@ export default function ImportsScreen() {
     <section className="screen-grid imports-layout">
       <ImportForm
         value={form}
+        importReady={Boolean(sourceSummary?.supportedFiles)}
         latestRunSummary={latestRunFormSummary}
         onChange={setForm}
         onOutputRootChange={handleOutputRootChange}
@@ -695,7 +696,7 @@ export default function ImportsScreen() {
       <div className="panel">
         <h2>Before You Import</h2>
         <p className="muted">
-          Start with the export you actually downloaded. Quantum will check whether this path looks ready before it imports anything.
+          Start with the export you actually downloaded. Check the path first, then import from that same path.
         </p>
         <div className="detail-box flow-summary-card">
           <strong>{buildValidationChecklistLead(sourceSummary, form.expectedVendor)}</strong>
@@ -715,7 +716,7 @@ export default function ImportsScreen() {
             <li>Pick the vendor first so Quantum knows which export shape to look for.</li>
             <li>Use the downloaded folder when the export came as a package, not just a single file.</li>
             <li>Run the check first. If it looks good, import from the same path without changing anything.</li>
-            <li>After import, start in Readable Archive. Open Dataset View only when you want the structured version.</li>
+            <li>After import, start in Readable Archive. Open Datasets only when you want the structured version.</li>
           </ul>
         ) : null}
       </div>
@@ -788,10 +789,10 @@ export default function ImportsScreen() {
 
       {latestRunForNextSteps && recoveryGuidance.length > 0 ? (
         <div className="panel">
-          <h2>Check Before You Move On</h2>
-          <p className="muted">
-            This run deserves a quick closer look before you rely on every output.
-          </p>
+        <h2>Check Before You Move On</h2>
+        <p className="muted">
+            This run deserves a quick spot-check before you rely on every output.
+        </p>
           <div className="action-bar">
             <button
               className="secondary-btn"
@@ -824,7 +825,7 @@ export default function ImportsScreen() {
         {showHistoryPanel ? (
           <>
             <p className="muted">
-              Leave this tucked away unless you want to compare runs, reopen an older one, or send a specific result into Find Imports.
+              Open this only when you want to compare runs, reopen an older one, or send a specific result into Find Imports.
             </p>
             <div className="action-bar">
               <button
@@ -1005,7 +1006,7 @@ export default function ImportsScreen() {
       <div className="panel large">
         <h2>Activity Log</h2>
         <p className="muted">
-          Leave this closed unless a check or import went wrong and you want the step-by-step details.
+          Open this only when a check or import went wrong and you want the step-by-step details.
         </p>
         <div className="action-bar">
           <button className="secondary-btn" type="button" onClick={() => setShowRunLog((value) => !value)}>

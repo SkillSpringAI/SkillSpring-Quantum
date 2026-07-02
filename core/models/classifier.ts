@@ -28,6 +28,18 @@ interface KeywordDomain {
   subjects?: string[];
 }
 
+const SUBJECT_STOP_WORDS = new Set([
+  "a","an","and","are","as","at","be","but","by","can","for","from","get","help","how","i","if","in","into",
+  "is","it","me","my","need","of","on","or","our","please","so","that","the","this","to","us","want","we",
+  "what","when","where","which","why","with","you","your"
+]);
+
+const GENERIC_SUBJECT_TOKENS = new Set([
+  "assistant","chat","conversation","decision","discussion","general","import","issue","message","messages",
+  "plan","planning","problem","question","request","review","summary","task","thing","things","topic","topics",
+  "troubleshooting","update","updates"
+]);
+
 const DOMAIN_KEYWORDS: KeywordDomain[] = [
   {
     label: "Product",
@@ -277,6 +289,11 @@ function buildSummaryLabel(
 }
 
 function detectPreferredSubject(text: string, domain: string): string | null {
+  const extractedPhrase = extractTopicPhrase(text);
+  if (extractedPhrase) {
+    return extractedPhrase;
+  }
+
   const domainEntry = DOMAIN_KEYWORDS.find((entry) => entry.label === domain);
   if (domainEntry?.subjects) {
     for (const subject of domainEntry.subjects) {
@@ -297,6 +314,60 @@ function detectPreferredSubject(text: string, domain: string): string | null {
   if (text.includes("crypto")) return "Crypto Markets";
 
   return null;
+}
+
+function extractTopicPhrase(text: string): string | null {
+  const tokens = text
+    .toLowerCase()
+    .split(/\s+/)
+    .map((token) => token.replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, ""))
+    .filter((token) => token.length >= 3);
+
+  if (tokens.length === 0) {
+    return null;
+  }
+
+  const candidates = new Map<string, number>();
+
+  for (let size = 3; size >= 2; size -= 1) {
+    for (let index = 0; index <= tokens.length - size; index += 1) {
+      const phraseTokens = tokens.slice(index, index + size);
+      if (!isUsefulTopicPhrase(phraseTokens)) {
+        continue;
+      }
+
+      const phrase = phraseTokens.join(" ");
+      const score = size * 10 - index;
+      candidates.set(phrase, Math.max(candidates.get(phrase) ?? 0, score));
+    }
+  }
+
+  if (candidates.size === 0) {
+    return null;
+  }
+
+  const [bestPhrase] = [...candidates.entries()].sort((a, b) => b[1] - a[1])[0];
+  return bestPhrase
+    .split(" ")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function isUsefulTopicPhrase(tokens: string[]): boolean {
+  if (tokens.length < 2) {
+    return false;
+  }
+
+  if (tokens.some((token) => SUBJECT_STOP_WORDS.has(token))) {
+    return false;
+  }
+
+  if (tokens.every((token) => GENERIC_SUBJECT_TOKENS.has(token))) {
+    return false;
+  }
+
+  const strongTokenCount = tokens.filter((token) => token.length >= 5 && !GENERIC_SUBJECT_TOKENS.has(token)).length;
+  return strongTokenCount >= 1;
 }
 
 function normalizeTitleSubject(title: string | undefined): string | null {

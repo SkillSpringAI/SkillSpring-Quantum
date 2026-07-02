@@ -28,9 +28,15 @@ Gemini My Activity HTML remains a narrower fallback route.
 
 ## Continue Tomorrow
 
-The app is now more stable, ChatGPT folder detection is hardened, and the import UX has moved closer to a vendor-first flow, but the ordinary-user surface is still too dense for a first external impression.
+The app is now materially more stable, the major card-collision regression from the July 2, 2026 internal pass was resolved, and the ordinary four-screen workflow is holding together better after a real import.
 
-Tomorrow should continue from these explicit UX slices:
+That changes the immediate goal.
+
+The next milestone is no longer "repair obvious screen breakage."
+
+The next milestone is "make the current MVP surface legible and trustworthy enough for a small outside beta pass."
+
+The next beta-leaning slices should continue from these explicit UX targets:
 
 - keep pushing the vendor-first import flow so users start from `ChatGPT`, `Claude`, `Grok`, `Gemini`, `Copilot`, or `Auto Detect` instead of reasoning about file mode first
 - make export-schema match results more visual and decisive, especially for mismatch, recovery-path, and ready-now states
@@ -41,6 +47,26 @@ Tomorrow should continue from these explicit UX slices:
 - continue calming the visual hierarchy so primary actions stand out and secondary actions stop competing with them
 - keep diagnostics, governance, and other advanced surfaces subordinate and contextual
 - do a dedicated follow-up polish pass on Imports, Find Imports, and Datasets for minor spacing, alignment, and loaded-state clarity issues that are better handled in the UI's next evolution stage
+
+### Beta-readiness next three slices
+
+1. **Corpus-agnostic parser hardening**
+   - Make topic and intent segmentation less dependent on the maintainer's own conversation habits, recurring subjects, or preferred vocabulary.
+   - Prefer user-phrase-led summaries and broader cross-domain examples over narrow hand-tuned labels.
+   - Expand fixture coverage so consumer, admin, hobby, technical, and mixed-topic conversations all pass through the same deterministic pipeline cleanly.
+   - Treat overfitting to today's internal corpus as a beta blocker because it can look strong internally while failing on fresh outside exports.
+
+2. **Retrieval quality and evidence-grounded labeling**
+   - Improve retrieval-facing labels, grouping, ranking, and summary cues so users can find what they mean, not only what the parser named.
+   - Keep retrieval grounded in deterministic evidence artifacts rather than speculative enrichment.
+   - Strengthen the handoff between import metadata, archive context, and dataset context so search results explain why they matched.
+   - Treat a future local agent as a second-pass explainer on top of grounded retrieval, not as a substitute for stable indexing.
+
+3. **First-run beta onboarding**
+   - Keep the current guided import framing, but plan a short walkthrough or tutorial video that demonstrates the ordinary import -> archive -> dataset -> find-imports path with a real example.
+   - Use onboarding to reduce perceived complexity instead of adding more static explanation copy.
+   - Keep advanced/operator surfaces hidden unless directly useful.
+   - Prepare one stable walkthrough path that can be reused in outside beta sessions.
 
 ### Priority 1: Archive usability
 
@@ -87,6 +113,7 @@ Focus:
 - failure and retry guidance
 - exact export-shape honesty in UI and docs
 - schema-match clarity inside the vendor-first import flow
+- parser and retrieval behavior that stays stable across unfamiliar user corpora rather than only the maintainer's own exports
 
 ## Advanced surface rule
 

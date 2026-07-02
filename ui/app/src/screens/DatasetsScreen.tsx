@@ -325,19 +325,19 @@ export default function DatasetsScreen() {
         {loadingDatasetState ? (
           <>
             <p className="muted">
-              Loading dataset output for this output root.
+              Loading datasets for this folder.
             </p>
             <p className="muted">
-              Current output root: {describeOutputRoot(settings.outputRoot)}
+              Current folder: {describeOutputRoot(settings.outputRoot)}
             </p>
           </>
         ) : datasetLoadError ? (
           <>
             <p className="muted">
-              Quantum could not load dataset output for this output root yet.
+              Datasets could not load for this folder yet.
             </p>
             <p className="muted">
-              Current output root: {describeOutputRoot(settings.outputRoot)}
+              Current folder: {describeOutputRoot(settings.outputRoot)}
             </p>
             <p className="muted">{datasetLoadError}</p>
             <div className="action-bar">
@@ -355,7 +355,7 @@ export default function DatasetsScreen() {
               No dataset output yet. Import a conversation export first, then come back here to review it.
             </p>
             <p className="muted">
-              Current output root: {describeOutputRoot(settings.outputRoot)}
+              Current folder: {describeOutputRoot(settings.outputRoot)}
             </p>
             <div className="action-bar">
               <button className="primary-btn" type="button" onClick={() => setActiveScreen("imports")}>
@@ -367,7 +367,7 @@ export default function DatasetsScreen() {
           <>
             <div className="detail-box loaded-state-card">
               <strong>{loadedStateSummary.headline}</strong>
-              <p className="muted">Current output root: {describeOutputRoot(settings.outputRoot)}</p>
+              <p className="muted">Current folder: {describeOutputRoot(settings.outputRoot)}</p>
               <p className="muted">{loadedStateSummary.note}</p>
               <div className="signal-badge-row">
                 <span className={selectedSourceNeedsAttention ? "signal-badge warning" : "signal-badge success"}>
@@ -485,7 +485,7 @@ export default function DatasetsScreen() {
               <div className="detail-box">
                 <strong>Recent Dataset Runs</strong>
                 <p className="muted">
-                  Stay on the selected run unless you intentionally want to compare an older or newer dataset build.
+                  Stay on the selected run unless you intentionally want to compare an older or newer dataset snapshot.
                 </p>
                 <div className="action-bar">
                   <button className="secondary-btn" type="button" onClick={() => setShowRunSwitcher((value) => !value)}>
@@ -581,7 +581,7 @@ export default function DatasetsScreen() {
                       <div className="context-tip">
                         <strong>Power-user option</strong>
                         <p className="muted">
-                          If you want to tune privacy handling or threshold rules, open <strong>Extra Tools</strong> in the sidebar, then choose <strong>Governance</strong>. We still need to keep more of this language out of general-use flows.
+                          If you want to tune privacy handling or threshold rules, open <strong>Extra Tools</strong> in the sidebar, then choose <strong>Governance</strong>.
                         </p>
                       </div>
                     ) : null}

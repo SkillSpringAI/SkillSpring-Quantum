@@ -4,15 +4,19 @@ const SETTINGS_KEY = "skillspring-quantum-settings";
 
 export interface AppSettings {
   outputRoot: string;
+  onboardingDismissed: boolean;
 }
 
 interface SettingsContextValue {
   settings: AppSettings;
   updateSettings: (next: Partial<AppSettings>) => void;
+  dismissOnboarding: () => void;
+  reopenOnboarding: () => void;
 }
 
 const defaultSettings: AppSettings = {
-  outputRoot: "organized_output"
+  outputRoot: "organized_output",
+  onboardingDismissed: false
 };
 
 function loadSettings(): AppSettings {
@@ -21,7 +25,8 @@ function loadSettings(): AppSettings {
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<AppSettings>;
       return {
-        outputRoot: parsed.outputRoot ?? defaultSettings.outputRoot
+        outputRoot: parsed.outputRoot ?? defaultSettings.outputRoot,
+        onboardingDismissed: parsed.onboardingDismissed ?? defaultSettings.onboardingDismissed
       };
     }
   } catch {
@@ -51,8 +56,16 @@ export function SettingsProvider(props: { children: React.ReactNode }) {
     setSettings((current) => ({ ...current, ...next }));
   }
 
+  function dismissOnboarding() {
+    setSettings((current) => ({ ...current, onboardingDismissed: true }));
+  }
+
+  function reopenOnboarding() {
+    setSettings((current) => ({ ...current, onboardingDismissed: false }));
+  }
+
   return (
-    <SettingsContext.Provider value={{ settings, updateSettings }}>
+    <SettingsContext.Provider value={{ settings, updateSettings, dismissOnboarding, reopenOnboarding }}>
       {props.children}
     </SettingsContext.Provider>
   );

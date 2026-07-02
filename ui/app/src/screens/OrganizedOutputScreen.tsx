@@ -174,24 +174,24 @@ export default function OrganizedOutputScreen() {
         {loadingArchiveState ? (
           <>
             <p className="muted">
-              Reading the readable archive for this output root.
+              Loading the readable archive for this folder.
             </p>
             <p className="muted">
-              Current output root: {describeOutputRoot(settings.outputRoot)}
+              Current folder: {describeOutputRoot(settings.outputRoot)}
             </p>
             {latestArchive ? (
               <p className="muted">
-                Latest archive activity was found, so Quantum is still loading the readable conversation list.
+                A recent archive update was found, so the conversation list is still loading.
               </p>
             ) : null}
           </>
         ) : archiveLoadError ? (
           <>
             <p className="muted">
-              Quantum could not load the readable archive for this output root yet.
+              Readable Archive could not load for this folder yet.
             </p>
             <p className="muted">
-              Current output root: {describeOutputRoot(settings.outputRoot)}
+              Current folder: {describeOutputRoot(settings.outputRoot)}
             </p>
             <p className="muted">{archiveLoadError}</p>
             <div className="action-bar">
@@ -209,11 +209,11 @@ export default function OrganizedOutputScreen() {
               No readable archive yet. Import a conversation export first, then come back here to read it.
             </p>
             <p className="muted">
-              Current output root: {describeOutputRoot(settings.outputRoot)}
+              Current folder: {describeOutputRoot(settings.outputRoot)}
             </p>
             {latestArchive ? (
               <p className="muted">
-                Quantum did find recent archive activity for this root, but no readable topic folders were available to open yet.
+                A recent archive update exists here, but no readable topic folders were available to open yet.
               </p>
             ) : null}
             <div className="action-bar">
@@ -226,7 +226,7 @@ export default function OrganizedOutputScreen() {
           <>
             <div className="detail-box loaded-state-card">
               <strong>{archiveSummary.headline}</strong>
-              <p className="muted">Current output root: {describeOutputRoot(settings.outputRoot)}</p>
+              <p className="muted">Current folder: {describeOutputRoot(settings.outputRoot)}</p>
               <p className="muted">{archiveSummary.note}</p>
               <div className="signal-badge-row">
                 <span className="signal-badge success">archive loaded</span>
@@ -245,7 +245,7 @@ export default function OrganizedOutputScreen() {
             {showArchiveHelp ? (
               <ul className="list">
                 <li>Use search to narrow by topic, title, source, or trust clues.</li>
-                <li>Use this screen when you want the easiest human-readable view of imported conversations.</li>
+                <li>Use this screen when you want the easiest readable view of imported conversations.</li>
                 <li>Preserved attachments and dataset handoff live in the selected-file pane.</li>
               </ul>
             ) : null}
@@ -262,7 +262,7 @@ export default function OrganizedOutputScreen() {
         ) : (
           <>
             <p className="muted">
-              These summaries help you verify whether linked files or uploaded blobs were preserved alongside the readable archive.
+              These summaries help you confirm whether linked files or uploaded blobs were preserved with the readable archive.
             </p>
             <div className="stats-grid two-col">
               {attachmentSummaries.map((summary) => (

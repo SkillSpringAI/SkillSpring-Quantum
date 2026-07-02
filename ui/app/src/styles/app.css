@@ -48,7 +48,7 @@ p {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: 240px minmax(0, 1fr);
   min-height: 100vh;
 }
 
@@ -60,6 +60,11 @@ p {
 
 .main-area {
   padding: 28px;
+  min-width: 0;
+}
+
+.screen-area {
+  min-width: 0;
 }
 
 .topbar {
@@ -73,6 +78,7 @@ p {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .status-pill {
@@ -194,7 +200,7 @@ select:focus-visible,
 
 .screen-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
 }
 
@@ -205,14 +211,12 @@ select:focus-visible,
 }
 
 .workspace-anchor-panel {
-  position: sticky;
-  top: 20px;
-  z-index: 2;
+  position: static;
 }
 
 .governance-grid {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 320px minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
@@ -229,6 +233,7 @@ select:focus-visible,
   border-radius: 18px;
   padding: 20px;
   box-shadow: var(--shadow);
+  min-width: 0;
 }
 
 .panel-heading-row {
@@ -258,6 +263,10 @@ select:focus-visible,
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-top: 14px;
+}
+
+.onboarding-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .stat-card {
@@ -693,6 +702,17 @@ select {
   align-items: start;
 }
 
+.screen-grid > *,
+.governance-grid > *,
+.markdown-archive-grid > *,
+.import-history-grid > *,
+.stats-grid > *,
+.choice-grid > *,
+.history-filter-grid > *,
+.artifact-handoff-grid > * {
+  min-width: 0;
+}
+
 .history-filter-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(160px, 1fr));
@@ -727,11 +747,13 @@ select {
 
 .archive-file-meta {
   line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .archive-list-badges {
   margin-top: 4px;
   line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .archive-detail-grid {
@@ -792,6 +814,37 @@ select {
   color: var(--danger);
 }
 
+.first-run-guide-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(4, 8, 18, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.first-run-guide {
+  width: min(960px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+}
+
+.import-action-bar {
+  align-items: center;
+}
+
+.panel p,
+.detail-box p,
+.stat-card p,
+.collection-item,
+.signal-badge,
+.status-pill {
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 1200px) {
   .app-shell {
     grid-template-columns: 220px 1fr;
@@ -829,6 +882,7 @@ select {
 
   .stats-grid,
   .stats-grid.two-col,
+  .onboarding-grid,
   .history-filter-grid,
   .artifact-handoff-grid {
     grid-template-columns: 1fr;

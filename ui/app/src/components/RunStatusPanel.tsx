@@ -11,11 +11,11 @@ interface RunStatusPanelProps {
 function formatRunStateLead(state: RunState): string {
   switch (state) {
     case "idle":
-      return "Pick an export, run the check, then import from the same path when it looks right.";
+      return "Pick an export, check it first, then import from the same path when it looks right.";
     case "running":
-      return "Quantum is checking or importing this export now.";
+      return "Checking or importing this export now.";
     case "success":
-      return "The latest import finished. Use the next-step card to continue into Archive or Structured View.";
+      return "The latest import finished. Use the next step card to continue into Readable Archive or Datasets.";
     case "failed":
       return "The latest import needs attention before you rely on the output.";
     default:

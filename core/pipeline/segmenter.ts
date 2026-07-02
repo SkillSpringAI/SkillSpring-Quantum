@@ -1,5 +1,5 @@
 import type { Conversation, ConversationMessage } from "../parser/types.js";
-import { normalizeTopic } from "./topicNormalizer.js";
+import { formatNormalizedTopicLabel, normalizeTopic } from "./topicNormalizer.js";
 import type { LocalIndexState } from "../index/state.js";
 import {
   classifyMessages,
@@ -226,7 +226,13 @@ function buildSegment(
   const inferred = inferRawTopic(messages);
   const normalized = normalizeTopic(inferred.rawTopic, index);
   const classified = classifyMessages(conversation.title, messages);
-  const summaryLabel = classified?.summaryLabel;
+  const summaryLabel = buildDeterministicSummaryLabel(
+    classified?.summaryLabel,
+    classified?.intent,
+    normalized.normalizedTopic,
+    normalized.rawTopic,
+    conversation.title
+  );
 
   return {
     conversationId: conversation.id,
@@ -249,4 +255,99 @@ function buildSegment(
     endIndex,
     messages
   };
+}
+
+const GENERIC_SUMMARY_LABELS = new Set([
+  "Troubleshooting",
+  "Planning",
+  "Decision",
+  "Review",
+  "Research",
+  "Implementation",
+  "Request",
+  "How-To",
+  "Discussion",
+  "General Discussion"
+]);
+
+function buildDeterministicSummaryLabel(
+  classifierSummaryLabel: string | undefined,
+  intent: SegmentIntentLabel | undefined,
+  normalizedTopic: string,
+  rawTopic: string,
+  title: string | undefined
+): string {
+  const trimmedClassifier = classifierSummaryLabel?.trim();
+  if (trimmedClassifier && !GENERIC_SUMMARY_LABELS.has(trimmedClassifier)) {
+    return trimmedClassifier;
+  }
+
+  const topicLabel = pickTopicDisplayLabel(normalizedTopic, rawTopic, title);
+  if (!topicLabel) {
+    return trimmedClassifier || "General Discussion";
+  }
+
+  const suffix = intentToDisplaySuffix(intent);
+  if (!suffix) {
+    return topicLabel;
+  }
+
+  if (topicLabel.endsWith(suffix)) {
+    return topicLabel;
+  }
+
+  return `${topicLabel} ${suffix}`;
+}
+
+function pickTopicDisplayLabel(
+  normalizedTopic: string,
+  rawTopic: string,
+  title: string | undefined
+): string | null {
+  if (normalizedTopic && normalizedTopic !== "general") {
+    return formatNormalizedTopicLabel(normalizedTopic);
+  }
+
+  const cleanedRaw = rawTopic
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (cleanedRaw && cleanedRaw !== "general") {
+    return cleanedRaw
+      .split(" ")
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  }
+
+  const trimmedTitle = title?.trim();
+  if (trimmedTitle && !/^(new chat|untitled|conversation|chat)$/i.test(trimmedTitle)) {
+    return trimmedTitle.length > 48 ? trimmedTitle.slice(0, 48).trim() : trimmedTitle;
+  }
+
+  return null;
+}
+
+function intentToDisplaySuffix(intent: SegmentIntentLabel | undefined): string {
+  switch (intent) {
+    case "troubleshooting":
+      return "Troubleshooting";
+    case "planning":
+      return "Planning";
+    case "decision":
+      return "Decision";
+    case "review":
+      return "Review";
+    case "research":
+      return "Research";
+    case "implementation":
+      return "Implementation";
+    case "request":
+      return "Request";
+    case "explanation":
+      return "How-To";
+    default:
+      return "Discussion";
+  }
 }

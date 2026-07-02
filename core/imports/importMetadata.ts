@@ -3,6 +3,7 @@ import type { ConversationParserKind, DetectedConversationParse } from "../parse
 import { detectAndParseConversationExport } from "../parser/index.js";
 import type { Conversation } from "../parser/types.js";
 import { segmentConversation } from "../pipeline/segmenter.js";
+import { formatNormalizedTopicLabel } from "../pipeline/topicNormalizer.js";
 import type { ImportSourceKind, ImportRunFileResult } from "./sourceIntake.js";
 
 export type ImportSupportTier =
@@ -137,7 +138,7 @@ function summarizeSegmentTopicHint(
   }
 
   if (segment.topic && segment.topic !== "general") {
-    return segment.topic.replace(/_/g, " ").trim();
+    return formatNormalizedTopicLabel(segment.topic).trim();
   }
 
   const raw = segment.rawTopic?.trim();

@@ -2,6 +2,7 @@ import type { ImportJobForm, ImportMode, ImportVendorChoice } from "../types/imp
 
 interface ImportFormProps {
   value: ImportJobForm;
+  importReady?: boolean;
   latestRunSummary?: {
     runAt: string;
     vendorLabel: string;
@@ -95,8 +96,15 @@ export default function ImportForm(props: ImportFormProps) {
         <p className="muted">{vendorConfig.guidance}</p>
       </div>
 
+      <div className="detail-box">
+        <strong>2. Choose the downloaded file or folder</strong>
+        <p className="muted">
+          Use the exact export you downloaded, then keep the same path through check and import.
+        </p>
+      </div>
+
       <label className="form-label">
-        File or folder
+        File or folder mode
         <select
           className="text-input"
           value={mode}
@@ -155,10 +163,17 @@ export default function ImportForm(props: ImportFormProps) {
           <button className="primary-btn" type="button" onClick={props.onBrowseOutput} disabled={props.disabled}>
             Browse
           </button>
-        </div>
-      </label>
+          </div>
+        </label>
 
-      <div className="action-bar">
+      <div className="detail-box follow-up-card">
+        <strong>3. Check first, then import from the same path</strong>
+        <p className="muted">
+          `Check This Export` should be the normal first action. `Run Import` becomes the next step after Quantum confirms the path looks usable.
+        </p>
+      </div>
+
+      <div className="action-bar import-action-bar">
         <button
           className="primary-btn"
           type="button"
@@ -168,10 +183,10 @@ export default function ImportForm(props: ImportFormProps) {
           Check This Export
         </button>
         <button
-          className="primary-btn"
+          className={props.importReady ? "primary-btn" : "secondary-btn"}
           type="button"
           onClick={props.onSubmit}
-          disabled={props.disabled}
+          disabled={props.disabled || !props.importReady}
         >
           Run Import
         </button>

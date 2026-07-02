@@ -374,22 +374,22 @@ export default function RetrievalScreen() {
         {loading ? (
           <>
             <p className="muted">
-              Loading searchable imports, saved searches, and related conversation snippets for this output folder.
+              Loading searchable imports, saved searches, and related conversation snippets for this folder.
             </p>
             <p className="muted">
-              Quantum is reading the local indexes before this screen decides whether imports are available.
+              Reading the local indexes for this output.
             </p>
             <p className="muted">
-              Current output root: {describeOutputRoot(settings.outputRoot)}
+              Current folder: {describeOutputRoot(settings.outputRoot)}
             </p>
           </>
         ) : loadError ? (
           <>
             <p className="muted">
-              Quantum could not finish loading Find Imports for this output root.
+              Find Imports could not finish loading for this folder.
             </p>
             <p className="muted">
-              Current output root: {describeOutputRoot(settings.outputRoot)}
+              Current folder: {describeOutputRoot(settings.outputRoot)}
             </p>
             <p className="muted">{loadError}</p>
             <div className="action-bar">
@@ -407,7 +407,7 @@ export default function RetrievalScreen() {
               Nothing is searchable here yet. Run an import first, then come back to find past files by topic, vendor, or date.
             </p>
             <p className="muted">
-              Current output root: {describeOutputRoot(settings.outputRoot)}
+              Current folder: {describeOutputRoot(settings.outputRoot)}
             </p>
             <div className="action-bar">
               <button className="primary-btn" type="button" onClick={() => setActiveScreen("imports")}>
@@ -419,7 +419,7 @@ export default function RetrievalScreen() {
           <>
             <div className="detail-box loaded-state-card">
               <strong>{retrievalSummaryLead}</strong>
-              <p className="muted">Current output root: {describeOutputRoot(settings.outputRoot)}</p>
+              <p className="muted">Current folder: {describeOutputRoot(settings.outputRoot)}</p>
               <p className="muted">{retrievalSummaryNote}</p>
               <div className="signal-badge-row">
                 <span className="signal-badge success">search ready</span>
@@ -480,7 +480,7 @@ export default function RetrievalScreen() {
 
             <div className="retrieval-filter-toolbar">
               <span className="muted">
-                Start with Search, Vendor, or Topic. Open the extra filters only when you really need them.
+                Start with Search, Vendor, or Topic. Open the extra filters only when you need them.
               </span>
               <div className="action-bar">
                 <button
@@ -663,7 +663,7 @@ export default function RetrievalScreen() {
       <div className="panel">
         <h2>Search Tips</h2>
         {!showSearchTips ? (
-          <p className="muted">Leave this tucked away unless you want a quick reminder.</p>
+          <p className="muted">Open this only when you want a quick reminder.</p>
         ) : loading ? (
           <p className="muted">Loading search tips...</p>
         ) : !indexResult?.latest ? (
@@ -827,7 +827,7 @@ export default function RetrievalScreen() {
           </button>
         </div>
         {!showSegmentReview ? (
-          <p className="muted">Leave this closed unless you want the deeper segment-level view.</p>
+          <p className="muted">Open this only when you want the deeper segment-level view.</p>
         ) : loading ? (
           <p className="muted">
             Loading conversation segments...

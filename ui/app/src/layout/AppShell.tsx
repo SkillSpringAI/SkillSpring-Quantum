@@ -12,6 +12,7 @@ import OrganizedOutputScreen from "../screens/OrganizedOutputScreen";
 import DatasetsScreen from "../screens/DatasetsScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import { useNavigation } from "../state/navigationContext";
+import FirstRunGuide from "../components/FirstRunGuide";
 
 function ScreenRouter() {
   const { activeScreen } = useNavigation();
@@ -60,6 +61,7 @@ export default function AppShell() {
           </ScreenErrorBoundary>
         </div>
       </main>
+      <FirstRunGuide />
     </div>
   );
 }

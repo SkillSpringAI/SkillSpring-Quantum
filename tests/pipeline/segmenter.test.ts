@@ -12,5 +12,6 @@ assert.ok(segments[0].messages.length >= 2, "Expected segment to contain message
 assert.ok(typeof segments[0].topic === "string", "Expected topic string");
 assert.ok(typeof segments[0].summaryLabel === "string", "Expected segment to include a readable summary label");
 assert.ok(typeof segments[0].intent === "string", "Expected segment to include an intent label");
+assert.ok(!segments[0].summaryLabel?.includes("_"), "Expected summary label to avoid raw canonical snake_case");
 
 console.log("segmenter.test.ts passed");

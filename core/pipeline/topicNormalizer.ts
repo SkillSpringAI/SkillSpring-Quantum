@@ -11,6 +11,16 @@ export interface NormalizedTopicResult {
   matchedKeywords: string[];
 }
 
+const TOPIC_LABEL_OVERRIDES: Record<string, string> = {
+  docker_networking: "Docker Networking",
+  ci_cd: "CI/CD",
+  typescript_node: "TypeScript and Node",
+  python_backend: "Python Backend",
+  database_sql: "Database and SQL",
+  api_integration: "API Integration",
+  ai_systems: "AI Systems"
+};
+
 function normalizeText(input: string): string {
   return input.toLowerCase();
 }
@@ -23,6 +33,25 @@ function fallbackNormalize(rawTopic: string): string {
     .replace(/\s+/g, "_")
     .replace(/^_+|_+$/g, "")
     .slice(0, 60) || "general";
+}
+
+export function formatNormalizedTopicLabel(topic: string): string {
+  const normalized = topic.trim().toLowerCase();
+  if (!normalized) {
+    return "General";
+  }
+
+  const override = TOPIC_LABEL_OVERRIDES[normalized];
+  if (override) {
+    return override;
+  }
+
+  return normalized
+    .replace(/[_-]+/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 export function normalizeTopic(rawTopic: string, index?: LocalIndexState): NormalizedTopicResult {

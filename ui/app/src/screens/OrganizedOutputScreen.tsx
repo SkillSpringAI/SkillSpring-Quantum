@@ -11,10 +11,12 @@ import { loadArchiveNotifications } from "../services/archiveNotificationsBridge
 import { loadMarkdownArchive } from "../services/markdownArchiveBridge";
 import { revealDesktopPath } from "../services/pathBridge";
 import { useNavigation } from "../state/navigationContext";
+import { useAgentContext } from "../state/agentContext";
 import { useSettings } from "../state/settingsContext";
 
 export default function OrganizedOutputScreen() {
   const { setActiveScreen } = useNavigation();
+  const { setCurrentArtifact } = useAgentContext();
   const { settings } = useSettings();
   const [loadingArchiveState, setLoadingArchiveState] = useState(true);
   const [loadingSelectedContent, setLoadingSelectedContent] = useState(false);
@@ -150,6 +152,58 @@ export default function OrganizedOutputScreen() {
       cancelled = true;
     };
   }, [selectedFile?.path, content, loadingArchiveState, loadingSelectedContent]);
+
+  useEffect(() => {
+    if (selectedFile) {
+      setCurrentArtifact({
+        screen: "organized-output",
+        kind: "archive_file",
+        title: selectedFile.title || selectedFile.path.split(/[\\/]/).pop() || "Selected archive file",
+        path: selectedFile.path,
+        summary: selectedFile.previewText || selectedFile.topic || "Readable archive file currently in focus.",
+        details: [
+          selectedFile.source ? `source ${selectedFile.source}` : "",
+          selectedFile.topic ? `topic ${selectedFile.topic}` : "",
+          selectedFile.createdAt ? `conversation date ${new Date(selectedFile.createdAt).toLocaleString()}` : "",
+          selectedFile.attachments?.length ? `${selectedFile.attachments.length} attachment reference(s)` : ""
+        ].filter(Boolean)
+      });
+      return;
+    }
+
+    if (topics.length > 0) {
+      setCurrentArtifact({
+        screen: "organized-output",
+        kind: "screen",
+        title: "Readable Archive",
+        summary: `${topics.length} topic group(s) and ${archiveFileCount} readable file(s) are available in this folder.`,
+        details: [
+          `${archiveConversationCount} conversation(s) represented`,
+          `current folder ${describeOutputRoot(settings.outputRoot)}`
+        ]
+      });
+      return;
+    }
+
+    setCurrentArtifact({
+      screen: "organized-output",
+      kind: "screen",
+      title: "Readable Archive",
+      summary: "Readable archive state for the current output folder.",
+      details: [`current folder ${describeOutputRoot(settings.outputRoot)}`]
+    });
+
+    return () => {
+      setCurrentArtifact(null);
+    };
+  }, [
+    selectedFile,
+    topics,
+    archiveFileCount,
+    archiveConversationCount,
+    settings.outputRoot,
+    setCurrentArtifact
+  ]);
 
   const archiveFileCount = topics.reduce((sum, topic) => sum + topic.files.length, 0);
   const archiveConversationCount = countArchiveConversations(topics);

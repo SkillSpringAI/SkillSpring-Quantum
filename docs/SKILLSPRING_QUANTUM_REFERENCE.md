@@ -109,6 +109,16 @@ The latest internal pass on July 2, 2026 also clarified an important sequencing 
 - if a future assistant layer is added, it should refine interpretation of grounded records rather than replace the deterministic import, archive, and dataset spine
 - first-run onboarding may benefit from a short walkthrough or tutorial video that demonstrates the ordinary import -> archive -> dataset path, especially for outside users who would otherwise face too much explanatory text on first contact
 
+As of July 4, 2026, the repo also contains an initial local-agent package candidate under `skillspring-quantum-agent/`.
+
+That package fits the intended assistant interpretation surface well, but it should be integrated carefully:
+
+- first as a local backend and contextual explainer
+- then as a lightweight UI helper attached to the existing screens
+- only later, if warranted, as a broader chat-style retrieval surface
+
+It should not become a competing primary workflow or a reason to make Quantum's core import/review loop depend on model availability.
+
 ## Internal Coverage Beyond MVP
 
 Quantum already contains internal or experimental coverage that is broader than the first user-facing promise, including:
@@ -168,6 +178,8 @@ Quantum should maintain three distinct surfaces:
 3. **Future assistant interpretation surface**: evidence-backed access that lets a local assistant explain outcomes and recovery options without bypassing Quantum's rules or inventing conclusions.
 
 The general-user surface is the MVP priority. The advanced surface remains real product capability but should not dominate ordinary navigation. The assistant surface is a future integration contract, not a reason to delay the standalone product.
+
+The newly added local-agent package should be treated as the first serious implementation candidate for that assistant surface. The working integration note is: `docs/LOCAL_AGENT_INTEGRATION_PLAN_2026-07-04.md`.
 
 ## Adjacent Project Signals
 

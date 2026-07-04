@@ -1,6 +1,6 @@
 const path = require("node:path");
 const { app, BrowserWindow } = require("electron");
-const { registerIpc } = require("./ipc/registerIpc.cjs");
+const { registerIpc, shutdownAgent } = require("./ipc/registerIpc.cjs");
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -51,4 +51,8 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
+});
+
+app.on("before-quit", () => {
+  void shutdownAgent();
 });

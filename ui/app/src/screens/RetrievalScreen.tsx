@@ -24,6 +24,7 @@ import type {
   SegmentRetrievalIndexResult
 } from "../types/segmentRetrievalIndex";
 import { useNavigation } from "../state/navigationContext";
+import { useAgentContext } from "../state/agentContext";
 import { useSettings } from "../state/settingsContext";
 
 type RetrievalFilters = RetrievalSavedViewFilters;
@@ -49,6 +50,7 @@ function formatEntryKindLabel(kind: string): string {
 
 export default function RetrievalScreen() {
   const { retrievalIntent, clearRetrievalIntent, setActiveScreen } = useNavigation();
+  const { setCurrentArtifact } = useAgentContext();
   const { settings } = useSettings();
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showSavedSearches, setShowSavedSearches] = useState(false);
@@ -334,6 +336,47 @@ export default function RetrievalScreen() {
     totalConversations > 0
       ? `${totalConversations} conversation(s) and ${totalMessages} message(s) are currently in view.`
       : "Search records can be smaller slices, so they are not always one-to-one with whole chats.";
+
+  useEffect(() => {
+    if (detailEntry || detailSegment) {
+      setCurrentArtifact({
+        screen: "retrieval",
+        kind: "retrieval_result",
+        title:
+          detailEntry?.titleHints?.[0] ||
+          detailSegment?.summaryLabel ||
+          detailSegment?.topic ||
+          "Retrieval result",
+        path: detailEntry?.filePath,
+        summary:
+          detailSegment?.summaryLabel ||
+          detailEntry?.message ||
+          "Current retrieval result in focus.",
+        details: [
+          detailEntry?.vendorSources?.length ? `vendor ${detailEntry.vendorSources.join(", ")}` : "",
+          detailEntry?.topicHints?.[0] ? `topic ${detailEntry.topicHints[0]}` : "",
+          detailSegment?.intent ? `intent ${detailSegment.intent}` : "",
+          detailSegment?.importance ? `importance ${detailSegment.importance}` : ""
+        ].filter(Boolean)
+      });
+      return;
+    }
+
+    setCurrentArtifact({
+      screen: "retrieval",
+      kind: "screen",
+      title: "Find Imports",
+      summary: retrievalSummaryLead,
+      details: [retrievalSummaryNote, `current folder ${describeOutputRoot(settings.outputRoot)}`]
+    });
+  }, [
+    detailEntry,
+    detailSegment,
+    retrievalSummaryLead,
+    retrievalSummaryNote,
+    settings.outputRoot,
+    setCurrentArtifact
+  ]);
 
   function formatDateRange(startedAt?: string, endedAt?: string): string | null {
     if (!startedAt && !endedAt) return null;

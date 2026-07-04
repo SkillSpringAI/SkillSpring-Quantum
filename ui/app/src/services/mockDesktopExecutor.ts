@@ -23,7 +23,14 @@ import type {
   SaveRetrievalViewPayload,
   DeleteRetrievalViewPayload,
   OpenPathPayload,
-  DatasetLatestRunPayload
+  DatasetLatestRunPayload,
+  AgentStartPayload,
+  AgentStopPayload,
+  AgentHealthPayload,
+  AgentChatPayload,
+  AgentCreateSessionPayload,
+  AgentListSessionsPayload,
+  AgentIndexPayload
 } from "../types/bridge";
 
 import type {
@@ -57,6 +64,34 @@ export async function executeMockDesktopCommand(
 
   if (bridge) {
     switch (command) {
+      case "agent.start": {
+        const p = payload as AgentStartPayload;
+        return fromBridge(await bridge.agent.start(p.outputRoot, p.port));
+      }
+      case "agent.stop": {
+        const p = payload as AgentStopPayload;
+        return fromBridge(await bridge.agent.stop(p.port));
+      }
+      case "agent.health": {
+        const p = payload as AgentHealthPayload;
+        return fromBridge(await bridge.agent.health(p.outputRoot, p.port));
+      }
+      case "agent.chat": {
+        const p = payload as AgentChatPayload;
+        return fromBridge(await bridge.agent.chat(p.outputRoot, p.sessionId, p.message, p.systemPrompt, p.port));
+      }
+      case "agent.sessions.list": {
+        const p = payload as AgentListSessionsPayload;
+        return fromBridge(await bridge.agent.listSessions(p.outputRoot, p.port));
+      }
+      case "agent.sessions.create": {
+        const p = payload as AgentCreateSessionPayload;
+        return fromBridge(await bridge.agent.createSession(p.outputRoot, p.title, p.port));
+      }
+      case "agent.index": {
+        const p = payload as AgentIndexPayload;
+        return fromBridge(await bridge.agent.index(p.outputRoot, p.port));
+      }
       case "dialog.pickFile":
         return fromBridge(await bridge.dialogs.pickFile());
       case "dialog.pickFolder":
@@ -191,6 +226,67 @@ export async function executeMockDesktopCommand(
   }
 
   switch (command) {
+    case "agent.start": {
+      const p = payload as AgentStartPayload;
+      return ok(command, {
+        running: false,
+        serverReachable: false,
+        outputRoot: p.outputRoot,
+        port: p.port ?? 5678,
+        prerequisitesOk: false,
+        summary: "Mock desktop bridge only. Launch through Electron for the local assistant."
+      }, "Mock local agent start returned.");
+    }
+
+    case "agent.stop":
+      return ok(command, { stopped: true, running: false, port: 5678 }, "Mock local agent stop returned.");
+
+    case "agent.health": {
+      const p = payload as AgentHealthPayload;
+      return ok(command, {
+        running: false,
+        serverReachable: false,
+        outputRoot: p.outputRoot,
+        port: p.port ?? 5678,
+        prerequisitesOk: false,
+        summary: "Mock desktop bridge only. Launch through Electron for the local assistant."
+      }, "Mock local agent health returned.");
+    }
+
+    case "agent.sessions.list":
+      return ok(command, { sessions: [] }, "Mock local agent sessions returned.");
+
+    case "agent.sessions.create": {
+      const p = payload as AgentCreateSessionPayload;
+      return ok(command, {
+        session: {
+          id: "mock-agent-session",
+          title: p.title ?? "Ask Quantum",
+          messages: [],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      }, "Mock local agent session created.");
+    }
+
+    case "agent.chat": {
+      const p = payload as AgentChatPayload;
+      return ok(command, {
+        session_id: p.sessionId ?? "mock-agent-session",
+        response: `Mock Ask Quantum response for: ${p.message}`,
+        sources: [],
+        model: "mock-local-agent"
+      }, "Mock local agent response returned.");
+    }
+
+    case "agent.index": {
+      const p = payload as AgentIndexPayload;
+      return ok(command, {
+        outputRoot: p.outputRoot,
+        status: "mock-indexed"
+      }, "Mock local agent indexing returned.");
+    }
+
     case "dialog.pickFile":
     case "dialog.pickFolder":
       return ok(command, { canceled: true, path: null }, "Mock dialog returned no path.");

@@ -1,0 +1,79 @@
+{
+  "$schema": "./llm.config.schema.json",
+  "version": "1.0.0",
+  "default_provider": "ollama",
+  "providers": {
+    "ollama": {
+      "enabled": true,
+      "base_url": "http://localhost:11434",
+      "default_model": "llama3.2",
+      "available_models": [
+        "llama3.2",
+        "llama3.1",
+        "mistral",
+        "mixtral",
+        "codellama",
+        "phi4",
+        "gemma2",
+        "qwen2.5"
+      ],
+      "chat_endpoint": "/api/chat",
+      "generate_endpoint": "/api/generate",
+      "embeddings_endpoint": "/api/embed",
+      "request_timeout_ms": 120000,
+      "max_retries": 3,
+      "retry_delay_ms": 1000,
+      "context_window": 131072,
+      "default_options": {
+        "temperature": 0.7,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_predict": 2048
+      }
+    },
+    "lmstudio": {
+      "enabled": false,
+      "base_url": "http://localhost:1234",
+      "default_model": "local-model",
+      "available_models": ["local-model"],
+      "chat_endpoint": "/v1/chat/completions",
+      "embeddings_endpoint": "/v1/embeddings",
+      "request_timeout_ms": 120000,
+      "max_retries": 3,
+      "retry_delay_ms": 1000,
+      "context_window": 8192,
+      "default_options": {
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "llamafile": {
+      "enabled": false,
+      "base_url": "http://localhost:8080",
+      "default_model": "local",
+      "available_models": ["local"],
+      "chat_endpoint": "/v1/chat/completions",
+      "embeddings_endpoint": "/v1/embeddings",
+      "request_timeout_ms": 120000,
+      "max_retries": 3,
+      "retry_delay_ms": 1000,
+      "context_window": 4096,
+      "default_options": {
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    }
+  },
+  "system_prompts": {
+    "default": "You are the SkillSpring Local Agent, a privacy-first AI assistant that helps users explore their archived AI conversations and datasets. You have access to conversation archives, topic-organized markdown files, and structured datasets. You run entirely on the user's local machine. Answer questions based on the retrieved context. If you don't have enough information, say so honestly. Always respect user privacy.",
+    "archive_qa": "You are analyzing archived AI conversations. Use the provided conversation context to answer the user's question. Cite specific conversations or topics when relevant. Be concise and accurate.",
+    "dataset_query": "You are analyzing a structured dataset of AI conversations. Use the provided dataset records to answer analytical questions. Provide specific numbers, patterns, and insights when available.",
+    "topic_summary": "You are summarizing topics from archived conversations. Create clear, structured summaries that capture key themes, decisions, and knowledge. Highlight important patterns.",
+    "import_assist": "You are helping the user import and process AI conversation exports. Guide them through the import flow, explain options, and help troubleshoot issues."
+  },
+  "fallback_behavior": {
+    "on_provider_unavailable": "throw",
+    "on_model_not_found": "fallback_to_first_available",
+    "on_context_exceeded": "truncate_oldest"
+  }
+}

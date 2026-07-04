@@ -1,0 +1,56 @@
+{
+  "$schema": "./embeddings.config.schema.json",
+  "version": "1.0.0",
+  "default_provider": "ollama",
+  "providers": {
+    "ollama": {
+      "enabled": true,
+      "base_url": "http://localhost:11434",
+      "default_model": "nomic-embed-text",
+      "available_models": [
+        "nomic-embed-text",
+        "mxbai-embed-large",
+        "snowflake-arctic-embed",
+        "all-minilm"
+      ],
+      "embed_endpoint": "/api/embed",
+      "embedding_dimensions": 768,
+      "max_input_tokens": 512,
+      "request_timeout_ms": 30000,
+      "batch_size": 32,
+      "normalize": true
+    },
+    "local-transformers": {
+      "enabled": false,
+      "library": "@xenova/transformers",
+      "default_model": "Xenova/all-MiniLM-L6-v2",
+      "embedding_dimensions": 384,
+      "max_input_tokens": 512,
+      "batch_size": 16,
+      "normalize": true,
+      "onnx_runtime": "wasm"
+    },
+    "lmstudio": {
+      "enabled": false,
+      "base_url": "http://localhost:1234",
+      "default_model": "local-model",
+      "embed_endpoint": "/v1/embeddings",
+      "embedding_dimensions": 768,
+      "max_input_tokens": 512,
+      "request_timeout_ms": 30000,
+      "batch_size": 16,
+      "normalize": true
+    }
+  },
+  "indexing": {
+    "chunk_size": 512,
+    "chunk_overlap": 64,
+    "index_conversations_on_import": true,
+    "index_archives_on_creation": true,
+    "index_batch_size": 100
+  },
+  "fallback_behavior": {
+    "on_provider_unavailable": "throw",
+    "on_model_not_found": "fallback_to_first_available"
+  }
+}

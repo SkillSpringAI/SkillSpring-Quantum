@@ -3,6 +3,18 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("skillspringDesktop", {
   ping: () => ipcRenderer.invoke("app:ping"),
 
+  agent: {
+    start: (outputRoot, port) => ipcRenderer.invoke("agent:start", { outputRoot, port }),
+    stop: (port) => ipcRenderer.invoke("agent:stop", { port }),
+    health: (outputRoot, port) => ipcRenderer.invoke("agent:health", { outputRoot, port }),
+    chat: (outputRoot, sessionId, message, systemPrompt, port) =>
+      ipcRenderer.invoke("agent:chat", { outputRoot, sessionId, message, systemPrompt, port }),
+    listSessions: (outputRoot, port) => ipcRenderer.invoke("agent:sessions:list", { outputRoot, port }),
+    createSession: (outputRoot, title, port) =>
+      ipcRenderer.invoke("agent:sessions:create", { outputRoot, title, port }),
+    index: (outputRoot, port) => ipcRenderer.invoke("agent:index", { outputRoot, port })
+  },
+
   dialogs: {
     pickFile: () => ipcRenderer.invoke("dialog:pickFile"),
     pickFolder: () => ipcRenderer.invoke("dialog:pickFolder")

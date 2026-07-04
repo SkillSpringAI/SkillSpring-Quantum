@@ -24,7 +24,14 @@ import type {
   OpenPathPayload,
   PathExistsResult,
   DatasetLatestRunPayload,
-  DatasetPreviewPayload
+  DatasetPreviewPayload,
+  AgentStartPayload,
+  AgentStopPayload,
+  AgentHealthPayload,
+  AgentChatPayload,
+  AgentCreateSessionPayload,
+  AgentListSessionsPayload,
+  AgentIndexPayload
 } from "../types/bridge";
 import { executeMockDesktopCommand } from "./mockDesktopExecutor";
 
@@ -62,6 +69,69 @@ export async function runFile(
 ): Promise<DesktopCommandResponse> {
   return invokeDesktopCommand<RunFilePayload, Record<string, unknown>>({
     command: "pipeline.runFile",
+    payload
+  });
+}
+
+export async function startAgent(
+  payload: AgentStartPayload
+): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<AgentStartPayload, Record<string, unknown>>({
+    command: "agent.start",
+    payload
+  });
+}
+
+export async function stopAgent(
+  payload: AgentStopPayload = {}
+): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<AgentStopPayload, Record<string, unknown>>({
+    command: "agent.stop",
+    payload
+  });
+}
+
+export async function readAgentHealth(
+  payload: AgentHealthPayload
+): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<AgentHealthPayload, Record<string, unknown>>({
+    command: "agent.health",
+    payload
+  });
+}
+
+export async function sendAgentChat(
+  payload: AgentChatPayload
+): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<AgentChatPayload, Record<string, unknown>>({
+    command: "agent.chat",
+    payload
+  });
+}
+
+export async function createAgentSession(
+  payload: AgentCreateSessionPayload
+): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<AgentCreateSessionPayload, Record<string, unknown>>({
+    command: "agent.sessions.create",
+    payload
+  });
+}
+
+export async function listAgentSessions(
+  payload: AgentListSessionsPayload
+): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<AgentListSessionsPayload, Record<string, unknown>>({
+    command: "agent.sessions.list",
+    payload
+  });
+}
+
+export async function triggerAgentIndex(
+  payload: AgentIndexPayload
+): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<AgentIndexPayload, Record<string, unknown>>({
+    command: "agent.index",
     payload
   });
 }

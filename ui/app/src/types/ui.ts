@@ -12,6 +12,21 @@ declare global {
   interface Window {
     skillspringDesktop?: {
       ping: () => Promise<unknown>;
+      agent: {
+        start: (outputRoot: string, port?: number) => Promise<unknown>;
+        stop: (port?: number) => Promise<unknown>;
+        health: (outputRoot: string, port?: number) => Promise<unknown>;
+        chat: (
+          outputRoot: string,
+          sessionId: string | undefined,
+          message: string,
+          systemPrompt?: "default" | "archive_qa" | "dataset_query" | "topic_summary" | "import_assist",
+          port?: number
+        ) => Promise<unknown>;
+        listSessions: (outputRoot: string, port?: number) => Promise<unknown>;
+        createSession: (outputRoot: string, title?: string, port?: number) => Promise<unknown>;
+        index: (outputRoot: string, port?: number) => Promise<unknown>;
+      };
       dialogs: {
         pickFile: () => Promise<unknown>;
         pickFolder: () => Promise<unknown>;

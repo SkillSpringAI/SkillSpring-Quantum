@@ -29,6 +29,7 @@ import { loadArchiveNotifications } from "../services/archiveNotificationsBridge
 import OpenPathButton from "../components/OpenPathButton";
 import type { ImportHistoryFilters, ImportHistoryResult, ImportRunSummary } from "../types/importHistory";
 import { useNavigation } from "../state/navigationContext";
+import { useAgentContext } from "../state/agentContext";
 import { useSettings } from "../state/settingsContext";
 import {
   countPackageCompanionSkips,
@@ -305,6 +306,7 @@ function buildPostRunStatusMessage(run: ImportRunSummary | null, fallbackMessage
 
 export default function ImportsScreen() {
   const { openRetrievalInvestigation, setActiveScreen } = useNavigation();
+  const { setCurrentArtifact } = useAgentContext();
   const { settings, updateSettings } = useSettings();
   const [showImportHelp, setShowImportHelp] = useState(false);
   const [showSourceDetails, setShowSourceDetails] = useState(false);
@@ -602,6 +604,54 @@ export default function ImportsScreen() {
 
     return "The import finished. Open the imported outputs to review what Quantum produced from this run.";
   }
+
+  useEffect(() => {
+    if (selectedRun) {
+      setCurrentArtifact({
+        screen: "imports",
+        kind: "import_run",
+        title: `Import run ${new Date(selectedRun.runAt).toLocaleString()}`,
+        path: selectedRun.inputPath,
+        summary: buildPostRunStatusMessage(selectedRun, "Import run in focus."),
+        details: [
+          formatImportRunVendorLabel(selectedRun),
+          summarizeRunOutcomeCounts(selectedRun) ?? "",
+          selectedRun.outputRoot ? `output ${describeOutputRoot(selectedRun.outputRoot)}` : ""
+        ].filter(Boolean)
+      });
+      return;
+    }
+
+    if (sourceSummary) {
+      setCurrentArtifact({
+        screen: "imports",
+        kind: "screen",
+        title: "Import source check",
+        path: activeImportPath(form),
+        summary: `${sourceSummary.supportedFiles} supported file(s) and ${sourceSummary.unsupportedFiles} unsupported file(s) were found.`,
+        details: [
+          expectedVendorSummary ? `expected vendor ${formatVendorSummaryLabel(expectedVendorSummary.vendor)}` : "",
+          sourceSummary.vendorSummaries[0] ? `detected ${formatVendorSummaryLabel(sourceSummary.vendorSummaries[0].vendor)}` : "",
+          sourceSummary.notes[0] ?? ""
+        ].filter(Boolean)
+      });
+      return;
+    }
+
+    setCurrentArtifact({
+      screen: "imports",
+      kind: "screen",
+      title: "Imports",
+      summary: "Import setup and export check state for the current output folder.",
+      details: [`output ${describeOutputRoot(form.outputRoot)}`]
+    });
+  }, [
+    selectedRun,
+    sourceSummary,
+    form,
+    expectedVendorSummary,
+    setCurrentArtifact
+  ]);
 
   return (
     <section className="screen-grid imports-layout">

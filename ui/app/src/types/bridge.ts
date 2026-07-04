@@ -1,4 +1,11 @@
 export type DesktopCommandName =
+  | "agent.start"
+  | "agent.stop"
+  | "agent.health"
+  | "agent.chat"
+  | "agent.sessions.list"
+  | "agent.sessions.create"
+  | "agent.index"
   | "imports.run"
   | "imports.inspect"
   | "imports.history"
@@ -209,4 +216,42 @@ export interface DatasetPreviewPayload {
   kind: "topic_segments" | "prompt_response_pairs" | "micro_segments" | "private_review";
   limit?: number;
   offset?: number;
+}
+
+export interface AgentStartPayload {
+  outputRoot: string;
+  port?: number;
+}
+
+export interface AgentStopPayload {
+  port?: number;
+}
+
+export interface AgentHealthPayload {
+  outputRoot: string;
+  port?: number;
+}
+
+export interface AgentChatPayload {
+  outputRoot: string;
+  sessionId?: string;
+  message: string;
+  systemPrompt?: "default" | "archive_qa" | "dataset_query" | "topic_summary" | "import_assist";
+  port?: number;
+}
+
+export interface AgentCreateSessionPayload {
+  outputRoot: string;
+  title?: string;
+  port?: number;
+}
+
+export interface AgentListSessionsPayload {
+  outputRoot: string;
+  port?: number;
+}
+
+export interface AgentIndexPayload {
+  outputRoot: string;
+  port?: number;
 }

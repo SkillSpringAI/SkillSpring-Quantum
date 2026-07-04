@@ -68,6 +68,19 @@ The next beta-leaning slices should continue from these explicit UX targets:
    - Keep advanced/operator surfaces hidden unless directly useful.
    - Prepare one stable walkthrough path that can be reused in outside beta sessions.
 
+### Local agent incorporation rule
+
+The newly added local-agent package should be integrated in a way that simplifies the current product, not one that adds another product surface to learn.
+
+Near-term rule:
+
+- use the agent as a contextual explainer and retrieval helper attached to the existing four-screen workflow
+- do not add it as a competing first-class screen before the core parser/retrieval hardening work is stronger
+- prefer `Ask Quantum`-style contextual help over long static explanatory panels
+- require source-grounded answers that point back to imports, archive files, dataset previews, or retrieval results
+
+Working note: `docs/LOCAL_AGENT_INTEGRATION_PLAN_2026-07-04.md`
+
 ### Priority 1: Archive usability
 
 Continue making the readable archive something users actively work from instead of merely inspect.

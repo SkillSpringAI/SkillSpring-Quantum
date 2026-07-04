@@ -15,6 +15,16 @@ function nodeCommand() {
   return process.env.npm_node_execpath || "node";
 }
 
+const AGENT_DEFAULT_PORT = 5678;
+let agentProcess = null;
+let agentStartPromise = null;
+let agentPort = AGENT_DEFAULT_PORT;
+let agentOutputRoot = "organized_output";
+
+function agentScriptPath(root) {
+  return path.join(root, "skillspring-quantum-agent", "agent", "main.ts");
+}
+
 async function runTsx(scriptPath, args = []) {
   const root = repoRoot();
   const fullScriptPath = path.join(root, scriptPath);
@@ -55,9 +65,397 @@ function fail(result, fallback) {
   };
 }
 
+async function requestAgent(pathname, options = {}) {
+  const response = await fetch(`http://127.0.0.1:${agentPort}${pathname}`, options);
+  const text = await response.text();
+  const json = text ? JSON.parse(text) : {};
+
+  if (!response.ok) {
+    throw new Error(json.error || `Agent request failed with status ${response.status}`);
+  }
+
+  return json;
+}
+
+async function checkRunningAgentHealth() {
+  try {
+    return await requestAgent("/health");
+  } catch {
+    return null;
+  }
+}
+
+async function runAgentHealthProbe(outputRoot) {
+  const root = repoRoot();
+  const result = await runCommand(
+    nodeCommand(),
+    [tsxCli(root), agentScriptPath(root), "--health", "--output", outputRoot || "organized_output"],
+    {
+      cwd: root,
+      shell: false
+    }
+  );
+
+  const stdout = result.stdout || "";
+  const stderr = result.stderr || "";
+  const combined = `${stdout}\n${stderr}`.trim();
+
+  return {
+    running: false,
+    serverReachable: false,
+    outputRoot: outputRoot || "organized_output",
+    port: agentPort,
+    prerequisitesOk: /All systems operational/i.test(stdout),
+    summary: combined || "Agent health probe did not return output.",
+    details: {
+      code: result.code,
+      stdout,
+      stderr
+    }
+  };
+}
+
+async function stopAgentServer() {
+  if (!agentProcess) {
+    return false;
+  }
+
+  const processToStop = agentProcess;
+  agentProcess = null;
+  agentStartPromise = null;
+
+  return await new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      try {
+        processToStop.kill("SIGKILL");
+      } catch {}
+      resolve(true);
+    }, 5000);
+
+    processToStop.once("exit", () => {
+      clearTimeout(timeout);
+      resolve(true);
+    });
+
+    try {
+      processToStop.kill();
+    } catch {
+      clearTimeout(timeout);
+      resolve(false);
+    }
+  });
+}
+
+async function ensureAgentServer(outputRoot, port = AGENT_DEFAULT_PORT) {
+  const desiredOutputRoot = outputRoot || "organized_output";
+
+  if (agentProcess) {
+    const health = await checkRunningAgentHealth();
+    if (health && agentPort === port && agentOutputRoot === desiredOutputRoot) {
+      return {
+        port: agentPort,
+        outputRoot: agentOutputRoot,
+        health
+      };
+    }
+
+    await stopAgentServer();
+  }
+
+  if (agentStartPromise) {
+    return await agentStartPromise;
+  }
+
+  const root = repoRoot();
+  agentPort = port;
+  agentOutputRoot = desiredOutputRoot;
+
+  agentStartPromise = new Promise((resolve, reject) => {
+    const child = require("node:child_process").spawn(
+      nodeCommand(),
+      [
+        tsxCli(root),
+        agentScriptPath(root),
+        "--server",
+        "--port",
+        String(port),
+        "--output",
+        desiredOutputRoot
+      ],
+      {
+        cwd: root,
+        shell: false,
+        windowsHide: true,
+        env: {
+          ...process.env,
+          AGENT_PORT: String(port),
+          SKILLSPRING_OUTPUT: desiredOutputRoot
+        }
+      }
+    );
+
+    agentProcess = child;
+
+    let stderr = "";
+    child.stdout?.on("data", (data) => {
+      console.log("[agent stdout]", data.toString().trim());
+    });
+    child.stderr?.on("data", (data) => {
+      const text = data.toString();
+      stderr += text;
+      console.error("[agent stderr]", text.trim());
+    });
+
+    child.once("exit", (code) => {
+      if (agentProcess === child) {
+        agentProcess = null;
+      }
+      agentStartPromise = null;
+      if (code !== 0) {
+        console.error("[agent exit]", code);
+      }
+    });
+
+    child.once("error", (error) => {
+      if (agentProcess === child) {
+        agentProcess = null;
+      }
+      agentStartPromise = null;
+      reject(error);
+    });
+
+    const startedAt = Date.now();
+    const poll = async () => {
+      const health = await checkRunningAgentHealth();
+      if (health) {
+        agentStartPromise = null;
+        resolve({
+          port,
+          outputRoot: desiredOutputRoot,
+          health
+        });
+        return;
+      }
+
+      if (!agentProcess) {
+        agentStartPromise = null;
+        reject(new Error(stderr || "Agent process exited before becoming ready."));
+        return;
+      }
+
+      if (Date.now() - startedAt > 30000) {
+        agentStartPromise = null;
+        reject(new Error(stderr || "Agent startup timed out."));
+        return;
+      }
+
+      setTimeout(poll, 500);
+    };
+
+    void poll();
+  });
+
+  return await agentStartPromise;
+}
+
 function registerIpc() {
   ipcMain.handle("app:ping", async () => {
     return { ok: true, message: "electron-main-ready" };
+  });
+
+  ipcMain.handle("agent:start", async (_event, payload = {}) => {
+    try {
+      const started = await ensureAgentServer(payload.outputRoot || "organized_output", payload.port || AGENT_DEFAULT_PORT);
+      return {
+        ok: true,
+        result: {
+          running: true,
+          port: started.port,
+          outputRoot: started.outputRoot,
+          health: started.health
+        },
+        message: "Local agent started."
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle("agent:stop", async () => {
+    try {
+      const stopped = await stopAgentServer();
+      return {
+        ok: true,
+        result: {
+          stopped,
+          running: false,
+          port: agentPort
+        },
+        message: stopped ? "Local agent stopped." : "Local agent was not running."
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle("agent:health", async (_event, payload = {}) => {
+    try {
+      const liveHealth = await checkRunningAgentHealth();
+      if (liveHealth) {
+        return {
+          ok: true,
+          result: {
+            running: true,
+            serverReachable: true,
+            outputRoot: payload.outputRoot || agentOutputRoot,
+            port: agentPort,
+            prerequisitesOk: true,
+            summary: "Local agent server is running.",
+            details: liveHealth
+          },
+          message: "Local agent health loaded."
+        };
+      }
+
+      const probe = await runAgentHealthProbe(payload.outputRoot || "organized_output");
+      return {
+        ok: true,
+        result: probe,
+        message: "Local agent prerequisite check completed."
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle("agent:chat", async (_event, payload = {}) => {
+    try {
+      await ensureAgentServer(payload.outputRoot || "organized_output", payload.port || AGENT_DEFAULT_PORT);
+      const response = await requestAgent("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          session_id: payload.sessionId,
+          message: payload.message,
+          system_prompt: payload.systemPrompt
+        })
+      });
+
+      return {
+        ok: true,
+        result: response,
+        message: "Local agent response received."
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle("agent:sessions:list", async (_event, payload = {}) => {
+    try {
+      await ensureAgentServer(payload.outputRoot || "organized_output", payload.port || AGENT_DEFAULT_PORT);
+      const response = await requestAgent("/sessions");
+      return {
+        ok: true,
+        result: response,
+        message: "Local agent sessions loaded."
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle("agent:sessions:create", async (_event, payload = {}) => {
+    try {
+      await ensureAgentServer(payload.outputRoot || "organized_output", payload.port || AGENT_DEFAULT_PORT);
+      const response = await requestAgent("/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: payload.title
+        })
+      });
+      return {
+        ok: true,
+        result: response,
+        message: "Local agent session created."
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle("agent:index", async (_event, payload = {}) => {
+    try {
+      const root = repoRoot();
+
+      if (agentProcess) {
+        const response = await requestAgent("/index", { method: "POST" });
+        return {
+          ok: true,
+          result: response,
+          message: "Local agent indexing triggered."
+        };
+      }
+
+      const result = await runCommand(
+        nodeCommand(),
+        [
+          tsxCli(root),
+          agentScriptPath(root),
+          "--index",
+          "--output",
+          payload.outputRoot || "organized_output"
+        ],
+        {
+          cwd: root,
+          shell: false
+        }
+      );
+
+      if (!result.ok) {
+        return {
+          ok: false,
+          error: result.stderr || "Failed to index through the local agent.",
+          stdout: result.stdout,
+          stderr: result.stderr,
+          code: result.code
+        };
+      }
+
+      return {
+        ok: true,
+        result: {
+          stdout: result.stdout,
+          stderr: result.stderr,
+          code: result.code
+        },
+        message: "Local agent indexing completed."
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
   });
 
   ipcMain.handle("dialog:pickFile", async () => {
@@ -363,4 +761,8 @@ function registerIpc() {
   });
 }
 
-module.exports = { registerIpc };
+async function shutdownAgent() {
+  await stopAgentServer();
+}
+
+module.exports = { registerIpc, shutdownAgent };

@@ -10,5 +10,11 @@
     "resolveJsonModule": true,
     "skipLibCheck": true
   },
-  "include": ["core/**/*.ts", "governance/**/*.json", "config/**/*.json"]
+  "include": [
+    "core/**/*.ts",
+    "governance/**/*.json",
+    "config/**/*.json",
+    "skillspring-quantum-agent/agent/**/*.ts",
+    "skillspring-quantum-agent/agent/**/*.json"
+  ]
 }

@@ -1,0 +1,36 @@
+{
+  "$schema": "./vectorStore.config.schema.json",
+  "version": "1.0.0",
+  "store_type": "sqlite",
+  "sqlite": {
+    "db_path": "agent_store/vector_index.db",
+    "table_name": "embeddings",
+    "metadata_table": "embedding_metadata",
+    "index_type": "flat",
+    "dimensions": 768,
+    "distance_metric": "cosine",
+    "enable_fts": true,
+    "fts_table_name": "embedding_fts"
+  },
+  "retrieval": {
+    "default_top_k": 5,
+    "max_top_k": 50,
+    "similarity_threshold": 0.7,
+    "hybrid_search": {
+      "enabled": true,
+      "vector_weight": 0.7,
+      "keyword_weight": 0.3
+    },
+    "reranking": {
+      "enabled": false,
+      "model": "cross-encoder",
+      "top_k_multiplier": 4
+    }
+  },
+  "maintenance": {
+    "vacuum_on_startup": false,
+    "auto_vacuum": "incremental",
+    "index_on_insert": true,
+    "max_connections": 5
+  }
+}

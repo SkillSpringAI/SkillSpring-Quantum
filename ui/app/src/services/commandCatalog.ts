@@ -8,6 +8,21 @@ export interface CommandCatalogEntry {
 
 export const COMMAND_CATALOG: CommandCatalogEntry[] = [
   {
+    name: "agent.start",
+    description: "Start the local assistant server",
+    backendCommand: 'npm run agent:server -- --output "<outputRoot>"'
+  },
+  {
+    name: "agent.health",
+    description: "Check local assistant availability and prerequisites",
+    backendCommand: "npm run agent:health"
+  },
+  {
+    name: "agent.index",
+    description: "Index archive and dataset artifacts for the local assistant",
+    backendCommand: 'npm run agent:index -- --output "<outputRoot>"'
+  },
+  {
     name: "pipeline.runFile",
     description: "Run the pipeline on a single export shard",
     backendCommand: 'npm run run:file -- "<inputFile>" "<outputRoot>"'

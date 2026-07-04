@@ -1,0 +1,35 @@
+{
+  "$schema": "./agentManifest.schema.json",
+  "agent_version": "1.0.0",
+  "agent_name": "skillspring-local-agent",
+  "display_name": "SkillSpring Local Agent",
+  "description": "Local-first AI agent for SkillSpring Quantum. Processes conversations, answers questions about archives, and assists with dataset operations using on-device LLMs.",
+  "created_at": "2026-07-04",
+  "runtime": {
+    "min_node_version": "20.0.0",
+    "module_system": "NodeNext",
+    "target": "ES2022"
+  },
+  "capabilities": [
+    "archive-qa",
+    "dataset-query",
+    "conversation-analysis",
+    "topic-summarization",
+    "import-assistance",
+    "local-llm-chat"
+  ],
+  "privacy": {
+    "local_only": true,
+    "cloud_dependencies": false,
+    "data_retention": "user-controlled",
+    "embedding_storage": "local-sqlite",
+    "llm_provider": "local-ollama-or-lmstudio"
+  },
+  "integration_points": [
+    "core/pipeline",
+    "core/db",
+    "core/index",
+    "core/retrieval",
+    "core/models"
+  ]
+}

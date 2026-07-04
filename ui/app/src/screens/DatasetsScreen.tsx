@@ -12,6 +12,7 @@ import type {
 } from "../types/datasetRun";
 import type { DbRecord } from "../types/db";
 import { useNavigation } from "../state/navigationContext";
+import { useAgentContext } from "../state/agentContext";
 import { useSettings } from "../state/settingsContext";
 import {
   findMatchingDatasetRunDetails,
@@ -43,6 +44,7 @@ export default function DatasetsScreen() {
     datasetIntent,
     clearDatasetIntent
   } = useNavigation();
+  const { setCurrentArtifact } = useAgentContext();
   const { settings } = useSettings();
   const [loadingDatasetState, setLoadingDatasetState] = useState(true);
   const [datasetLoadError, setDatasetLoadError] = useState<string | null>(null);
@@ -260,6 +262,49 @@ export default function DatasetsScreen() {
   const visibleDatasetOutputCards = showAllDatasetOutputCards
     ? datasetOutputCards
     : datasetOutputCards.slice(0, 2);
+
+  useEffect(() => {
+    if (selectedRun) {
+      const firstPreviewRecord = previewRecords[0];
+      const previewDetail = firstPreviewRecord
+        ? summarizePreviewRecordSnippet(firstPreviewRecord)
+        : `${previewConfig.label} is the active preview lane for this run.`;
+
+      setCurrentArtifact({
+        screen: "datasets",
+        kind: "dataset_preview",
+        title: `Dataset run ${selectedRun.run_id}`,
+        path: previewScope?.sourcePath,
+        summary: previewDetail,
+        details: [
+          selectedSourceContext?.vendor_sources?.length
+            ? `vendor ${selectedSourceContext.vendor_sources.join(", ")}`
+            : "",
+          selectedSourceContext?.topic_hints?.[0] ? `topic ${selectedSourceContext.topic_hints[0]}` : "",
+          selectedRedactionSummary ? `${selectedRedactionSummary.total_redactions} redaction(s)` : "",
+          previewScope?.scope === "historical_run" ? "historical run preview" : previewScope?.scope ? "latest current bundle preview" : ""
+        ].filter(Boolean)
+      });
+      return;
+    }
+
+    setCurrentArtifact({
+      screen: "datasets",
+      kind: "screen",
+      title: "Datasets",
+      summary: "Dataset review state for the current output folder.",
+      details: [`current folder ${describeOutputRoot(settings.outputRoot)}`]
+    });
+  }, [
+    selectedRun,
+    previewRecords,
+    previewConfig.label,
+    previewScope,
+    selectedSourceContext,
+    selectedRedactionSummary,
+    settings.outputRoot,
+    setCurrentArtifact
+  ]);
 
   async function loadPreview(kind: DatasetPreviewKind, offset = 0) {
     if (!selectedRun) {
@@ -1073,6 +1118,26 @@ function describeOutputRoot(outputRoot: string): string {
   const segments = normalized.split(/[\\/]/).filter(Boolean);
   const label = segments[segments.length - 1] ?? outputRoot;
   return label === outputRoot ? outputRoot : `${label} (${outputRoot})`;
+}
+
+function summarizePreviewRecordSnippet(record: DbRecord): string {
+  if (typeof record.content === "string" && record.content.trim()) {
+    return record.content.trim().replace(/\s+/g, " ").slice(0, 180);
+  }
+
+  if (record.raw && typeof record.raw === "object") {
+    const raw = record.raw as Record<string, unknown>;
+    const candidateKeys = ["summary_label", "topic", "intent", "prompt", "response", "text"];
+
+    for (const key of candidateKeys) {
+      const value = raw[key];
+      if (typeof value === "string" && value.trim()) {
+        return value.trim().replace(/\s+/g, " ").slice(0, 180);
+      }
+    }
+  }
+
+  return "Dataset preview is open on the current run.";
 }
 
 function formatArchiveHandoffSupportTier(

@@ -65,6 +65,6 @@ Or alternatively, add `agent/**/*` to the include array:
 
 ## Current Repo Note
 
-The package is currently nested under `skillspring-quantum-agent/agent/` rather than living at a top-level `agent/` path.
+The package currently lives at `skillspring-quantum-agent/agent/`, and the repo-level scripts already target that nested path.
 
-That means every integration example in this package should be interpreted relative to the current repo layout unless and until the package is flattened into a canonical top-level `agent/` directory.
+Treat that location as the current canonical package path unless a future deliberate repo cleanup changes it.

@@ -23,7 +23,11 @@ export interface ImportRetrievalIndexEntry {
   conversationCount?: number;
   messageCount?: number;
   attachmentCount?: number;
+  artifactLabels?: string[];
   artifactPaths: string[];
+  evidenceSources?: string[];
+  nextAction?: "open_archive" | "open_dataset" | "review_outputs" | "open_source_file";
+  nextActionLabel?: string;
 }
 
 export interface ImportRetrievalIndexManifest {

@@ -296,6 +296,9 @@ export default function RetrievalScreen() {
   const linkedSegments = detailEntry
     ? visibleSegments.filter((entry) => detailEntry.conversationIds.includes(entry.conversationId))
     : [];
+  const detailRanking = detailEntry
+    ? rankedEntries.find((item) => item.entry.filePath === detailEntry.filePath && item.entry.runAt === detailEntry.runAt) ?? null
+    : null;
 
   const detailSegment = (
     linkedSegments.find((entry) =>
@@ -386,6 +389,35 @@ export default function RetrievalScreen() {
 
     const single = startedAt ?? endedAt;
     return single ? new Date(single).toLocaleDateString() : null;
+  }
+
+  function formatEvidenceSources(sources: string[]): string {
+    return sources.length > 0 ? sources.join(", ") : "source file path";
+  }
+
+  function formatMatchReasons(reasons: string[]): string {
+    return reasons.length > 0 ? reasons.join(", ") : "current filters and recency";
+  }
+
+  function followNextStep(entry: ImportRetrievalIndexEntry) {
+    switch (entry.nextAction) {
+      case "open_archive":
+        setActiveScreen("organized-output");
+        return;
+      case "open_dataset":
+        setActiveScreen("datasets");
+        return;
+      case "review_outputs":
+        if (entry.artifactPaths[0]) {
+          revealDesktopPath(entry.artifactPaths[0]);
+          return;
+        }
+        break;
+      default:
+        break;
+    }
+
+    revealDesktopPath(entry.filePath);
   }
 
   function segmentKey(entry: SegmentRetrievalIndexEntry): string {
@@ -739,6 +771,7 @@ export default function RetrievalScreen() {
                       <div><strong>{entry.vendorSources.join(", ") || formatEntryKindLabel(entry.kind)}</strong></div>
                       <div className="muted">{formatEntryKindLabel(entry.kind)} | {entry.status}</div>
                       <div className="muted">{entry.topicHints.slice(0, 3).join(", ") || "No topic hints"}</div>
+                      <div className="muted">{entry.nextActionLabel || "Review output files next"}</div>
                       <div className="muted">{formatDateRange(entry.startedAt, entry.endedAt) || new Date(entry.runAt).toLocaleDateString()}</div>
                     </li>
                   );
@@ -755,6 +788,12 @@ export default function RetrievalScreen() {
                     <p className="muted">
                       {detailEntry.vendorSources.join(", ") || "document/generic"} | {formatEntryKindLabel(detailEntry.kind)} | {detailEntry.status}
                     </p>
+                    <p className="muted">Why this matched: {formatMatchReasons(detailRanking?.reasons ?? [])}</p>
+                    <p className="muted">Evidence comes from: {formatEvidenceSources(detailEntry.evidenceSources ?? [])}</p>
+                    <p className="muted">Best next step: {detailEntry.nextActionLabel || "Review output files next"}</p>
+                    {linkedSegments.length > 0 ? (
+                      <p className="muted">{linkedSegments.length} related dataset segment(s) are linked below for deeper review.</p>
+                    ) : null}
                     {detailEntry.topicHints.length > 0 ? (
                       <p className="muted">Topic hints: {detailEntry.topicHints.slice(0, 3).join(", ")}</p>
                     ) : null}
@@ -777,6 +816,9 @@ export default function RetrievalScreen() {
                         onClick={() => setSavedViewName(detailEntry.titleHints[0] || detailEntry.topicHints[0] || "Saved search")}
                       >
                         Use As Saved Search Name
+                      </button>
+                      <button className="primary-btn" type="button" onClick={() => followNextStep(detailEntry)}>
+                        {detailEntry.nextActionLabel || "Review output files next"}
                       </button>
                       <button className="primary-btn" type="button" onClick={() => revealDesktopPath(detailEntry.filePath)}>
                         Open Source File

@@ -6,7 +6,7 @@ The SkillSpring Local Agent is a privacy-first AI assistant that runs entirely o
 
 ### Required
 
-- **Node.js 20+** (for the agent runtime)
+- **Node.js 22+** (for the agent runtime and `node:sqlite`)
 - **Ollama** (for local LLM inference and embeddings)
 
 ### Optional (alternatives to Ollama)
@@ -60,14 +60,14 @@ Ollama runs a local API server at `http://localhost:11434`.
 ### Health Check
 
 ```bash
-tsx skillspring-quantum-agent/agent/main.ts --health
+npm run agent:health
 ```
 
 ### Interactive Chat Mode
 
 ```bash
 # Start interactive chat with your archives
-tsx skillspring-quantum-agent/agent/main.ts
+npm run agent
 
 # Or specify a custom output root
 tsx skillspring-quantum-agent/agent/main.ts --output ./my_exports
@@ -76,21 +76,21 @@ tsx skillspring-quantum-agent/agent/main.ts --output ./my_exports
 ### Single Query Mode
 
 ```bash
-tsx skillspring-quantum-agent/agent/main.ts --query "What topics have I discussed about TypeScript?"
+npm run agent:query -- "What topics have I discussed about TypeScript?"
 ```
 
 ### Index Existing Archives
 
 ```bash
 # Index all existing archives for RAG search
-tsx skillspring-quantum-agent/agent/main.ts --index
+npm run agent:index
 ```
 
 ### Start API Server
 
 ```bash
 # Start HTTP API server for Electron integration
-tsx skillspring-quantum-agent/agent/main.ts --server --port 5678
+npm run agent:server -- --port 5678
 ```
 
 ## Configuration
@@ -168,14 +168,14 @@ All configuration files are in `agent/config/`:
 
 ## Current Repo Path
 
-In this repo, the agent is currently nested under `skillspring-quantum-agent/agent/` rather than being flattened to a top-level `agent/` folder.
+In this repo, the agent currently lives at `skillspring-quantum-agent/agent/`.
 
-That means command examples should use the explicit nested path unless the repo is restructured later.
+Repo-level scripts already target that nested path, so examples should prefer the `npm run agent:*` commands above unless a future cleanup intentionally changes the package location.
 
 ## Architecture
 
 ```
-agent/
+skillspring-quantum-agent/agent/
 |-- config/              # JSON configuration files
 |-- core/                # Agent orchestrator, factory, hooks
 |-- llm/                 # LLM providers (Ollama, LM Studio)
@@ -227,20 +227,15 @@ All processing happens locally. No data leaves your machine.
 The agent can be started as an HTTP server that the Electron UI communicates with:
 
 ```typescript
-// In Electron main process
-import { spawn } from "child_process";
-
-const agentProcess = spawn("tsx", ["skillspring-quantum-agent/agent/main.ts", "--server", "--port", "5678"]);
-
-// In renderer process
-const response = await fetch("http://localhost:5678/chat", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    session_id: "my-session",
-    message: "What have I discussed about React?"
-  })
-});
+// Renderer process via preload bridge
+const health = await window.skillspringDesktop.agent.health(outputRoot);
+const started = await window.skillspringDesktop.agent.start(outputRoot);
+const session = await window.skillspringDesktop.agent.createSession(outputRoot, "Archive QA");
+const response = await window.skillspringDesktop.agent.chat(
+  outputRoot,
+  session.id,
+  "What have I discussed about React?"
+);
 ```
 
 ## Security & Privacy

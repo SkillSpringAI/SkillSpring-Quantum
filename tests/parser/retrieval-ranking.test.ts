@@ -21,7 +21,11 @@ const entries: ImportRetrievalIndexEntry[] = [
     conversationCount: 2,
     messageCount: 8,
     attachmentCount: 0,
-    artifactPaths: []
+    artifactLabels: ["Latest archived markdown", "Current topic segments dataset"],
+    artifactPaths: [],
+    evidenceSources: ["import metadata", "archive output", "dataset output"],
+    nextAction: "open_archive",
+    nextActionLabel: "Open Readable Archive next"
   },
   {
     runAt: "2026-06-17T10:00:00.000Z",
@@ -41,7 +45,11 @@ const entries: ImportRetrievalIndexEntry[] = [
     conversationCount: 1,
     messageCount: 4,
     attachmentCount: 1,
-    artifactPaths: []
+    artifactLabels: ["Current topic segments dataset"],
+    artifactPaths: [],
+    evidenceSources: ["import metadata", "dataset output", "attachment evidence"],
+    nextAction: "open_dataset",
+    nextActionLabel: "Open Dataset View next"
   }
 ];
 

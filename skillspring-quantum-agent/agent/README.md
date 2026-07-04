@@ -10,9 +10,15 @@ A privacy-first, fully local AI agent for SkillSpring Quantum. Chat with your ar
 - **Import Assistance**: Get help with import workflows and diagnostics
 - **Local-Only Operation**: All processing stays on your machine
 
+In the desktop app, this package is now also used behind a narrow deterministic-first command bridge:
+
+- supported plain-language actions are validated by Quantum before execution
+- unsupported or underspecified requests fall back to explanation instead of speculative action
+- this keeps the agent aligned to the host app's trust model rather than acting like an unrestricted desktop assistant
+
 ## Prerequisites
 
-- Node.js 20+ (for `node:sqlite`)
+- Node.js 22+ (for `node:sqlite`)
 - [Ollama](https://ollama.com) installed and running
 - Required models pulled:
   ```bash
@@ -24,19 +30,19 @@ A privacy-first, fully local AI agent for SkillSpring Quantum. Chat with your ar
 
 ```bash
 # Check system health
-tsx skillspring-quantum-agent/agent/main.ts --health
+npm run agent:health
 
 # Interactive chat mode
-tsx skillspring-quantum-agent/agent/main.ts
+npm run agent
 
 # Single query
-tsx skillspring-quantum-agent/agent/main.ts --query "What TypeScript topics have I discussed?"
+npm run agent:query -- "What TypeScript topics have I discussed?"
 
 # Start API server
-tsx skillspring-quantum-agent/agent/main.ts --server
+npm run agent:server
 
 # Index existing archives
-tsx skillspring-quantum-agent/agent/main.ts --index
+npm run agent:index
 ```
 
 ## Configuration
@@ -85,7 +91,7 @@ agent/
 
 This package currently lives under `skillspring-quantum-agent/agent/` inside the main SkillSpring Quantum repo.
 
-If the repo later normalizes this into a top-level `agent/` directory, command examples can be shortened again. Until then, prefer the explicit nested path in scripts and integration notes.
+Repo-level scripts already target this nested path, so package and integration examples should treat `skillspring-quantum-agent/agent/` as the current canonical location.
 
 ## License
 

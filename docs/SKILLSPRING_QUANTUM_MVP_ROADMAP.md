@@ -24,6 +24,24 @@ The current first-class vendor set is:
 
 Gemini My Activity HTML remains a narrower fallback route.
 
+## Current Beta-Hardening Status
+
+The July 5, 2026 slice sequence is now substantially complete:
+
+1. visible import progress
+2. vendor smoke-test suite
+3. corpus-agnostic parser hardening
+4. retrieval quality and evidence-grounded labeling
+5. narrow natural-language command bridge v1
+
+Why this matters:
+
+- import work now feels alive instead of frozen
+- parser changes have a faster regression net across current first-class vendors
+- topic and segment quality are less dependent on the maintainer's own conversation habits
+- retrieval can explain both why something matched and where the user should go next
+- `Ask Quantum` now helps with supported workflow actions without bypassing deterministic execution
+
 ## Near-term priorities
 
 ## Continue Tomorrow
@@ -76,6 +94,8 @@ Those notes should be treated as supporting slices for the same beta-readiness g
 
 Working note: `docs/EXTERNAL_TEST_IMPLEMENTATION_NOTES_2026-07-04.md`
 
+Concrete execution note: `docs/NEXT_FIVE_SLICES_2026-07-05.md`
+
 ### Local agent incorporation rule
 
 The newly added local-agent package should be integrated in a way that simplifies the current product, not one that adds another product surface to learn.
@@ -87,7 +107,13 @@ Near-term rule:
 - prefer `Ask Quantum`-style contextual help over long static explanatory panels
 - require source-grounded answers that point back to imports, archive files, dataset previews, or retrieval results
 
+Current implementation note:
+
+- the first assistant slice now follows this rule by trying a validated command catalog before falling back to general explanation
+- that boundary is intentional because outside beta trust depends more on predictable action routing than on open-ended assistant behavior
+
 Working note: `docs/LOCAL_AGENT_INTEGRATION_PLAN_2026-07-04.md`
+Broader action plan: `docs/LOCAL_AI_INTEGRATION_ACTION_PLAN_2026-07-05.md`
 
 ### Priority 1: Archive usability
 

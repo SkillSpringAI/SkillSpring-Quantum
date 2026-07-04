@@ -10,6 +10,7 @@ import {
   stopAgent,
   triggerAgentIndex
 } from "../services/desktopBridge";
+import { listSupportedCommands, tryExecuteSupportedCommand } from "../services/commandCatalog";
 import type { ScreenId } from "../state/navigation";
 
 interface AgentAssistantDrawerProps {
@@ -47,7 +48,7 @@ const DEFAULT_HEALTH: AgentHealthState = {
 };
 
 export default function AgentAssistantDrawer(props: AgentAssistantDrawerProps) {
-  const { activeScreen, activeLabel } = useNavigation();
+  const { activeScreen, activeLabel, setActiveScreen, openRetrievalInvestigation } = useNavigation();
   const { settings } = useSettings();
   const { currentArtifact } = useAgentContext();
   const [health, setHealth] = useState<AgentHealthState>(DEFAULT_HEALTH);
@@ -97,6 +98,7 @@ export default function AgentAssistantDrawer(props: AgentAssistantDrawerProps) {
   }
 
   const starterPrompts = getStarterPrompts(activeScreen);
+  const supportedCommands = listSupportedCommands();
 
   async function handleStartAgent() {
     setBusy(true);
@@ -184,6 +186,29 @@ export default function AgentAssistantDrawer(props: AgentAssistantDrawerProps) {
 
     setBusy(true);
     setError(null);
+    setMessages((current) => [...current, { role: "user", content: prompt }]);
+    setDraft("");
+
+    const commandResult = await tryExecuteSupportedCommand(prompt, {
+      outputRoot: settings.outputRoot,
+      activeScreen,
+      activeLabel,
+      artifact: currentArtifact,
+      setActiveScreen,
+      openRetrievalInvestigation
+    });
+
+    if (commandResult?.handled) {
+      setMessages((current) => [
+        ...current,
+        {
+          role: "assistant",
+          content: commandResult.response
+        }
+      ]);
+      setBusy(false);
+      return;
+    }
 
     const startResponse = await startAgent({
       outputRoot: settings.outputRoot
@@ -209,9 +234,6 @@ export default function AgentAssistantDrawer(props: AgentAssistantDrawerProps) {
       outputRoot: settings.outputRoot,
       artifact: currentArtifact
     });
-
-    setMessages((current) => [...current, { role: "user", content: prompt }]);
-    setDraft("");
 
     const response = await sendAgentChat({
       outputRoot: settings.outputRoot,
@@ -301,6 +323,20 @@ export default function AgentAssistantDrawer(props: AgentAssistantDrawerProps) {
         </div>
 
         <div className="detail-box">
+          <strong>Supported actions</strong>
+          <p className="muted">
+            These run through Quantum directly before the local assistant is asked to explain anything.
+          </p>
+          <div className="agent-starter-grid">
+            {supportedCommands.slice(0, 6).map((command) => (
+              <div key={command.name} className="signal-badge">
+                {command.label}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="detail-box">
           <strong>Try one of these</strong>
           <div className="agent-starter-grid">
             {starterPrompts.map((prompt) => (
@@ -326,7 +362,7 @@ export default function AgentAssistantDrawer(props: AgentAssistantDrawerProps) {
               rows={4}
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
-              placeholder={`Ask about ${activeLabel.toLowerCase()}, the current output folder, or the next action.`}
+              placeholder={`Ask about ${activeLabel.toLowerCase()}, or run a supported action like "open archive" or "find the conversation about docker ports".`}
             />
           </label>
           <div className="action-bar">

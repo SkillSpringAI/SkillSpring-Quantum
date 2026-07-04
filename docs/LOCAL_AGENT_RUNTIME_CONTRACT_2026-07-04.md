@@ -10,8 +10,6 @@ For the current repo state, the canonical runtime entrypoint is:
 
 The package is not yet flattened into a top-level `agent/` folder, so all scripts and integration references should use the explicit nested path.
 
-The malformed `skillspring-quantum-agent/{agent/...` subtree should be treated as accidental and non-canonical until it is cleaned up deliberately.
-
 ## Script Contract
 
 The repo-level scripts should be:
@@ -37,6 +35,17 @@ Expected degraded-mode behavior:
 - assistant entry points should either hide gracefully or show a clear unavailable state
 
 The local agent is optional enhancement, not a boot dependency.
+
+## Deterministic And Semantic Layer Contract
+
+The agent runtime operates on top of a two-layer model:
+
+- canonical source layer:
+  import facts, source preservation, vendor boundaries, archive outputs, dataset outputs, manifests, validation, and reproducible records
+- semantic organisation layer:
+  optional AI-generated titles, summaries, labels, segments, groupings, alias suggestions, and other derived metadata
+
+The runtime must not silently replace canonical facts with semantic suggestions.
 
 ## Startup Contract
 
@@ -69,6 +78,30 @@ Every agent response shown in the UI should:
 
 The agent is an explainer of Quantum artifacts, not an unbounded general chat layer.
 
+## Capability-Bound Command Contract
+
+Near-term natural-language control should route through a constrained capability registry.
+
+The agent should translate user requests into supported actions such as:
+
+- inspect export
+- import export
+- open output location
+- explain import result
+- search completed outputs
+- rebuild the local search index
+- open archive
+- open datasets
+- open imports
+
+Current repo status:
+
+- a first narrow command catalog is now wired into the `Ask Quantum` drawer
+- those supported actions are attempted before the app falls back to broader freeform assistant explanation
+- this protects the deterministic boundary while still giving users a chat-shaped control surface
+
+Unsupported actions should be refused or clarified rather than invented.
+
 ## Logging And Storage Contract
 
 The agent may store local session and vector data inside the chosen Quantum output root, but that storage should remain:
@@ -79,7 +112,7 @@ The agent may store local session and vector data inside the chosen Quantum outp
 
 Recommended location pattern:
 
-- `organized_output/agent_store/...`
+- `<selected-output-root>/agent_store/...`
 
 ## Immediate Next Technical Slice
 
@@ -89,3 +122,5 @@ The next implementation slice after this contract should be:
 2. Electron main-process wrapper for start/stop/health
 3. preload bridge for agent IPC access
 4. one contextual UI entry point, not a full new screen
+
+These baseline slices are now in place. The next runtime concern is not "add more autonomy" but "keep the supported command boundary explicit, testable, and source-grounded."

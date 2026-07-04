@@ -59,6 +59,29 @@ export interface ImportRunResult {
   message: string;
 }
 
+export interface ImportProgressUpdate {
+  stage:
+    | "inspecting_source"
+    | "source_ready"
+    | "processing_file"
+    | "writing_history"
+    | "writing_indexes"
+    | "completed";
+  message: string;
+  percent: number;
+  filesDiscovered: number;
+  completedFiles: number;
+  currentPath?: string;
+  currentKind?:
+    | "chatgpt_export"
+    | "conversation_json"
+    | "gemini_activity_html"
+    | "json_document"
+    | "text_document"
+    | "pdf_document"
+    | "unsupported";
+}
+
 export interface RunLogEntry {
   id: string;
   level: "info" | "success" | "warning" | "error";

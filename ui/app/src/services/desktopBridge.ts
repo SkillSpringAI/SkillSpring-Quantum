@@ -34,9 +34,22 @@ import type {
   AgentIndexPayload
 } from "../types/bridge";
 import { executeMockDesktopCommand } from "./mockDesktopExecutor";
+import type { ImportProgressUpdate } from "../types/imports";
 
 export function desktopBridgeAvailable(): boolean {
   return typeof window !== "undefined" && typeof window.skillspringDesktop !== "undefined";
+}
+
+export function subscribeImportProgress(
+  listener: (update: ImportProgressUpdate) => void
+): () => void {
+  if (!desktopBridgeAvailable() || !window.skillspringDesktop?.imports.onProgress) {
+    return () => {};
+  }
+
+  return window.skillspringDesktop.imports.onProgress((payload) => {
+    listener(payload as ImportProgressUpdate);
+  });
 }
 
 function unavailable(command: DesktopCommandName): DesktopCommandResponse {

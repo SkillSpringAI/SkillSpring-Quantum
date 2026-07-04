@@ -21,18 +21,25 @@ const TOPIC_LABEL_OVERRIDES: Record<string, string> = {
   ai_systems: "AI Systems"
 };
 
+const FALLBACK_STOP_TOKENS = new Set([
+  "assistant","chat","conversation","discuss","discussion","general","help","message","messages","question",
+  "reply","response","summary","task","topic","topics","update","updates"
+]);
+
 function normalizeText(input: string): string {
   return input.toLowerCase();
 }
 
 function fallbackNormalize(rawTopic: string): string {
   const source = normalizeText(rawTopic);
-
-  return source
+  const tokens = source
     .replace(/[^a-z0-9\s\-_]/g, " ")
-    .replace(/\s+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 60) || "general";
+    .split(/\s+/)
+    .map((part) => part.trim())
+    .filter((part) => part.length >= 3 && !FALLBACK_STOP_TOKENS.has(part))
+    .slice(0, 4);
+
+  return tokens.join("_") || "general";
 }
 
 export function formatNormalizedTopicLabel(topic: string): string {

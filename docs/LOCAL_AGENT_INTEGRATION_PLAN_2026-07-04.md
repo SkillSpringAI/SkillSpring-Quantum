@@ -2,9 +2,19 @@
 
 This note records how the newly added `skillspring-quantum-agent/` package should be integrated into SkillSpring Quantum.
 
+It is now complemented by the broader product-level action plan at:
+
+- `docs/LOCAL_AI_INTEGRATION_ACTION_PLAN_2026-07-05.md`
+
 The short answer:
 
 The local agent fits Quantum well, but it should be integrated as the **assistant interpretation surface** described in the existing docs, not as a new core workflow that competes with Imports, Readable Archive, Datasets, or Find Imports.
+
+Update as of July 5, 2026:
+
+- the first narrow command-bridge version is now implemented in the `Ask Quantum` drawer
+- it routes a small set of plain-language requests through validated Quantum actions first
+- broader explanation still falls back to the local assistant only when the request is not one of those supported deterministic actions
 
 ## What Was Added
 
@@ -20,9 +30,8 @@ The new folder contains a local-first agent package with:
 
 Important packaging notes:
 
-- the package docs assume a top-level `agent/` path, but the current repo addition lives under `skillspring-quantum-agent/agent/`
-- there is also an accidental-looking malformed subtree at `skillspring-quantum-agent/{agent/...` that should not be treated as canonical product structure
-- the current repo `tsconfig.json` and `package.json` do not yet include the agent paths or helper scripts
+- the package docs may still describe a simpler top-level `agent/` path, but the current repo uses `skillspring-quantum-agent/agent/` as the canonical implementation location
+- the repo now includes agent scripts and TypeScript wiring for that nested path
 
 ## Integration Decision
 
@@ -40,6 +49,16 @@ The agent should be incorporated in **three layers**, in this order:
 3. **Optional chat-style retrieval surface**
    - only after the first two layers are stable
    - only after parser and retrieval hardening are good enough for outside beta
+
+## Deterministic-First Boundary
+
+The local agent remains an optional interpretation and control layer.
+
+It must not weaken the deterministic-first Quantum contract:
+
+- imports, archive generation, dataset generation, validation, and output writing must still work without the agent
+- the chatbot may translate user intent into supported structured actions, but it must not bypass the deterministic pipeline
+- AI-generated labels, summaries, and grouping suggestions belong to a separate semantic layer, not the canonical source layer
 
 ## What It Should Not Become Yet
 
@@ -73,10 +92,8 @@ This approach makes the UI feel simpler because we can move more always-visible 
 
 ### Phase 0: Repo hygiene
 
-- choose one canonical location for the package
-  - preferred: move or flatten it into a real top-level `agent/`
-  - acceptable alternative: keep `skillspring-quantum-agent/agent/` but update every doc/script/example to match
-- remove or quarantine the malformed `skillspring-quantum-agent/{agent/...` subtree
+- keep `skillspring-quantum-agent/agent/` as the current canonical package location
+- only consider flattening later if the repo structure is deliberately simplified in a future cleanup pass
 - decide whether agent docs stay inside the package folder or get mirrored into `docs/`
 
 ### Phase 1: Local runtime wiring
@@ -110,6 +127,11 @@ This approach makes the UI feel simpler because we can move more always-visible 
   - active retrieval filters or selected result
 - show cited sources from the archive or dataset in every assistant answer
 
+What changed in practice:
+
+- the drawer now also exposes a supported-actions layer for commands like inspect export, run import, open archive, open datasets, search completed outputs, and rebuild the local search index
+- this was prioritized before deeper chat behavior because it improves usability without weakening the deterministic-first contract
+
 ### Phase 4: Automatic indexing
 
 - connect real import completion events to agent indexing
@@ -142,6 +164,10 @@ The following implementation notes should be added before coding begins:
    - the agent should reduce explanatory overload, not create a second explanation system with different language
    - prompt suggestions should use plain task wording, not internal system labels
 
+6. **Two-layer data contract**
+   - keep canonical source facts separate from semantic enrichment metadata
+   - never let AI-generated interpretations silently replace vendor-provided structure or source-grounded archive facts
+
 ## Beta-Facing Recommendation
 
 Before external beta, the best use of this agent is:
@@ -165,7 +191,15 @@ The next practical slice should be a documentation-and-runtime preparation pass:
 
 Only after that should the first assistant-backed UI element be implemented.
 
+That first assistant-backed UI element now exists, so the next assistant work should be narrower follow-through:
+
+1. expand supported phrasing without making action parsing opaque
+2. improve clarification behavior for underspecified commands
+3. strengthen source-grounded explanation around command results
+4. keep the assistant attached to the existing four-screen workflow instead of growing a parallel product surface
+
 Supporting notes:
 
 - runtime contract: `docs/LOCAL_AGENT_RUNTIME_CONTRACT_2026-07-04.md`
 - UI incorporation notes: `docs/LOCAL_AGENT_UI_INCORPORATION_NOTES_2026-07-04.md`
+- broader action plan: `docs/LOCAL_AI_INTEGRATION_ACTION_PLAN_2026-07-05.md`

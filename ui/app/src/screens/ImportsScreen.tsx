@@ -7,6 +7,7 @@ import ArchiveNotificationPanel from "../components/ArchiveNotificationPanel";
 import type {
   ImportJobForm,
   ImportMode,
+  ImportProgressUpdate,
   ImportSourceSummary,
   ImportSourceVendorSummary,
   ImportVendorChoice,
@@ -20,6 +21,7 @@ import {
   chooseFolder,
   chooseImportFile,
   inspectSourcePath,
+  subscribeToImportProgress,
   submitImportJob,
   updateActiveImportPath
 } from "../services/importBridge";
@@ -318,6 +320,7 @@ export default function ImportsScreen() {
 
   const [runState, setRunState] = useState<RunState>("idle");
   const [statusMessage, setStatusMessage] = useState("Ready to inspect or import.");
+  const [importProgress, setImportProgress] = useState<ImportProgressUpdate | null>(null);
   const [logEntries, setLogEntries] = useState<RunLogEntry[]>([]);
   const [latestArchive, setLatestArchive] = useState<ArchiveNotification | null>(null);
   const [archiveEvents, setArchiveEvents] = useState<ArchiveNotification[]>([]);
@@ -469,6 +472,7 @@ export default function ImportsScreen() {
   async function handleSubmit() {
     setRunState("running");
     setStatusMessage("Running import...");
+    setImportProgress(null);
     setLogEntries((prev) => [
       makeLogEntry("info", "Import job submitted from UI scaffold."),
       ...prev
@@ -480,6 +484,7 @@ export default function ImportsScreen() {
     if (result.ok) {
       const refreshedHistory = await refreshImportHistory();
       setRunState("success");
+      setImportProgress(null);
       setStatusMessage(buildPostRunStatusMessage(refreshedHistory.latest, result.message));
       setLogEntries((prev) => [
         makeLogEntry("success", buildPostRunStatusMessage(refreshedHistory.latest, result.message)),
@@ -491,6 +496,7 @@ export default function ImportsScreen() {
     }
 
     setRunState("failed");
+    setImportProgress(null);
     setStatusMessage(result.message);
     setLogEntries((prev) => [
       makeLogEntry("error", result.message),
@@ -534,6 +540,25 @@ export default function ImportsScreen() {
     }
   }, []);
 
+  useEffect(() => {
+    return subscribeToImportProgress((update) => {
+      setImportProgress(update);
+
+      if (runState !== "running") {
+        setRunState("running");
+      }
+
+      setStatusMessage(update.message);
+      setLogEntries((prev) => {
+        if (prev[0]?.message === update.message) {
+          return prev;
+        }
+
+        return [makeLogEntry("info", update.message), ...prev];
+      });
+    });
+  }, [runState]);
+
   const latestRunForNextSteps = importHistory?.latest;
   const latestArchiveArtifactPath = findLatestArchiveArtifactPath(latestRunForNextSteps ?? null);
   const latestDatasetArtifactPath = findLatestDatasetArtifactPath(latestRunForNextSteps ?? null);
@@ -556,11 +581,19 @@ export default function ImportsScreen() {
       ? buildPostRunStatusMessage(latestRunForNextSteps, statusMessage)
       : statusMessage;
   const statusDetail =
-    latestRunForNextSteps && runState !== "running"
+    runState === "running" && importProgress
+      ? `${importProgress.percent}% complete | ${importProgress.completedFiles} of ${importProgress.filesDiscovered} file(s) processed${importProgress.currentPath ? ` | ${importProgress.currentPath.split(/[\\/]/).pop()}` : ""}`
+      : latestRunForNextSteps && runState !== "running"
       ? `Latest run: ${new Date(latestRunForNextSteps.runAt).toLocaleString()} | output ${describeOutputRoot(latestRunForNextSteps.outputRoot)}`
       : undefined;
   const statusBadges =
-    latestRunForNextSteps && runState !== "running"
+    runState === "running" && importProgress
+      ? [
+          importProgress.stage.replace(/_/g, " "),
+          `${importProgress.completedFiles}/${importProgress.filesDiscovered} file(s)`,
+          importProgress.currentKind ? importProgress.currentKind.replace(/_/g, " ") : ""
+        ].filter(Boolean)
+      : latestRunForNextSteps && runState !== "running"
       ? [
           latestRunOutcomeSummary ?? "",
           hasConversationOutputs ? "archive available" : "",

@@ -1,5 +1,5 @@
-import type { ImportJobForm, ImportRunResult, ImportSourceSummary } from "../types/imports";
-import { inspectImportPath, pickDesktopFile, pickDesktopFolder, runImportPath } from "./desktopBridge";
+import type { ImportJobForm, ImportRunResult, ImportSourceSummary, ImportProgressUpdate } from "../types/imports";
+import { inspectImportPath, pickDesktopFile, pickDesktopFolder, runImportPath, subscribeImportProgress } from "./desktopBridge";
 
 interface PickResult {
   canceled?: boolean;
@@ -83,6 +83,12 @@ export function updateActiveImportPath(form: ImportJobForm, nextPath: string): I
   return form.mode === "single_file"
     ? { ...form, inputFile: nextPath }
     : { ...form, inputFolder: nextPath };
+}
+
+export function subscribeToImportProgress(
+  listener: (update: ImportProgressUpdate) => void
+): () => void {
+  return subscribeImportProgress(listener);
 }
 
 export function clearSourceSummaryForModeChange(form: ImportJobForm): ImportJobForm {

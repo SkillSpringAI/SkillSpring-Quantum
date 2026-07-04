@@ -122,6 +122,8 @@ try {
   assert.ok(manifest.topicHints.includes("crypto markets"), "Expected merged topics to include first run");
   assert.ok(manifest.topicHints.includes("sports updates"), "Expected merged topics to include second run");
   assert.equal(manifest.runs[0].runAt, runTwo.runAt, "Expected latest run to sort first");
+  assert.ok(manifest.entries[0].evidenceSources.length > 0, "Expected retrieval entries to carry evidence sources");
+  assert.ok(manifest.entries[0].nextActionLabel.length > 0, "Expected retrieval entries to recommend a next step");
 
   console.log("import-retrieval-index.test.ts passed");
 } finally {

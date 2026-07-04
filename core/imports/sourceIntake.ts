@@ -110,6 +110,22 @@ export interface ImportRunSummary {
   retrievalSummary: ImportRunRetrievalSummary | null;
 }
 
+export interface ImportProgressUpdate {
+  stage:
+    | "inspecting_source"
+    | "source_ready"
+    | "processing_file"
+    | "writing_history"
+    | "writing_indexes"
+    | "completed";
+  message: string;
+  percent: number;
+  filesDiscovered: number;
+  completedFiles: number;
+  currentPath?: string;
+  currentKind?: ImportSourceKind;
+}
+
 interface SourceDocumentRecord {
   schema_version: "source_document.v1";
   source_id: string;
@@ -254,9 +270,17 @@ export async function inspectImportSource(inputPath: string): Promise<ImportSour
 
 export async function runImportSource(
   inputPath: string,
-  outputRootArg?: string
+  outputRootArg?: string,
+  onProgress?: (update: ImportProgressUpdate) => void
 ): Promise<ImportRunSummary> {
   const outputRoot = resolveOutputRoot(outputRootArg);
+  onProgress?.({
+    stage: "inspecting_source",
+    message: "Checking the selected export path.",
+    percent: 5,
+    filesDiscovered: 0,
+    completedFiles: 0
+  });
   const summary = await inspectImportSource(inputPath);
 
   if (summary.inputType === "missing") {
@@ -278,12 +302,34 @@ export async function runImportSource(
   const files = summary.inputType === "folder"
     ? (await resolveDirectoryImportFiles(summary.inputPath)).files
     : [summary.inputPath];
+  onProgress?.({
+    stage: "source_ready",
+    message:
+      summary.supportedFiles > 0
+        ? `Found ${summary.supportedFiles} supported file(s). Preparing the import now.`
+        : "No supported files were found in the selected path.",
+    percent: files.length > 0 ? 10 : 100,
+    filesDiscovered: files.length,
+    completedFiles: 0
+  });
   const packageCompanionReasons = summary.inputType === "folder"
     ? await buildVendorPackageCompanionReasons(files)
     : new Map<string, string>();
 
-  for (const filePath of files) {
+  for (const [index, filePath] of files.entries()) {
     const entry = await classifyImportFile(filePath, packageCompanionReasons);
+    const progressPercent = files.length > 0
+      ? Math.min(88, 10 + Math.floor((index / files.length) * 75))
+      : 88;
+    onProgress?.({
+      stage: "processing_file",
+      message: `Processing ${index + 1} of ${files.length}: ${path.basename(filePath)}`,
+      percent: progressPercent,
+      filesDiscovered: files.length,
+      completedFiles: index,
+      currentPath: filePath,
+      currentKind: entry.kind
+    });
 
     if (!entry.supported) {
       unsupportedFilesSkipped += 1;
@@ -370,6 +416,13 @@ export async function runImportSource(
   }
 
   const retrievalSummary = buildImportRunRetrievalSummary(results);
+  onProgress?.({
+    stage: "writing_history",
+    message: "Writing import history and output manifests.",
+    percent: 92,
+    filesDiscovered: files.length,
+    completedFiles: files.length
+  });
 
   const historyPath = await writeImportRunHistory(outputRoot, runAt, {
     runAt,
@@ -409,8 +462,25 @@ export async function runImportSource(
   };
 
   const dbRoot = path.join(outputRoot, "db");
+  onProgress?.({
+    stage: "writing_indexes",
+    message: "Updating retrieval and DB summary indexes.",
+    percent: 97,
+    filesDiscovered: files.length,
+    completedFiles: files.length
+  });
   await writeDbManifest(dbRoot, "latest-source-import.json", result);
   await writeImportRetrievalIndex(outputRoot, result);
+  onProgress?.({
+    stage: "completed",
+    message:
+      filesImported > 0
+        ? `Import complete: ${filesImported} imported, ${filesFailed} failed, ${unsupportedFilesSkipped} skipped.`
+        : "Import finished without usable outputs.",
+    percent: 100,
+    filesDiscovered: files.length,
+    completedFiles: files.length
+  });
 
   return result;
 }

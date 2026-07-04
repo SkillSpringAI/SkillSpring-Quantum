@@ -8,6 +8,8 @@ export interface RecommendationItem {
   message: string;
 }
 
+type ImportProgressListener = (update: unknown) => void;
+
 declare global {
   interface Window {
     skillspringDesktop?: {
@@ -38,6 +40,7 @@ declare global {
       imports: {
         inspectSource: (inputPath: string) => Promise<unknown>;
         runSource: (inputPath: string, outputRoot: string) => Promise<unknown>;
+        onProgress: (listener: ImportProgressListener) => () => void;
         readHistory: (outputRoot: string, limit: number) => Promise<unknown>;
         queryHistory: (outputRoot: string, filters: {
           vendor?: string;

@@ -7,7 +7,8 @@
 ```
 Electron Main Process
   |
-  |-- Spawns Agent Server (tsx agent/main.ts --server)
+  |-- Starts local agent on demand through repo-aware helpers
+  |-- Exposes IPC handlers (agent:start, agent:stop, agent:health, agent:chat, agent:sessions:list, agent:sessions:create, agent:index)
   |
   V
 HTTP API Server (localhost:5678)
@@ -20,142 +21,69 @@ HTTP API Server (localhost:5678)
   V
 Electron Renderer (React UI)
   |
-  |-- fetch('/chat') for queries
-  |-- fetch('/sessions') for history
-  |-- fetch('/health') for status
+  |-- preload bridge via window.skillspringDesktop.agent.*
+  |-- context-aware Ask Quantum drawer
+  |-- narrow deterministic command bridge before freeform explanation fallback
 ```
 
 ### Main Process Integration
 
 ```typescript
-// electron/main.ts
-import { app, BrowserWindow, ipcMain } from "electron";
-import { spawn, ChildProcess } from "child_process";
-import { join } from "path";
-
-let agentProcess: ChildProcess | null = null;
-
-function startAgentServer(outputRoot: string): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const agentPath = join(__dirname, "../agent/main.ts");
-    agentProcess = spawn("tsx", [agentPath, "--server", "--output", outputRoot], {
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-
-    let output = "";
-    agentProcess.stdout?.on("data", (data) => {
-      output += data.toString();
-      if (output.includes("running on")) {
-        const match = output.match(/:(\d+)/);
-        resolve(parseInt(match?.[1] ?? "5678", 10));
-      }
-    });
-
-    agentProcess.stderr?.on("data", (data) => {
-      console.error(`[Agent] ${data}`);
-    });
-
-    setTimeout(() => reject(new Error("Agent startup timeout")), 30000);
-  });
-}
-
-// IPC handlers for renderer
-ipcMain.handle("agent:health", async () => {
-  const res = await fetch("http://localhost:5678/health");
-  return res.json();
+// electron/ipc/registerIpc.cjs
+ipcMain.handle("agent:start", async (_event, payload = {}) => {
+  // ensures the local HTTP agent is running for the selected output root
 });
 
-ipcMain.handle("agent:chat", async (_, sessionId: string, message: string) => {
-  const res = await fetch("http://localhost:5678/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ session_id: sessionId, message }),
-  });
-  return res.json();
+ipcMain.handle("agent:stop", async () => {
+  // stops the background agent process for the current app session
 });
 
-ipcMain.handle("agent:sessions", async () => {
-  const res = await fetch("http://localhost:5678/sessions");
-  return res.json();
+ipcMain.handle("agent:health", async (_event, payload = {}) => {
+  // checks a live server first, then falls back to a prerequisite probe
 });
 
-// Start agent on app ready
-app.whenReady().then(async () => {
-  const port = await startAgentServer("organized_output");
-  console.log(`Agent running on port ${port}`);
-  createWindow();
+ipcMain.handle("agent:chat", async (_event, payload = {}) => {
+  // proxies chat requests to /chat after ensuring the server is up
 });
 
-// Cleanup on quit
-app.on("before-quit", () => {
-  agentProcess?.kill();
+ipcMain.handle("agent:sessions:list", async (_event, payload = {}) => {
+  // loads prior sessions from /sessions
+});
+
+ipcMain.handle("agent:sessions:create", async (_event, payload = {}) => {
+  // creates a new chat session through /sessions POST
+});
+
+ipcMain.handle("agent:index", async (_event, payload = {}) => {
+  // triggers indexing through the running server or one-shot CLI fallback
 });
 ```
 
 ### Renderer Process Integration
 
 ```typescript
-// ui app components
-const API_BASE = "http://localhost:5678";
-
-export class AgentClient {
-  async health(): Promise<AgentHealth> {
-    const res = await fetch(`${API_BASE}/health`);
-    return res.json();
-  }
-
-  async chat(sessionId: string, message: string): Promise<ChatResponse> {
-    const res = await fetch(`${API_BASE}/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: sessionId, message }),
-    });
-    return res.json();
-  }
-
-  async createSession(title?: string): Promise<{ id: string }> {
-    const res = await fetch(`${API_BASE}/sessions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title }),
-    });
-    const data = await res.json();
-    return data.session;
-  }
-
-  async listSessions(): Promise<Session[]> {
-    const res = await fetch(`${API_BASE}/sessions`);
-    const data = await res.json();
-    return data.sessions;
-  }
-
-  async triggerIndex(): Promise<void> {
-    await fetch(`${API_BASE}/index`, { method: "POST" });
-  }
-}
-
-// React hook example
-function useAgentChat() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const client = useMemo(() => new AgentClient(), []);
-
-  const sendMessage = async (content: string) => {
-    setIsLoading(true);
-    try {
-      const response = await client.chat(sessionId, content);
-      setMessages(prev => [...prev,
-        { role: "user", content },
-        { role: "assistant", content: response.response, sources: response.sources }
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return { messages, sendMessage, isLoading };
-}
+// renderer usage through preload
+const health = await window.skillspringDesktop.agent.health(outputRoot);
+const started = await window.skillspringDesktop.agent.start(outputRoot);
+const session = await window.skillspringDesktop.agent.createSession(outputRoot, "Archive QA");
+const sessions = await window.skillspringDesktop.agent.listSessions(outputRoot);
+const response = await window.skillspringDesktop.agent.chat(
+  outputRoot,
+  session.id,
+  "What have I discussed about React?"
+);
+await window.skillspringDesktop.agent.index(outputRoot);
 ```
+
+## Current Product Boundary
+
+As of July 5, 2026, the first assistant-facing UI behavior is intentionally narrow:
+
+- `Ask Quantum` first tries a validated command catalog for supported requests
+- supported requests route into deterministic Quantum actions such as export inspection, import start, screen navigation, output opening, retrieval search handoff, and index rebuild
+- only non-command requests fall back to broader assistant explanation
+
+This was chosen to make the assistant useful before outside beta without letting it become an unbounded shortcut around the app's evidence-driven workflow.
 
 ## Pipeline Integration
 
@@ -230,7 +158,7 @@ const myCustomTool = {
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `OLLAMA_HOST` | Ollama server URL | `http://localhost:11434` |
-| `SKILLSPRING_OUTPUT` | Default output root | `organized_output` |
+| `SKILLSPRING_OUTPUT` | Default output root when no explicit output root is passed | `organized_output` |
 | `AGENT_PORT` | API server port | `5678` |
 | `AGENT_LOG_LEVEL` | Logging level | `info` |
 
@@ -238,13 +166,13 @@ const myCustomTool = {
 
 ```bash
 # Run health check
-tsx agent/main.ts --health
+npm run agent:health
 
 # Test single query
-tsx agent/main.ts --query "List my topics"
+npm run agent:query -- "List my topics"
 
 # Start server and test API
-tsx agent/main.ts --server &
+npm run agent:server &
 curl http://localhost:5678/health
 
 # Full integration test
@@ -263,4 +191,4 @@ console.log(`Vector Store: ${health.vector_store}`);
 console.log(`Uptime: ${health.uptime_seconds}s`);
 ```
 
-For detailed performance tracking, check the SQLite session database at `organized_output/agent_store/sessions.db`.
+For detailed performance tracking, check the SQLite session database under the active output root, for example `<selected-output-root>/agent_store/sessions.db`.

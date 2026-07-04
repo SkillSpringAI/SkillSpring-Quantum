@@ -37,6 +37,45 @@ The product hierarchy is:
 3. diagnostics and internal governance explain, verify, and recover that product
 4. advanced governance, review, curation, and tiered-storage controls remain available through deliberate advanced access
 
+## Local AI boundary
+
+Quantum now also contains an early local AI integration path under `skillspring-quantum-agent/`.
+
+That layer is optional.
+
+The deterministic pipeline remains authoritative for:
+
+- vendor detection
+- source preservation
+- schema validation
+- record extraction
+- message ordering
+- archive creation
+- dataset generation
+- output validation
+- reproducible execution
+
+The local AI layer is intended to help with:
+
+- natural-language workflow control
+- clearer labels and summaries
+- retrieval explanation
+- topic-shift suggestions
+- project and alias suggestions
+- grounded explanation of results and failures
+
+The app must continue working normally without the local AI stack.
+
+AI-generated metadata belongs to a separate semantic layer and must not silently replace canonical source facts.
+
+As of July 5, 2026, the first deterministic-first assistant milestone is now in place:
+
+- `Ask Quantum` can route a narrow set of plain-language requests into validated Quantum actions
+- supported examples include inspecting an export path, starting an import, opening core workflow screens, opening output locations, searching completed outputs, and rebuilding the local search index
+- unsupported or underspecified requests still fall back to explanation rather than invented execution
+
+This matters because it keeps the assistant useful without letting it outrun the canonical import -> archive -> dataset workflow.
+
 ## Current support tiers
 
 ### MVP first-class now
@@ -95,6 +134,10 @@ Recent hardening included:
 - calmer loaded-state UI on Imports, Find Imports, and Datasets so the first working view stays closer to the primary task instead of opening every secondary panel at once
 - clearer archive selected-file review flow so attachment context and dataset handoff are easier to follow
 - clearer dataset preview alignment messaging so users can tell when they are seeing an exact historical snapshot versus a latest-bundle fallback
+- visible deterministic import progress inside Imports so long-running work no longer feels frozen
+- vendor smoke-test coverage for the current first-class vendor set so parser changes have a fast regression guard
+- corpus-agnostic parser hardening so segment labels and topic boundaries depend less on the maintainer's own corpus
+- retrieval evidence cues and recommended next-step labels so Find Imports is easier to trust and act on
 
 ## Use cases the project currently fits best
 
@@ -153,6 +196,33 @@ What still needs a future UX pass:
 - continued simplification of loaded states once real data is present
 
 The next heavier UX round should likely happen after some outside test-user sessions, not only internal walkthroughs. Internal passes are still useful for obvious friction, but broader simplification decisions will be stronger once they are grounded in how fresh users actually move through the product.
+
+## Local AI roadmap note
+
+The current local AI direction is documented here:
+
+- [docs/LOCAL_AI_INTEGRATION_ACTION_PLAN_2026-07-05.md](docs/LOCAL_AI_INTEGRATION_ACTION_PLAN_2026-07-05.md)
+
+The near-term implementation order remains:
+
+1. external workflow validation
+2. visible import progress
+3. vendor smoke tests
+4. packaging and first-run reliability
+5. natural-language command bridge
+6. optional labels and summaries
+
+The local AI should not move ahead of import reliability.
+
+That sequence is now materially further along:
+
+- visible import progress is implemented
+- vendor smoke tests are implemented
+- corpus-agnostic parser hardening is implemented
+- retrieval evidence-grounding improvements are implemented
+- the first narrow command bridge is implemented
+
+The next validation step is manual Electron use against real exports rather than another large architecture swing.
 
 ## Morning Note
 

@@ -25,7 +25,11 @@ export interface ImportRetrievalIndexEntry {
   conversationCount?: number;
   messageCount?: number;
   attachmentCount?: number;
+  artifactLabels: string[];
   artifactPaths: string[];
+  evidenceSources: string[];
+  nextAction: "open_archive" | "open_dataset" | "review_outputs" | "open_source_file";
+  nextActionLabel: string;
 }
 
 export interface ImportRetrievalIndexManifest {
@@ -121,6 +125,12 @@ function toIndexEntry(
   result: ImportRunFileResult
 ): ImportRetrievalIndexEntry {
   const metadata = result.metadata;
+  const artifacts = result.artifacts ?? [];
+  const artifactPaths = artifacts.map((artifact) => artifact.path);
+  const artifactLabels = artifacts.map((artifact) => artifact.label);
+  const evidenceSources = buildEvidenceSources(metadata, artifactLabels, artifactPaths);
+  const nextAction = chooseNextAction(artifactLabels, artifactPaths, metadata?.sourceCategory);
+  const nextActionLabel = formatNextActionLabel(nextAction);
 
   if (metadata?.sourceCategory === "conversation") {
     return {
@@ -142,14 +152,21 @@ function toIndexEntry(
         message: result.message,
         vendorSources: metadata.vendorSources,
         titleHints: metadata.sampleTitles,
-        topicHints: metadata.topicHints
+        topicHints: metadata.topicHints,
+        artifactLabels,
+        evidenceSources,
+        nextActionLabel
       }),
       startedAt: metadata.startedAt,
       endedAt: metadata.endedAt,
       conversationCount: metadata.conversationCount,
       messageCount: metadata.messageCount,
       attachmentCount: metadata.attachmentCount,
-      artifactPaths: result.artifacts?.map((artifact) => artifact.path) ?? []
+      artifactLabels,
+      artifactPaths,
+      evidenceSources,
+      nextAction,
+      nextActionLabel
     };
   }
 
@@ -172,9 +189,16 @@ function toIndexEntry(
       message: result.message,
       vendorSources: [],
       titleHints: [],
-      topicHints: []
+      topicHints: [],
+      artifactLabels,
+      evidenceSources,
+      nextActionLabel
     }),
-    artifactPaths: result.artifacts?.map((artifact) => artifact.path) ?? []
+    artifactLabels,
+    artifactPaths,
+    evidenceSources,
+    nextAction,
+    nextActionLabel
   };
 }
 
@@ -203,6 +227,9 @@ function buildSearchText(input: {
   vendorSources: string[];
   titleHints: string[];
   topicHints: string[];
+  artifactLabels: string[];
+  evidenceSources: string[];
+  nextActionLabel: string;
 }): string {
   return [
     input.filePath,
@@ -210,8 +237,109 @@ function buildSearchText(input: {
     input.message,
     ...input.vendorSources,
     ...input.titleHints,
-    ...input.topicHints
+    ...input.topicHints,
+    ...input.artifactLabels,
+    ...input.evidenceSources,
+    input.nextActionLabel
   ]
     .join(" ")
     .toLowerCase();
+}
+
+function buildEvidenceSources(
+  metadata: ImportRunFileResult["metadata"],
+  artifactLabels: string[],
+  artifactPaths: string[]
+): string[] {
+  const sources: string[] = [];
+  const joinedLabels = artifactLabels.join(" ").toLowerCase();
+  const joinedPaths = artifactPaths.join(" ").toLowerCase();
+
+  if (metadata?.sourceCategory === "conversation") {
+    sources.push("import metadata");
+  }
+
+  if (
+    joinedLabels.includes("archived markdown") ||
+    joinedLabels.includes("notification") ||
+    joinedPaths.includes("\\source_archive\\") ||
+    joinedPaths.includes("/source_archive/")
+  ) {
+    sources.push("archive output");
+  }
+
+  if (
+    joinedLabels.includes("dataset") ||
+    joinedLabels.includes("topic segments") ||
+    joinedLabels.includes("prompt/response") ||
+    joinedPaths.includes("\\datasets\\") ||
+    joinedPaths.includes("\\db\\") ||
+    joinedPaths.includes("/datasets/") ||
+    joinedPaths.includes("/db/")
+  ) {
+    sources.push("dataset output");
+  }
+
+  const attachmentCount =
+    metadata && "attachmentCount" in metadata && typeof metadata.attachmentCount === "number"
+      ? metadata.attachmentCount
+      : 0;
+
+  if (attachmentCount > 0 || joinedLabels.includes("attachment")) {
+    sources.push("attachment evidence");
+  }
+
+  if (sources.length === 0) {
+    sources.push("source file path");
+  }
+
+  return uniqueValues(sources);
+}
+
+function chooseNextAction(
+  artifactLabels: string[],
+  artifactPaths: string[],
+  sourceCategory?: "conversation" | "document"
+): ImportRetrievalIndexEntry["nextAction"] {
+  const joinedLabels = artifactLabels.join(" ").toLowerCase();
+  const joinedPaths = artifactPaths.join(" ").toLowerCase();
+
+  if (
+    joinedLabels.includes("archived markdown") ||
+    joinedPaths.includes("\\source_archive\\") ||
+    joinedPaths.includes("/source_archive/")
+  ) {
+    return "open_archive";
+  }
+
+  if (
+    joinedLabels.includes("dataset") ||
+    joinedLabels.includes("topic segments") ||
+    joinedLabels.includes("prompt/response") ||
+    joinedPaths.includes("\\datasets\\") ||
+    joinedPaths.includes("\\db\\") ||
+    joinedPaths.includes("/datasets/") ||
+    joinedPaths.includes("/db/")
+  ) {
+    return "open_dataset";
+  }
+
+  if (artifactLabels.length > 0 || artifactPaths.length > 0 || sourceCategory === "document") {
+    return "review_outputs";
+  }
+
+  return "open_source_file";
+}
+
+function formatNextActionLabel(action: ImportRetrievalIndexEntry["nextAction"]): string {
+  switch (action) {
+    case "open_archive":
+      return "Open Readable Archive next";
+    case "open_dataset":
+      return "Open Dataset View next";
+    case "review_outputs":
+      return "Review output files next";
+    default:
+      return "Open source file next";
+  }
 }

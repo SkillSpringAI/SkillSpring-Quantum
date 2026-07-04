@@ -1,4 +1,5 @@
 const path = require("node:path");
+const { spawn } = require("node:child_process");
 const { ipcMain, dialog, shell } = require("electron");
 const { runCommand } = require("../lib/runCommand.cjs");
 const { readJsonOutput } = require("../lib/readJsonOutput.cjs");
@@ -42,6 +43,79 @@ async function runTsx(scriptPath, args = []) {
     ...result,
     json: readJsonOutput(result.stdout)
   };
+}
+
+async function runImportTsxWithProgress(webContents, inputPath, outputRoot) {
+  const root = repoRoot();
+  const fullScriptPath = path.join(root, "core", "imports", "runImportSource.ts");
+
+  return await new Promise((resolve) => {
+    const child = spawn(
+      nodeCommand(),
+      [tsxCli(root), fullScriptPath, inputPath, outputRoot || "organized_output", "--progress"],
+      {
+        cwd: root,
+        env: { ...process.env },
+        shell: false,
+        windowsHide: true
+      }
+    );
+
+    let stdout = "";
+    let stderr = "";
+    let buffer = "";
+
+    child.stdout.on("data", (data) => {
+      const text = data.toString();
+      stdout += text;
+      buffer += text;
+
+      const lines = buffer.split(/\r?\n/);
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        if (!line.startsWith("__SSQ_PROGRESS__")) {
+          continue;
+        }
+
+        try {
+          const payload = JSON.parse(line.slice("__SSQ_PROGRESS__".length));
+          webContents.send("imports:progress", payload);
+        } catch {
+          // Ignore malformed progress lines so the final import result can still complete.
+        }
+      }
+    });
+
+    child.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    child.on("error", (error) => {
+      resolve({
+        ok: false,
+        code: -1,
+        stdout,
+        stderr: stderr + error.message,
+        json: null
+      });
+    });
+
+    child.on("close", (code) => {
+      const cleanedStdout = stdout
+        .split(/\r?\n/)
+        .filter((line) => line && !line.startsWith("__SSQ_PROGRESS__"))
+        .join("\n");
+
+      resolve({
+        ok: code === 0,
+        code,
+        stdout: cleanedStdout,
+        stderr,
+        json: readJsonOutput(cleanedStdout)
+      });
+    });
+  });
 }
 
 function ok(result, message) {
@@ -537,8 +611,8 @@ function registerIpc() {
     return result.ok ? ok(result, "Import source inspected.") : fail(result, "Failed to inspect import source.");
   });
 
-  ipcMain.handle("imports:run", async (_event, payload) => {
-    const result = await runTsx("core/imports/runImportSource.ts", [payload.inputPath, payload.outputRoot || "organized_output"]);
+  ipcMain.handle("imports:run", async (event, payload) => {
+    const result = await runImportTsxWithProgress(event.sender, payload.inputPath, payload.outputRoot || "organized_output");
     return result.ok ? ok(result, "Import source processed.") : fail(result, "Failed to process import source.");
   });
 

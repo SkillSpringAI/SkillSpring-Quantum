@@ -8,7 +8,7 @@
 import { createAgent } from "./agent/core/agentFactory.js";
 
 const agent = await createAgent({
-  outputRoot: "organized_output",  // Your SkillSpring output directory
+  outputRoot: "organized_output",  // Or any selected SkillSpring output directory
   configDir: "./agent/config",     // Config directory (optional)
 });
 ```
@@ -88,7 +88,7 @@ for await (const chunk of stream) {
 Start the server:
 
 ```bash
-tsx agent/main.ts --server --port 5678
+npm run agent:server -- --port 5678
 ```
 
 ### Endpoints

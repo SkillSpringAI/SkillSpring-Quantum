@@ -30,6 +30,9 @@ export default class AppErrorBoundary extends React.Component<
 
   render() {
     if (this.state.error) {
+      const errorMessage = this.state.error.message || "Unknown renderer error";
+      const looksLikeInitializationBug = /before initialization/i.test(errorMessage);
+
       return (
         <div className="app-shell">
           <main className="main-area">
@@ -40,8 +43,17 @@ export default class AppErrorBoundary extends React.Component<
                   SkillSpring Quantum hit a renderer error before the normal screen layout finished loading.
                 </p>
                 <p className="muted">
-                  Error: {this.state.error.message || "Unknown renderer error"}
+                  Error: {errorMessage}
                 </p>
+                {looksLikeInitializationBug ? (
+                  <p className="muted">
+                    This usually means a screen tried to use one of its own values too early. Go back to Imports or Dashboard, then retry after updating to the latest build.
+                  </p>
+                ) : (
+                  <p className="muted">
+                    Try returning to Dashboard or Imports first. If the same screen keeps failing, refresh to the latest build and rerun the same path so the error can be traced.
+                  </p>
+                )}
               </div>
             </section>
           </main>

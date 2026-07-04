@@ -44,6 +44,8 @@ This is narrower than the full internal parser and document-ingestion surface al
 - import history query utility for vendor/topic/text/date/status investigations
 - import retrieval index manifests for search-ready file-level records
 - segment retrieval index manifests for linked dataset segment lookup
+- visible staged import progress updates surfaced into the Electron UI
+- vendor smoke-test coverage for ChatGPT, Claude, Gemini, Grok, and proven Microsoft Copilot intake paths
 - latest dataset summary reader
 - dataset source-context handoff that now carries recovery-path status and package-companion handling into the datasets screen
 - desktop archive notification panel on Imports and Organized Output screens
@@ -53,6 +55,7 @@ This is narrower than the full internal parser and document-ingestion surface al
 - vendor-first import entry that now starts moving the UI toward expected export source before file-mode reasoning
 - clearer import match feedback for ready-now, recovery-path, and mismatch states
 - desktop retrieval screen with vendor/topic/date narrowing, linked segment inspection, and saved investigations
+- retrieval entries now carry evidence-source cues and recommended next-step labels so users can tell what matched and where to go next
 - retrieval loaded-state simplification so saved searches, tips, import details, and segment inspection stay optional until the user asks for them
 - desktop markdown archive browser grouped by inferred topic folder
 - archive-to-dataset handoff from selected markdown files into matched dataset context
@@ -69,6 +72,7 @@ This is narrower than the full internal parser and document-ingestion surface al
 - Electron desktop command spawning now runs safely against Windows paths with spaces, including `process.execPath` under `C:\Program Files\...`
 - desktop bridge honesty so import/source inspection fails explicitly when the Electron bridge is unavailable instead of silently falling back to mock behavior
 - React desktop screens for imports, diagnostics, governance, DB browsing, datasets, organized output, review queue, and settings
+- `Ask Quantum` drawer now includes a narrow deterministic command bridge before broader explanation fallback
 
 ## Current Build Emphasis
 
@@ -116,6 +120,13 @@ An additional outside test session on July 4, 2026 also surfaced a smaller but v
 - keep tightening type safety and external-shape validation so fresh-user exports fail less mysteriously
 - pursue cached filesystem checks, controlled concurrency, and large-file streaming as practical hardening steps once they can be introduced without destabilizing deterministic output behavior
 
+Several of the highest-value items from that backlog are now implemented:
+
+- deterministic import progress reporting
+- vendor smoke-test coverage
+- parser hardening aimed at unfamiliar user corpora
+- retrieval-side evidence and next-step labeling
+
 Working note: `docs/EXTERNAL_TEST_IMPLEMENTATION_NOTES_2026-07-04.md`
 
 As of July 4, 2026, the repo also contains an initial local-agent package candidate under `skillspring-quantum-agent/`.
@@ -127,6 +138,16 @@ That package fits the intended assistant interpretation surface well, but it sho
 - only later, if warranted, as a broader chat-style retrieval surface
 
 It should not become a competing primary workflow or a reason to make Quantum's core import/review loop depend on model availability.
+
+The stronger architectural rule is now:
+
+- deterministic outputs remain the canonical layer
+- AI labels, summaries, segments, groupings, and corrections belong to a separate semantic layer
+- natural-language control should translate into supported structured actions rather than direct freeform agent execution
+
+That last rule is no longer only architectural intent. It is now reflected in the UI through the first narrow command catalog used by `Ask Quantum`.
+
+Working note: `docs/LOCAL_AI_INTEGRATION_ACTION_PLAN_2026-07-05.md`
 
 ## Internal Coverage Beyond MVP
 

@@ -4,11 +4,12 @@
  * CLI interface for interacting with the local agent
  *
  * Usage:
- *   tsx agent/main.ts                    # Interactive chat
- *   tsx agent/main.ts --index            # Index existing archives
- *   tsx agent/main.ts --health           # Check system health
- *   tsx agent/main.ts --query "..."      # Single query mode
- *   tsx agent/main.ts --server           # Start API server
+ *   npm run agent                        # Interactive chat
+ *   npm run agent:index                  # Index existing archives
+ *   npm run agent:health                 # Check system health
+ *   npm run agent:query -- "..."         # Single query mode
+ *   npm run agent:server                 # Start API server
+ *   tsx skillspring-quantum-agent/agent/main.ts --health  # Direct path fallback
  */
 
 import { createAgent, createAgentRuntime, checkPrerequisites } from "./core/agentFactory.js";
@@ -78,7 +79,7 @@ function printHelp(): void {
   console.log(`
 SkillSpring Local Agent v1.0.0
 
-Usage: tsx agent/main.ts [options]
+Usage: tsx skillspring-quantum-agent/agent/main.ts [options]
 
 Options:
   --index              Index existing archives into vector store
@@ -92,10 +93,11 @@ Options:
   --help, -h           Show this help
 
 Examples:
-  tsx agent/main.ts --health
-  tsx agent/main.ts --index
-  tsx agent/main.ts --query "What topics have I discussed about TypeScript?"
-  tsx agent/main.ts --server --port 5678
+  npm run agent:health
+  npm run agent:index
+  npm run agent:query -- "What topics have I discussed about TypeScript?"
+  npm run agent:server -- --port 5678
+  tsx skillspring-quantum-agent/agent/main.ts --output ./my_exports --health
 `);
 }
 

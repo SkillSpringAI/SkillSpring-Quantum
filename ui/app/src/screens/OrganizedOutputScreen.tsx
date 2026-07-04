@@ -153,6 +153,14 @@ export default function OrganizedOutputScreen() {
     };
   }, [selectedFile?.path, content, loadingArchiveState, loadingSelectedContent]);
 
+  const archiveFileCount = topics.reduce((sum, topic) => sum + topic.files.length, 0);
+  const archiveConversationCount = countArchiveConversations(topics);
+  const archiveSummary = summarizeArchiveCollection(
+    archiveConversationCount,
+    archiveFileCount,
+    topics.length
+  );
+
   useEffect(() => {
     if (selectedFile) {
       setCurrentArtifact({
@@ -204,14 +212,6 @@ export default function OrganizedOutputScreen() {
     settings.outputRoot,
     setCurrentArtifact
   ]);
-
-  const archiveFileCount = topics.reduce((sum, topic) => sum + topic.files.length, 0);
-  const archiveConversationCount = countArchiveConversations(topics);
-  const archiveSummary = summarizeArchiveCollection(
-    archiveConversationCount,
-    archiveFileCount,
-    topics.length
-  );
 
   return (
     <section className="screen-grid">

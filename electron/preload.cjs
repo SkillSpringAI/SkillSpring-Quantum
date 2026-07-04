@@ -28,6 +28,11 @@ contextBridge.exposeInMainWorld("skillspringDesktop", {
   imports: {
     inspectSource: (inputPath) => ipcRenderer.invoke("imports:inspect", { inputPath }),
     runSource: (inputPath, outputRoot) => ipcRenderer.invoke("imports:run", { inputPath, outputRoot }),
+    onProgress: (listener) => {
+      const handler = (_event, payload) => listener(payload);
+      ipcRenderer.on("imports:progress", handler);
+      return () => ipcRenderer.removeListener("imports:progress", handler);
+    },
     readHistory: (outputRoot, limit) => ipcRenderer.invoke("imports:history", { outputRoot, limit }),
     queryHistory: (outputRoot, filters) => ipcRenderer.invoke("imports:history:query", { outputRoot, filters }),
     readRetrievalIndex: (outputRoot) => ipcRenderer.invoke("imports:retrievalIndex", { outputRoot })

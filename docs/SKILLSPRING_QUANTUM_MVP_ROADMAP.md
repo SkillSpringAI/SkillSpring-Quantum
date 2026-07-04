@@ -68,6 +68,14 @@ The next beta-leaning slices should continue from these explicit UX targets:
    - Keep advanced/operator surfaces hidden unless directly useful.
    - Prepare one stable walkthrough path that can be reused in outside beta sessions.
 
+### Outside-test implementation notes
+
+One early outside test session also produced a useful "minor implementation" backlog covering progress reporting, smoke tests, type-safety tightening, cached filesystem checks, controlled concurrency, streaming large imports, and resume-oriented hardening.
+
+Those notes should be treated as supporting slices for the same beta-readiness goal rather than as a separate roadmap.
+
+Working note: `docs/EXTERNAL_TEST_IMPLEMENTATION_NOTES_2026-07-04.md`
+
 ### Local agent incorporation rule
 
 The newly added local-agent package should be integrated in a way that simplifies the current product, not one that adds another product surface to learn.

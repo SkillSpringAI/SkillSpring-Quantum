@@ -109,6 +109,15 @@ The latest internal pass on July 2, 2026 also clarified an important sequencing 
 - if a future assistant layer is added, it should refine interpretation of grounded records rather than replace the deterministic import, archive, and dataset spine
 - first-run onboarding may benefit from a short walkthrough or tutorial video that demonstrates the ordinary import -> archive -> dataset path, especially for outside users who would otherwise face too much explanatory text on first contact
 
+An additional outside test session on July 4, 2026 also surfaced a smaller but valuable implementation backlog:
+
+- make long-running import work feel visible with progress reporting instead of silent waits
+- add smoke-test coverage before parser and retrieval hardening expands further
+- keep tightening type safety and external-shape validation so fresh-user exports fail less mysteriously
+- pursue cached filesystem checks, controlled concurrency, and large-file streaming as practical hardening steps once they can be introduced without destabilizing deterministic output behavior
+
+Working note: `docs/EXTERNAL_TEST_IMPLEMENTATION_NOTES_2026-07-04.md`
+
 As of July 4, 2026, the repo also contains an initial local-agent package candidate under `skillspring-quantum-agent/`.
 
 That package fits the intended assistant interpretation surface well, but it should be integrated carefully:

@@ -10,12 +10,16 @@ import { LMStudioProvider } from "./lmStudioProvider.js";
 interface ProviderConfig {
   default_provider: string;
   providers: Record<string, ProviderEntry>;
+  fallback_behavior?: {
+    on_model_not_found?: string;
+  };
 }
 
 interface ProviderEntry {
   enabled: boolean;
   base_url: string;
   default_model: string;
+  available_models?: string[];
   request_timeout_ms: number;
   max_retries: number;
   retry_delay_ms: number;
@@ -51,6 +55,8 @@ export function createProvider(config: ProviderConfig, providerName?: string): L
       return new OllamaProvider({
         baseUrl: entry.base_url,
         defaultModel: entry.default_model,
+        compatibleModels: entry.available_models,
+        fallbackToFirstAvailable: config.fallback_behavior?.on_model_not_found === "fallback_to_first_available",
         requestTimeoutMs: entry.request_timeout_ms,
         maxRetries: entry.max_retries,
         retryDelayMs: entry.retry_delay_ms,

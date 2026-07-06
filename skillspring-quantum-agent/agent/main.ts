@@ -19,6 +19,7 @@ interface CLIOptions {
   outputRoot: string;
   index: boolean;
   health: boolean;
+  healthJson: boolean;
   query?: string;
   server: boolean;
   session?: string;
@@ -33,6 +34,7 @@ function parseArgs(argv: string[]): CLIOptions {
     outputRoot: "organized_output",
     index: false,
     health: false,
+    healthJson: false,
     server: false,
     port: 5678,
     help: false,
@@ -45,6 +47,10 @@ function parseArgs(argv: string[]): CLIOptions {
         break;
       case "--health":
         options.health = true;
+        break;
+      case "--health-json":
+        options.health = true;
+        options.healthJson = true;
         break;
       case "--query":
         options.query = args[++i];
@@ -101,9 +107,15 @@ Examples:
 `);
 }
 
-async function runHealthCheck(): Promise<void> {
-  console.log("Checking prerequisites...\n");
+async function runHealthCheck(options: CLIOptions): Promise<void> {
   const check = await checkPrerequisites();
+
+  if (options.healthJson) {
+    console.log(JSON.stringify(check));
+    return;
+  }
+
+  console.log("Checking prerequisites...\n");
 
   if (check.ok) {
     console.log("All systems operational");
@@ -375,7 +387,7 @@ async function main(): Promise<void> {
   }
 
   if (options.health) {
-    await runHealthCheck();
+    await runHealthCheck(options);
     return;
   }
 

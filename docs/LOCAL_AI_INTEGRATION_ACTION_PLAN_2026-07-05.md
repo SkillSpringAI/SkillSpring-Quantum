@@ -198,6 +198,21 @@ Deliverables:
 - provenance fields
 - local model availability checks
 
+Runtime note from July 5, 2026 manual checking:
+
+- assistant startup still needs a better "installed locally, activate through Quantum" path for Ollama-backed setups
+- the product goal is not to make Ollama mandatory on first launch, but to avoid requiring an outside user to open PowerShell manually before `Ask Quantum` can work
+- the preferred beta-facing behavior is: user invokes assistant features -> Quantum checks local availability -> Quantum attempts safe local startup/reconnection -> only then does Quantum show a clear prerequisite message if it still cannot connect
+- user-facing assistant status should also avoid exposing raw experimental runtime warnings such as the current SQLite warning text
+
+Runtime follow-up from July 6, 2026:
+
+- the assistant runtime also needs a model-inventory and compatibility layer, not only a provider-available check
+- Quantum should detect which local Ollama models are actually installed, compare them against preferred and compatible config entries, and select the best fit before trying to answer
+- if the preferred model is missing but a compatible local model exists, the assistant should fall back automatically instead of surfacing a raw 404
+- if no supported model is installed, the next beta-facing slice should be a guided install path that checks storage and memory before offering a one-click pull of the smallest acceptable supported model
+- the fallback chain should remain explicit and inspectable so the UI can explain what Quantum found, what it selected, and why
+
 ### Phase 3: Dataset-backed contextual retrieval
 
 Deliverables:

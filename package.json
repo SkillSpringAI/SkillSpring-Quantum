@@ -39,6 +39,8 @@
     "test:import:metadata": "tsx tests/parser/import-metadata.test.ts",
     "test:import:retrieval": "tsx tests/parser/import-retrieval-index.test.ts",
     "test:commands": "tsx tests/parser/command-catalog.test.ts",
+    "test:agent:paths": "tsx tests/parser/agent-config-path.test.ts",
+    "test:agent:models": "tsx tests/parser/model-selection.test.ts",
     "test:retrieval": "tsx tests/parser/retrieval-ranking.test.ts && tsx tests/parser/retrieval-saved-views.test.ts",
     "test:segmenter": "tsx tests/pipeline/segmenter.test.ts",
     "test:segmenter:drift": "tsx tests/pipeline/topic-drift-segmenter.test.ts",

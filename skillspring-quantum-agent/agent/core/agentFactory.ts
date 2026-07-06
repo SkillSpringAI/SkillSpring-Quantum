@@ -10,6 +10,7 @@ import { loadVectorStoreConfig, createVectorStore } from "../vector-store/factor
 import type { AgentConfig } from "../types/index.js";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 interface AgentFactoryOptions {
   outputRoot?: string;
@@ -29,9 +30,29 @@ export interface AgentRuntime {
   outputRoot: string;
 }
 
+interface ProviderSelectionReporter {
+  describeModelSelection(): Promise<string>;
+}
+
+function hasModelSelectionReporter(value: unknown): value is ProviderSelectionReporter {
+  return typeof value === "object" && value !== null && "describeModelSelection" in value;
+}
+
+function indicatesNoCompatibleModel(selection: string): boolean {
+  return /no compatible installed/i.test(selection);
+}
+
+export function resolveAgentConfigDir(configDir?: string): string {
+  if (configDir) {
+    return resolve(configDir);
+  }
+
+  return fileURLToPath(new URL("../config/", import.meta.url));
+}
+
 export async function createAgentRuntime(options: AgentFactoryOptions = {}): Promise<AgentRuntime> {
   const outputRoot = options.outputRoot ? resolve(options.outputRoot) : resolve("organized_output");
-  const configDir = options.configDir ? resolve(options.configDir) : new URL("../config", import.meta.url).pathname;
+  const configDir = resolveAgentConfigDir(options.configDir);
 
   // Load all configs
   const [llmConfig, embeddingsConfig, vectorStoreConfig] = await Promise.all([
@@ -97,7 +118,13 @@ export async function checkPrerequisites(): Promise<{
     const config = await loadProviderConfig();
     const provider = await getFirstAvailableProvider(config);
     const models = await provider.listModels();
-    details.llm = `${provider.name} (${models.length} models)`;
+    const llmSelection = hasModelSelectionReporter(provider)
+      ? await provider.describeModelSelection()
+      : `${models.length} models detected`;
+    details.llm = `${provider.name}; ${llmSelection}`;
+    if (indicatesNoCompatibleModel(llmSelection)) {
+      missing.push("Compatible LLM model");
+    }
   } catch (error) {
     missing.push("LLM provider (Ollama or LM Studio)");
     details.llm = `unavailable: ${error instanceof Error ? error.message : String(error)}`;
@@ -108,7 +135,13 @@ export async function checkPrerequisites(): Promise<{
     const { loadEmbeddingsConfig, getFirstAvailableEmbeddingProvider } = await import("../embeddings/providerFactory.js");
     const config = await loadEmbeddingsConfig();
     const provider = await getFirstAvailableEmbeddingProvider(config);
-    details.embeddings = `${provider.name} (${provider.getDimensions()}d)`;
+    const embeddingSelection = hasModelSelectionReporter(provider)
+      ? await provider.describeModelSelection()
+      : `${provider.getDimensions()}d`;
+    details.embeddings = `${provider.name}; ${embeddingSelection}; ${provider.getDimensions()}d`;
+    if (indicatesNoCompatibleModel(embeddingSelection)) {
+      missing.push("Compatible embedding model");
+    }
   } catch (error) {
     missing.push("Embedding provider (Ollama)");
     details.embeddings = `unavailable: ${error instanceof Error ? error.message : String(error)}`;

@@ -8,6 +8,9 @@ import { OllamaEmbeddingProvider } from "./ollamaEmbeddings.js";
 interface EmbeddingsConfig {
   default_provider: string;
   providers: Record<string, EmbeddingsProviderEntry>;
+  fallback_behavior?: {
+    on_model_not_found?: string;
+  };
   indexing: {
     chunk_size: number;
     chunk_overlap: number;
@@ -21,6 +24,7 @@ interface EmbeddingsProviderEntry {
   enabled: boolean;
   base_url?: string;
   default_model?: string;
+  available_models?: string[];
   embedding_dimensions?: number;
   request_timeout_ms?: number;
   batch_size?: number;
@@ -60,6 +64,8 @@ export function createEmbeddingProvider(
       return new OllamaEmbeddingProvider({
         baseUrl: entry.base_url,
         model: entry.default_model,
+        compatibleModels: entry.available_models,
+        fallbackToFirstAvailable: config.fallback_behavior?.on_model_not_found === "fallback_to_first_available",
         dimensions: entry.embedding_dimensions,
         requestTimeoutMs: entry.request_timeout_ms,
         batchSize: entry.batch_size,

@@ -4,6 +4,11 @@
  */
 
 import type { LLMProvider, LLMMessage, LLMResponse, LLMRequestOptions } from "../types/index.js";
+import {
+  isModelMissingError,
+  selectBestAvailableModel,
+  type ModelSelectionReason,
+} from "../core/modelSelection.js";
 
 interface OllamaChatRequest {
   model: string;
@@ -34,16 +39,22 @@ export class OllamaProvider implements LLMProvider {
   private requestTimeoutMs: number;
   private maxRetries: number;
   private retryDelayMs: number;
+  private compatibleModels: string[];
+  private fallbackToFirstAvailable: boolean;
 
   constructor(config?: {
     baseUrl?: string;
     defaultModel?: string;
+    compatibleModels?: string[];
+    fallbackToFirstAvailable?: boolean;
     requestTimeoutMs?: number;
     maxRetries?: number;
     retryDelayMs?: number;
   }) {
     this.baseUrl = config?.baseUrl ?? "http://localhost:11434";
     this.defaultModel = config?.defaultModel ?? "llama3.2";
+    this.compatibleModels = config?.compatibleModels ?? [];
+    this.fallbackToFirstAvailable = config?.fallbackToFirstAvailable ?? true;
     this.requestTimeoutMs = config?.requestTimeoutMs ?? 120_000;
     this.maxRetries = config?.maxRetries ?? 3;
     this.retryDelayMs = config?.retryDelayMs ?? 1_000;
@@ -73,7 +84,8 @@ export class OllamaProvider implements LLMProvider {
   }
 
   async chat(messages: LLMMessage[], options?: LLMRequestOptions): Promise<LLMResponse> {
-    const model = options?.model ?? this.defaultModel;
+    const requestedModel = options?.model ?? this.defaultModel;
+    const model = await this.resolveModel(requestedModel);
     const body: OllamaChatRequest = {
       model,
       messages: messages.map((m) => ({
@@ -96,7 +108,25 @@ export class OllamaProvider implements LLMProvider {
       }));
     }
 
-    const result = await this.withRetry(() => this.post<OllamaChatResponse>("/api/chat", body));
+    const executeChat = (chatModel: string) =>
+      this.withRetry(() => this.post<OllamaChatResponse>("/api/chat", { ...body, model: chatModel }));
+
+    let result: OllamaChatResponse;
+    try {
+      result = await executeChat(model);
+    } catch (error) {
+      if (!isModelMissingError(error) || !this.fallbackToFirstAvailable) {
+        throw error;
+      }
+
+      const fallbackModel = await this.resolveModel(requestedModel, model);
+      if (fallbackModel === model) {
+        throw error;
+      }
+
+      result = await executeChat(fallbackModel);
+    }
+
     const msg = result.message;
     const toolCalls = msg?.tool_calls?.map((tc, i) => ({
       id: `call_${i}`,
@@ -123,7 +153,8 @@ export class OllamaProvider implements LLMProvider {
   }
 
   async generate(prompt: string, options?: LLMRequestOptions): Promise<LLMResponse> {
-    const model = options?.model ?? this.defaultModel;
+    const requestedModel = options?.model ?? this.defaultModel;
+    const model = await this.resolveModel(requestedModel);
     const body = {
       model,
       prompt,
@@ -132,7 +163,29 @@ export class OllamaProvider implements LLMProvider {
       system: options?.system ?? undefined,
     };
 
-    const result = await this.withRetry(() => this.post<{ response: string; model: string; done: boolean; prompt_eval_count?: number; eval_count?: number }>("/api/generate", body));
+    const executeGenerate = (generateModel: string) =>
+      this.withRetry(() =>
+        this.post<{ response: string; model: string; done: boolean; prompt_eval_count?: number; eval_count?: number }>(
+          "/api/generate",
+          { ...body, model: generateModel }
+        )
+      );
+
+    let result: { response: string; model: string; done: boolean; prompt_eval_count?: number; eval_count?: number };
+    try {
+      result = await executeGenerate(model);
+    } catch (error) {
+      if (!isModelMissingError(error) || !this.fallbackToFirstAvailable) {
+        throw error;
+      }
+
+      const fallbackModel = await this.resolveModel(requestedModel, model);
+      if (fallbackModel === model) {
+        throw error;
+      }
+
+      result = await executeGenerate(fallbackModel);
+    }
 
     return {
       content: result.response,
@@ -154,6 +207,62 @@ export class OllamaProvider implements LLMProvider {
     if (options?.num_predict !== undefined) opts.num_predict = options.num_predict;
     if (options?.max_tokens !== undefined) opts.num_predict = options.max_tokens;
     return opts;
+  }
+
+  async describeModelSelection(requestedModel?: string): Promise<string> {
+    const targetModel = requestedModel ?? this.defaultModel;
+    const installedModels = await this.listModels();
+    const selection = selectBestAvailableModel({
+      requestedModel: targetModel,
+      installedModels,
+      compatibleModels: this.compatibleModels,
+      fallbackToFirstAvailable: this.fallbackToFirstAvailable,
+      allowAnyInstalledFallback: true,
+    });
+
+    if (!selection.selectedModel) {
+      return `configured ${targetModel}; no compatible installed model found`;
+    }
+
+    return this.describeSelection(targetModel, selection.selectedModel, selection.reason, selection.installedModels.length);
+  }
+
+  private async resolveModel(requestedModel: string, excludeModel?: string): Promise<string> {
+    const installedModels = await this.listModels();
+    const selection = selectBestAvailableModel({
+      requestedModel,
+      installedModels: excludeModel
+        ? installedModels.filter((model) => model !== excludeModel)
+        : installedModels,
+      compatibleModels: this.compatibleModels,
+      fallbackToFirstAvailable: this.fallbackToFirstAvailable,
+      allowAnyInstalledFallback: true,
+    });
+
+    if (!selection.selectedModel) {
+      throw new Error(
+        `No compatible Ollama model found for "${requestedModel}". Installed models: ${selection.installedModels.join(", ") || "none"}`
+      );
+    }
+
+    return selection.selectedModel;
+  }
+
+  private describeSelection(
+    requestedModel: string,
+    selectedModel: string,
+    reason: ModelSelectionReason | null,
+    installedCount: number
+  ): string {
+    if (reason === "requested") {
+      return `${selectedModel} selected (${installedCount} model${installedCount === 1 ? "" : "s"} installed)`;
+    }
+
+    if (reason === "compatible") {
+      return `${selectedModel} selected for configured ${requestedModel} (${installedCount} model${installedCount === 1 ? "" : "s"} installed)`;
+    }
+
+    return `${selectedModel} fallback selected for configured ${requestedModel} (${installedCount} model${installedCount === 1 ? "" : "s"} installed)`;
   }
 
   private async post<T>(endpoint: string, body: unknown): Promise<T> {

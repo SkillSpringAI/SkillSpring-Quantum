@@ -57,6 +57,26 @@ Near-term preferred startup behavior:
 
 This reduces startup complexity and prevents local-model availability from feeling like a required app dependency.
 
+Post-lunch follow-up note from manual checking on July 5, 2026:
+
+- if Ollama is already installed on the user's device, Quantum should ideally be able to activate or start the needed local runtime path itself when the user invokes assistant features
+- the current experience still assumes too much manual operator behavior, including opening PowerShell first in some cases
+- that should be improved without turning Ollama into a mandatory dependency for ordinary imports
+- preferred direction: keep the agent optional, but make `Ask Quantum` smart enough to attempt local Ollama startup or reconnection before telling the user to fix prerequisites manually
+- any auto-start behavior should stay scoped to assistant use, not unconditional app launch
+
+Follow-up runtime note from July 6, 2026:
+
+- startup readiness is necessary but not sufficient; Quantum also has to verify that a compatible local model is actually installed
+- the runtime should treat "Ollama reachable but configured model missing" as a recoverable model-selection problem before treating it as a user-facing failure
+- preferred behavior is: detect installed models -> match against preferred and compatible config entries -> auto-select the best fit -> only surface an actionable prerequisite message if no supported local model exists
+- future one-click install work should hang off this same contract so the assistant can say whether it found a usable model, why it fell back, or why it is offering a guided local download
+
+The same manual check also surfaced a presentation issue:
+
+- experimental `node:sqlite` warnings should not leak directly into the user-facing assistant status message
+- those warnings should be suppressed, redirected to logs, or translated into a cleaner status summary before outside beta use
+
 ## Indexing Contract
 
 The first agent indexing contract should be:

@@ -1,4 +1,5 @@
 const path = require("node:path");
+const fs = require("node:fs");
 const { spawn } = require("node:child_process");
 const { ipcMain, dialog, shell } = require("electron");
 const { runCommand } = require("../lib/runCommand.cjs");
@@ -21,6 +22,7 @@ let agentProcess = null;
 let agentStartPromise = null;
 let agentPort = AGENT_DEFAULT_PORT;
 let agentOutputRoot = "organized_output";
+let ollamaStartPromise = null;
 
 function agentScriptPath(root) {
   return path.join(root, "skillspring-quantum-agent", "agent", "main.ts");
@@ -159,32 +161,188 @@ async function checkRunningAgentHealth() {
   }
 }
 
+async function checkOllamaHealth() {
+  try {
+    const response = await fetch("http://127.0.0.1:11434/api/tags");
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+function candidateOllamaExecutables() {
+  const candidates = [];
+
+  if (process.platform === "win32") {
+    const localAppData = process.env.LOCALAPPDATA;
+    const programFiles = process.env.ProgramFiles;
+
+    if (localAppData) {
+      candidates.push(path.join(localAppData, "Programs", "Ollama", "ollama.exe"));
+    }
+
+    if (programFiles) {
+      candidates.push(path.join(programFiles, "Ollama", "ollama.exe"));
+    }
+
+    candidates.push("ollama.exe");
+  }
+
+  candidates.push("ollama");
+
+  return [...new Set(candidates)];
+}
+
+function resolveOllamaExecutable() {
+  for (const candidate of candidateOllamaExecutables()) {
+    if (candidate.includes(path.sep) && fs.existsSync(candidate)) {
+      return candidate;
+    }
+
+    if (!candidate.includes(path.sep)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+async function tryStartOllamaRuntime() {
+  if (await checkOllamaHealth()) {
+    return { attempted: false, started: true, reachable: true };
+  }
+
+  if (ollamaStartPromise) {
+    return await ollamaStartPromise;
+  }
+
+  const executable = resolveOllamaExecutable();
+  if (!executable) {
+    return { attempted: false, started: false, reachable: false, reason: "Ollama executable not found." };
+  }
+
+  ollamaStartPromise = new Promise((resolve) => {
+    try {
+      const child = spawn(executable, ["serve"], {
+        cwd: repoRoot(),
+        shell: false,
+        detached: true,
+        windowsHide: true,
+        stdio: "ignore",
+        env: {
+          ...process.env,
+          NODE_NO_WARNINGS: "1"
+        }
+      });
+
+      child.unref();
+    } catch (error) {
+      ollamaStartPromise = null;
+      resolve({
+        attempted: true,
+        started: false,
+        reachable: false,
+        reason: error instanceof Error ? error.message : String(error)
+      });
+      return;
+    }
+
+    const startedAt = Date.now();
+    const poll = async () => {
+      if (await checkOllamaHealth()) {
+        ollamaStartPromise = null;
+        resolve({ attempted: true, started: true, reachable: true });
+        return;
+      }
+
+      if (Date.now() - startedAt > 12_000) {
+        ollamaStartPromise = null;
+        resolve({
+          attempted: true,
+          started: false,
+          reachable: false,
+          reason: "Ollama did not become reachable in time."
+        });
+        return;
+      }
+
+      setTimeout(poll, 500);
+    };
+
+    void poll();
+  });
+
+  return await ollamaStartPromise;
+}
+
+function sanitizeAgentStatusText(text) {
+  return (text || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !/ExperimentalWarning: SQLite is an experimental feature/i.test(line))
+    .filter((line) => !/\(Use `node --trace-warnings/i.test(line))
+    .join(" ")
+    .trim();
+}
+
+function buildPrerequisiteSummary(parsed, stderr) {
+  const details = parsed && typeof parsed === "object" ? parsed.details || {} : {};
+  const llm = typeof details.llm === "string" ? details.llm : "";
+  const embeddings = typeof details.embeddings === "string" ? details.embeddings : "";
+  const missing = Array.isArray(parsed?.missing) ? parsed.missing : [];
+
+  if (parsed?.ok) {
+    const parts = ["Assistant prerequisites look ready."];
+    if (llm) {
+      parts.push(`LLM: ${llm}.`);
+    }
+    if (embeddings) {
+      parts.push(`Embeddings: ${embeddings}.`);
+    }
+    return parts.join(" ");
+  }
+
+  if (missing.length > 0) {
+    return `Assistant prerequisites still need attention: ${missing.join(", ")}.`;
+  }
+
+  return sanitizeAgentStatusText(stderr) || "Assistant prerequisite check did not return a clean result.";
+}
+
 async function runAgentHealthProbe(outputRoot) {
+  await tryStartOllamaRuntime();
+
   const root = repoRoot();
   const result = await runCommand(
     nodeCommand(),
-    [tsxCli(root), agentScriptPath(root), "--health", "--output", outputRoot || "organized_output"],
+    [tsxCli(root), agentScriptPath(root), "--health-json", "--output", outputRoot || "organized_output"],
     {
       cwd: root,
-      shell: false
+      shell: false,
+      env: {
+        ...process.env,
+        NODE_NO_WARNINGS: "1"
+      }
     }
   );
 
+  const parsed = readJsonOutput(result.stdout) || {};
   const stdout = result.stdout || "";
   const stderr = result.stderr || "";
-  const combined = `${stdout}\n${stderr}`.trim();
 
   return {
     running: false,
     serverReachable: false,
     outputRoot: outputRoot || "organized_output",
     port: agentPort,
-    prerequisitesOk: /All systems operational/i.test(stdout),
-    summary: combined || "Agent health probe did not return output.",
+    prerequisitesOk: Boolean(parsed.ok),
+    summary: buildPrerequisiteSummary(parsed, stderr),
     details: {
       code: result.code,
       stdout,
-      stderr
+      stderr,
+      parsed
     }
   };
 }
@@ -222,6 +380,7 @@ async function stopAgentServer() {
 
 async function ensureAgentServer(outputRoot, port = AGENT_DEFAULT_PORT) {
   const desiredOutputRoot = outputRoot || "organized_output";
+  await tryStartOllamaRuntime();
 
   if (agentProcess) {
     const health = await checkRunningAgentHealth();
@@ -262,6 +421,7 @@ async function ensureAgentServer(outputRoot, port = AGENT_DEFAULT_PORT) {
         windowsHide: true,
         env: {
           ...process.env,
+          NODE_NO_WARNINGS: "1",
           AGENT_PORT: String(port),
           SKILLSPRING_OUTPUT: desiredOutputRoot
         }
@@ -380,6 +540,7 @@ function registerIpc() {
 
   ipcMain.handle("agent:health", async (_event, payload = {}) => {
     try {
+      await tryStartOllamaRuntime();
       const liveHealth = await checkRunningAgentHealth();
       if (liveHealth) {
         return {

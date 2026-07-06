@@ -56,7 +56,9 @@ This is narrower than the full internal parser and document-ingestion surface al
 - clearer import match feedback for ready-now, recovery-path, and mismatch states
 - desktop retrieval screen with vendor/topic/date narrowing, linked segment inspection, and saved investigations
 - retrieval entries now carry evidence-source cues and recommended next-step labels so users can tell what matched and where to go next
+- retrieval entries now also carry structured evidence-detail cues so users can distinguish import-metadata, archive, dataset, attachment, and path-based evidence more plainly
 - retrieval loaded-state simplification so saved searches, tips, import details, and segment inspection stay optional until the user asks for them
+- retrieval segment ranking now explains why a deeper dataset slice matched and can hand that slice into Dataset View without losing the user's context
 - desktop markdown archive browser grouped by inferred topic folder
 - archive-to-dataset handoff from selected markdown files into matched dataset context
 - calmer imports and datasets loaded states so secondary panels, deeper checks, and raw file actions do not all open by default
@@ -127,8 +129,15 @@ Several of the highest-value items from that backlog are now implemented:
 - vendor smoke-test coverage
 - parser hardening aimed at unfamiliar user corpora
 - retrieval-side evidence and next-step labeling
+- retrieval-side segment explanation and dataset handoff continuity
 
 Working note: `docs/EXTERNAL_TEST_IMPLEMENTATION_NOTES_2026-07-04.md`
+
+The July 6, 2026 end-of-day parser and retrieval trust pass also clarified the next stop point:
+
+- corpus-agnostic parser hardening is now far less dependent on maintainer-specific vocabulary
+- retrieval trust labeling now does a better job of explaining what matched, where the evidence came from, and which screen is the right next step
+- the next morning's queue should therefore begin with onboarding and walkthrough clarity, not another parser-first restart
 
 As of July 4, 2026, the repo also contains an initial local-agent package candidate under `skillspring-quantum-agent/`.
 

@@ -4,6 +4,12 @@ export type ImportSupportTier =
   | "experimental_expansion"
   | "unsupported";
 
+export interface ImportRetrievalEvidenceDetail {
+  kind: "import_metadata" | "archive_output" | "dataset_output" | "attachment_evidence" | "source_file_path";
+  label: string;
+  detail: string;
+}
+
 export interface ImportRetrievalIndexEntry {
   runAt: string;
   inputPath: string;
@@ -26,6 +32,7 @@ export interface ImportRetrievalIndexEntry {
   artifactLabels?: string[];
   artifactPaths: string[];
   evidenceSources?: string[];
+  evidenceDetails?: ImportRetrievalEvidenceDetail[];
   nextAction?: "open_archive" | "open_dataset" | "review_outputs" | "open_source_file";
   nextActionLabel?: string;
 }

@@ -40,6 +40,13 @@ function scoreEntry(
   const searchable = entry.searchText;
   const titleText = entry.titleHints.join(" ").toLowerCase();
   const topicText = entry.topicHints.join(" ").toLowerCase();
+  const pathText = [entry.filePath, entry.inputPath].join(" ").toLowerCase();
+  const evidenceText = [
+    ...(entry.evidenceSources ?? []),
+    ...(entry.evidenceDetails?.map((detail) => `${detail.label} ${detail.detail}`) ?? [])
+  ]
+    .join(" ")
+    .toLowerCase();
 
   if (vendor && entry.vendorSources.some((value) => value.toLowerCase() === vendor)) {
     score += 50;
@@ -60,28 +67,53 @@ function scoreEntry(
 
   if (textTerms.length > 0) {
     let matchedTerms = 0;
+    let titleMatches = 0;
+    let topicMatches = 0;
+    let pathMatches = 0;
+    let evidenceMatches = 0;
 
     for (const term of textTerms) {
-      if (titleText.includes(term)) {
+      if (matchesNormalizedTerm(titleText, term)) {
         score += 20;
         matchedTerms += 1;
+        titleMatches += 1;
         continue;
       }
 
-      if (topicText.includes(term)) {
+      if (matchesNormalizedTerm(topicText, term)) {
         score += 14;
         matchedTerms += 1;
+        topicMatches += 1;
         continue;
       }
 
-      if (searchable.includes(term)) {
+      if (matchesNormalizedTerm(pathText, term)) {
+        score += 10;
+        matchedTerms += 1;
+        pathMatches += 1;
+        continue;
+      }
+
+      if (matchesNormalizedTerm(evidenceText, term)) {
+        score += 9;
+        matchedTerms += 1;
+        evidenceMatches += 1;
+        continue;
+      }
+
+      if (matchesNormalizedTerm(searchable, term)) {
         score += 8;
         matchedTerms += 1;
       }
     }
 
-    if (matchedTerms > 0) {
-      reasons.push(matchedTerms + " text term match" + (matchedTerms === 1 ? "" : "es"));
+    pushFieldMatchReason(reasons, titleMatches, "title clue", "title clues");
+    pushFieldMatchReason(reasons, topicMatches, "topic clue", "topic clues");
+    pushFieldMatchReason(reasons, pathMatches, "path clue", "path clues");
+    pushFieldMatchReason(reasons, evidenceMatches, "evidence clue", "evidence clues");
+
+    if (matchedTerms > 0 && titleMatches + topicMatches + pathMatches + evidenceMatches === 0) {
+      reasons.push(matchedTerms + " broad text match" + (matchedTerms === 1 ? "" : "es"));
     }
 
     if (matchedTerms === textTerms.length && textTerms.length > 1) {
@@ -123,4 +155,47 @@ function tokenize(text: string): string[] {
     .split(/[^a-z0-9]+/g)
     .map((part) => part.trim())
     .filter((part) => part.length >= 2);
+}
+
+function matchesNormalizedTerm(text: string, term: string): boolean {
+  if (text.includes(term)) {
+    return true;
+  }
+
+  const normalizedHaystack = tokenize(text).map(normalizeToken);
+  const normalizedNeedle = normalizeToken(term);
+  return normalizedHaystack.includes(normalizedNeedle);
+}
+
+function normalizeToken(token: string): string {
+  const cleaned = token.toLowerCase().trim();
+  if (cleaned.length <= 4) {
+    return cleaned;
+  }
+
+  if (cleaned.endsWith("ies")) {
+    return cleaned.slice(0, -3) + "y";
+  }
+
+  if (cleaned.endsWith("ing") && cleaned.length > 5) {
+    return cleaned.slice(0, -3);
+  }
+
+  if (cleaned.endsWith("es") && cleaned.length > 4) {
+    return cleaned.slice(0, -2);
+  }
+
+  if (cleaned.endsWith("s") && !cleaned.endsWith("ss") && cleaned.length > 4) {
+    return cleaned.slice(0, -1);
+  }
+
+  return cleaned;
+}
+
+function pushFieldMatchReason(reasons: string[], count: number, singular: string, plural: string): void {
+  if (count <= 0) {
+    return;
+  }
+
+  reasons.push(`${count} ${count === 1 ? singular : plural}`);
 }

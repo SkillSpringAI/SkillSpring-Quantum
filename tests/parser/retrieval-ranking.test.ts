@@ -24,6 +24,13 @@ const entries: ImportRetrievalIndexEntry[] = [
     artifactLabels: ["Latest archived markdown", "Current topic segments dataset"],
     artifactPaths: [],
     evidenceSources: ["import metadata", "archive output", "dataset output"],
+    evidenceDetails: [
+      {
+        kind: "import_metadata",
+        label: "Import metadata",
+        detail: "Vendor: claude | Title clues: Crypto market updates | Topic hints: crypto markets, portfolio review"
+      }
+    ],
     nextAction: "open_archive",
     nextActionLabel: "Open Readable Archive next"
   },
@@ -48,6 +55,13 @@ const entries: ImportRetrievalIndexEntry[] = [
     artifactLabels: ["Current topic segments dataset"],
     artifactPaths: [],
     evidenceSources: ["import metadata", "dataset output", "attachment evidence"],
+    evidenceDetails: [
+      {
+        kind: "import_metadata",
+        label: "Import metadata",
+        detail: "Vendor: grok | Title clues: Sports digest | Topic hints: sports updates"
+      }
+    ],
     nextAction: "open_dataset",
     nextActionLabel: "Open Dataset View next"
   }
@@ -63,6 +77,10 @@ assert.equal(rankedForCrypto[0].entry.filePath, entries[0].filePath, "Expected C
 assert.ok(rankedForCrypto[0].score > rankedForCrypto[1].score, "Expected stronger match to score higher");
 assert.ok(rankedForCrypto[0].reasons.includes("vendor match"), "Expected vendor match reason");
 assert.ok(rankedForCrypto[0].reasons.some((reason) => reason.includes("topic")), "Expected topic match reason");
+assert.ok(
+  rankedForCrypto[0].reasons.some((reason) => reason.includes("title clue") || reason.includes("title clues")),
+  "Expected ranking reasons to explain title-based evidence matches"
+);
 
 const rankedForSports = rankRetrievalEntries(entries, {
   text: "sports",
@@ -71,5 +89,17 @@ const rankedForSports = rankRetrievalEntries(entries, {
 });
 
 assert.equal(rankedForSports[0].entry.filePath, entries[1].filePath, "Expected sports query to rank sports result first");
+
+const rankedForAdjacentWording = rankRetrievalEntries(entries, {
+  text: "crypto market update",
+  vendor: "",
+  topic: ""
+});
+
+assert.equal(
+  rankedForAdjacentWording[0].entry.filePath,
+  entries[0].filePath,
+  "Expected singular/plural wording drift like market/markets and update/updates to still find the strongest result"
+);
 
 console.log("retrieval-ranking.test.ts passed");

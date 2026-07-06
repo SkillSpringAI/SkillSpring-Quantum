@@ -54,7 +54,7 @@ export function findMatchingDatasetRunDetails(
     const matchedTopic =
       topicCandidates.length > 0 &&
       !!sourceContext?.topic_hints.some((topic) =>
-        topicCandidates.some((candidate) => topic.toLowerCase().includes(candidate) || candidate.includes(topic.toLowerCase()))
+        topicCandidates.some((candidate) => matchesTopicCandidate(topic, candidate))
       );
 
     if (matchedVendor) {
@@ -77,4 +77,54 @@ export function findMatchingDatasetRunDetails(
     matchedVendor: best?.score ? best.matchedVendor : false,
     matchedTopic: best?.score ? best.matchedTopic : false
   };
+}
+
+function matchesTopicCandidate(topicHint: string, candidate: string): boolean {
+  const normalizedTopic = topicHint.toLowerCase();
+  const normalizedCandidate = candidate.toLowerCase();
+
+  if (
+    normalizedTopic.includes(normalizedCandidate) ||
+    normalizedCandidate.includes(normalizedTopic)
+  ) {
+    return true;
+  }
+
+  const topicTokens = tokenize(normalizedTopic).map(normalizeToken);
+  const candidateTokens = tokenize(normalizedCandidate).map(normalizeToken);
+
+  return candidateTokens.some((candidateToken) => topicTokens.includes(candidateToken));
+}
+
+function tokenize(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^a-z0-9]+/g)
+    .map((part) => part.trim())
+    .filter((part) => part.length >= 2);
+}
+
+function normalizeToken(token: string): string {
+  const cleaned = token.toLowerCase().trim();
+  if (cleaned.length <= 4) {
+    return cleaned;
+  }
+
+  if (cleaned.endsWith("ies")) {
+    return cleaned.slice(0, -3) + "y";
+  }
+
+  if (cleaned.endsWith("ing") && cleaned.length > 5) {
+    return cleaned.slice(0, -3);
+  }
+
+  if (cleaned.endsWith("es") && cleaned.length > 4) {
+    return cleaned.slice(0, -2);
+  }
+
+  if (cleaned.endsWith("s") && !cleaned.endsWith("ss") && cleaned.length > 4) {
+    return cleaned.slice(0, -1);
+  }
+
+  return cleaned;
 }

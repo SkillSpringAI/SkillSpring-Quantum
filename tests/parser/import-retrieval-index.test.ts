@@ -44,6 +44,10 @@ try {
         kind: "conversation_json",
         status: "imported",
         message: "Conversation import processed.",
+        artifacts: [
+          { label: "Archived markdown", path: path.join(tempRoot, "source_archive", "claude-export.md") },
+          { label: "Current topic segments dataset", path: path.join(tempRoot, "datasets", "current_topic_segments.jsonl") }
+        ],
         metadata: {
           sourceCategory: "conversation",
           detectedKind: "generic_conversation",
@@ -86,6 +90,10 @@ try {
         kind: "conversation_json",
         status: "imported",
         message: "Conversation import processed.",
+        artifacts: [
+          { label: "Archived markdown", path: path.join(tempRoot, "source_archive", "grok-export.md") },
+          { label: "Current topic segments dataset", path: path.join(tempRoot, "datasets", "current_topic_segments.jsonl") }
+        ],
         metadata: {
           sourceCategory: "conversation",
           detectedKind: "grok_export",
@@ -123,6 +131,7 @@ try {
   assert.ok(manifest.topicHints.includes("sports updates"), "Expected merged topics to include second run");
   assert.equal(manifest.runs[0].runAt, runTwo.runAt, "Expected latest run to sort first");
   assert.ok(manifest.entries[0].evidenceSources.length > 0, "Expected retrieval entries to carry evidence sources");
+  assert.ok(manifest.entries[0].evidenceDetails.length > 0, "Expected retrieval entries to carry structured evidence details");
   assert.ok(manifest.entries[0].nextActionLabel.length > 0, "Expected retrieval entries to recommend a next step");
 
   console.log("import-retrieval-index.test.ts passed");

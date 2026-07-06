@@ -31,6 +31,29 @@ That means the next work should not restart from "make the shell function."
 
 The next work should focus on making the product more trustworthy for unfamiliar users while keeping the assistant grounded, secondary, and evidence-backed.
 
+## Status Update - End Of Day 2026-07-06
+
+The first two slices in this sequence are now materially implemented.
+
+### Slice 1 now landed
+
+- parser and classifier behavior were hardened against unfamiliar personal-admin, hobby, household, and mixed-topic phrasing
+- summary-label generation now avoids more helper-word-heavy or maintainer-specific output
+- topic and intent handling now has broader regression coverage for everyday-user phrasing instead of only repo-shaped internal language
+
+### Slice 2 now landed
+
+- retrieval entries now carry clearer structured evidence details instead of only flat source cues
+- import and segment ranking now explain match reasons in more human terms
+- adjacent wording drift is handled better for retrieval matching
+- retrieval can now hand users into dataset review with a clearer preserved intent path instead of losing the meaning of the selected result
+
+### Tomorrow morning queue
+
+1. first-run beta onboarding and reusable walkthrough path
+2. assistant source-grounding and deterministic-boundary hardening
+3. assistant install/runtime completion pass
+
 ## Priority Order
 
 1. corpus-agnostic parser and segmentation hardening

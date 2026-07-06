@@ -28,8 +28,15 @@ export interface ImportRetrievalIndexEntry {
   artifactLabels: string[];
   artifactPaths: string[];
   evidenceSources: string[];
+  evidenceDetails: ImportRetrievalEvidenceDetail[];
   nextAction: "open_archive" | "open_dataset" | "review_outputs" | "open_source_file";
   nextActionLabel: string;
+}
+
+export interface ImportRetrievalEvidenceDetail {
+  kind: "import_metadata" | "archive_output" | "dataset_output" | "attachment_evidence" | "source_file_path";
+  label: string;
+  detail: string;
 }
 
 export interface ImportRetrievalIndexManifest {
@@ -129,6 +136,7 @@ function toIndexEntry(
   const artifactPaths = artifacts.map((artifact) => artifact.path);
   const artifactLabels = artifacts.map((artifact) => artifact.label);
   const evidenceSources = buildEvidenceSources(metadata, artifactLabels, artifactPaths);
+  const evidenceDetails = buildEvidenceDetails(metadata, artifactLabels, artifactPaths);
   const nextAction = chooseNextAction(artifactLabels, artifactPaths, metadata?.sourceCategory);
   const nextActionLabel = formatNextActionLabel(nextAction);
 
@@ -155,6 +163,7 @@ function toIndexEntry(
         topicHints: metadata.topicHints,
         artifactLabels,
         evidenceSources,
+        evidenceDetails,
         nextActionLabel
       }),
       startedAt: metadata.startedAt,
@@ -165,6 +174,7 @@ function toIndexEntry(
       artifactLabels,
       artifactPaths,
       evidenceSources,
+      evidenceDetails,
       nextAction,
       nextActionLabel
     };
@@ -192,11 +202,13 @@ function toIndexEntry(
       topicHints: [],
       artifactLabels,
       evidenceSources,
+      evidenceDetails,
       nextActionLabel
     }),
     artifactLabels,
     artifactPaths,
     evidenceSources,
+    evidenceDetails,
     nextAction,
     nextActionLabel
   };
@@ -229,6 +241,7 @@ function buildSearchText(input: {
   topicHints: string[];
   artifactLabels: string[];
   evidenceSources: string[];
+  evidenceDetails: ImportRetrievalEvidenceDetail[];
   nextActionLabel: string;
 }): string {
   return [
@@ -240,6 +253,8 @@ function buildSearchText(input: {
     ...input.topicHints,
     ...input.artifactLabels,
     ...input.evidenceSources,
+    ...input.evidenceDetails.map((detail) => detail.label),
+    ...input.evidenceDetails.map((detail) => detail.detail),
     input.nextActionLabel
   ]
     .join(" ")
@@ -251,12 +266,43 @@ function buildEvidenceSources(
   artifactLabels: string[],
   artifactPaths: string[]
 ): string[] {
+  return buildEvidenceDetails(metadata, artifactLabels, artifactPaths).map((detail) => detail.label.toLowerCase());
+}
+
+function buildEvidenceDetails(
+  metadata: ImportRunFileResult["metadata"],
+  artifactLabels: string[],
+  artifactPaths: string[]
+): ImportRetrievalEvidenceDetail[] {
   const sources: string[] = [];
+  const details: ImportRetrievalEvidenceDetail[] = [];
   const joinedLabels = artifactLabels.join(" ").toLowerCase();
   const joinedPaths = artifactPaths.join(" ").toLowerCase();
+  const vendorSources =
+    metadata && "vendorSources" in metadata && Array.isArray(metadata.vendorSources)
+      ? [...metadata.vendorSources]
+      : [];
+  const titleHints =
+    metadata && "sampleTitles" in metadata && Array.isArray(metadata.sampleTitles)
+      ? metadata.sampleTitles.filter((value): value is string => typeof value === "string")
+      : [];
+  const topicHints =
+    metadata && "topicHints" in metadata && Array.isArray(metadata.topicHints)
+      ? metadata.topicHints.filter((value): value is string => typeof value === "string")
+      : [];
 
   if (metadata?.sourceCategory === "conversation") {
-    sources.push("import metadata");
+    details.push({
+      kind: "import_metadata",
+      label: "Import metadata",
+      detail: [
+        vendorSources.length > 0 ? `Vendor: ${vendorSources.join(", ")}` : "",
+        titleHints.length > 0 ? `Title clues: ${titleHints.slice(0, 2).join(", ")}` : "",
+        topicHints.length > 0 ? `Topic hints: ${topicHints.slice(0, 3).join(", ")}` : ""
+      ]
+        .filter(Boolean)
+        .join(" | ")
+    });
   }
 
   if (
@@ -265,7 +311,11 @@ function buildEvidenceSources(
     joinedPaths.includes("\\source_archive\\") ||
     joinedPaths.includes("/source_archive/")
   ) {
-    sources.push("archive output");
+    details.push({
+      kind: "archive_output",
+      label: "Archive output",
+      detail: "Readable archive files were created, so this result can be checked in the archive review screen."
+    });
   }
 
   if (
@@ -277,7 +327,11 @@ function buildEvidenceSources(
     joinedPaths.includes("/datasets/") ||
     joinedPaths.includes("/db/")
   ) {
-    sources.push("dataset output");
+    details.push({
+      kind: "dataset_output",
+      label: "Dataset output",
+      detail: "Structured dataset files or DB records were created, so this result can be checked in dataset review."
+    });
   }
 
   const attachmentCount =
@@ -286,14 +340,41 @@ function buildEvidenceSources(
       : 0;
 
   if (attachmentCount > 0 || joinedLabels.includes("attachment")) {
-    sources.push("attachment evidence");
+    details.push({
+      kind: "attachment_evidence",
+      label: "Attachment evidence",
+      detail:
+        attachmentCount > 0
+          ? `${attachmentCount} attachment reference(s) were detected for this record.`
+          : "Attachment-related output was created for this record."
+    });
   }
 
-  if (sources.length === 0) {
-    sources.push("source file path");
+  if (details.length === 0) {
+    details.push({
+      kind: "source_file_path",
+      label: "Source file path",
+      detail: "The source file path is the main deterministic clue available for this result."
+    });
   }
 
-  return uniqueValues(sources);
+  return dedupeEvidenceDetails(details);
+}
+
+function dedupeEvidenceDetails(details: ImportRetrievalEvidenceDetail[]): ImportRetrievalEvidenceDetail[] {
+  const seen = new Set<string>();
+  const deduped: ImportRetrievalEvidenceDetail[] = [];
+
+  for (const detail of details) {
+    const key = `${detail.kind}|${detail.label}|${detail.detail}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    deduped.push(detail);
+  }
+
+  return deduped;
 }
 
 function chooseNextAction(

@@ -29,9 +29,10 @@ interface KeywordDomain {
 }
 
 const SUBJECT_STOP_WORDS = new Set([
-  "a","an","and","are","as","at","be","but","by","can","for","from","get","help","how","i","if","in","into",
-  "is","it","me","my","need","of","on","or","our","please","so","that","the","this","to","us","want","we",
-  "what","when","where","which","why","with","you","your"
+  "a","an","and","are","as","at","be","but","by","can","could","did","do","does","for","from","get","help","how","i","if","in","into",
+  "is","it","me","my","need","of","on","or","our","please","should","so","that","the","this","to","us","want","we",
+  "what","when","where","which","why","with","would","you","your",
+  "again","already","best","change","clean","compare","day","each","first","going","helping","losing","old","pack","same","split","up","way","went"
 ]);
 
 const GENERIC_SUBJECT_TOKENS = new Set([
@@ -100,7 +101,8 @@ const DEBUG_PATTERNS = [
 ];
 
 const PLANNING_PATTERNS = [
-  /\b(roadmap|plan|milestone|phase|timeline|priorit|sequence|next steps)\b/i
+  /\b(roadmap|plan|milestone|phase|timeline|priorit|sequence|next steps|organize|schedule|coordinate|arrange)\b/i,
+  /\b(split|assign|cover|staff)\b[\s\S]{0,40}\b(shift|shifts|schedule|calendar|roster|rota)\b/i
 ];
 
 const DECISION_PATTERNS = [
@@ -171,13 +173,49 @@ function normalizeText(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9\s/.-]/g, " ");
 }
 
+function tokenizeForMatching(text: string): string[] {
+  return normalizeText(text)
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
+function containsKeyword(text: string, tokens: string[], keyword: string): boolean {
+  const normalizedKeyword = keyword.toLowerCase().trim();
+  if (!normalizedKeyword) {
+    return false;
+  }
+
+  if (!normalizedKeyword.includes(" ")) {
+    return tokens.includes(normalizedKeyword);
+  }
+
+  const keywordTokens = normalizedKeyword.split(/\s+/).filter(Boolean);
+  for (let index = 0; index <= tokens.length - keywordTokens.length; index += 1) {
+    let matched = true;
+    for (let offset = 0; offset < keywordTokens.length; offset += 1) {
+      if (tokens[index + offset] !== keywordTokens[offset]) {
+        matched = false;
+        break;
+      }
+    }
+
+    if (matched) {
+      return true;
+    }
+  }
+
+  return text.includes(normalizedKeyword);
+}
+
 function detectDomain(text: string, reasons: string[]): string {
+  const tokens = tokenizeForMatching(text);
   let best: { label: string; score: number } | null = null;
 
   for (const domain of DOMAIN_KEYWORDS) {
     let score = 0;
     for (const keyword of domain.keywords) {
-      if (text.includes(keyword)) {
+      if (containsKeyword(text, tokens, keyword)) {
         score += 1;
       }
     }
@@ -289,6 +327,7 @@ function buildSummaryLabel(
 }
 
 function detectPreferredSubject(text: string, domain: string): string | null {
+  const tokens = tokenizeForMatching(text);
   const extractedPhrase = extractTopicPhrase(text);
   if (extractedPhrase) {
     return extractedPhrase;
@@ -297,21 +336,21 @@ function detectPreferredSubject(text: string, domain: string): string | null {
   const domainEntry = DOMAIN_KEYWORDS.find((entry) => entry.label === domain);
   if (domainEntry?.subjects) {
     for (const subject of domainEntry.subjects) {
-      if (text.includes(subject.toLowerCase().replace(/\s+/g, " "))) {
+      if (containsKeyword(text, tokens, subject.toLowerCase().replace(/\s+/g, " "))) {
         return subject;
       }
     }
   }
 
-  if (text.includes("docker")) return "Docker";
-  if (text.includes("nginx")) return "Nginx";
-  if (text.includes("api")) return "API";
-  if (text.includes("roadmap")) return "Roadmap";
-  if (text.includes("retrieval")) return "Retrieval";
-  if (text.includes("dataset")) return "Dataset";
-  if (text.includes("privacy")) return "Privacy";
-  if (text.includes("governance")) return "Governance";
-  if (text.includes("crypto")) return "Crypto Markets";
+  if (containsKeyword(text, tokens, "docker")) return "Docker";
+  if (containsKeyword(text, tokens, "nginx")) return "Nginx";
+  if (containsKeyword(text, tokens, "api")) return "API";
+  if (containsKeyword(text, tokens, "roadmap")) return "Roadmap";
+  if (containsKeyword(text, tokens, "retrieval")) return "Retrieval";
+  if (containsKeyword(text, tokens, "dataset")) return "Dataset";
+  if (containsKeyword(text, tokens, "privacy")) return "Privacy";
+  if (containsKeyword(text, tokens, "governance")) return "Governance";
+  if (containsKeyword(text, tokens, "crypto")) return "Crypto Markets";
 
   return null;
 }
@@ -329,15 +368,15 @@ function extractTopicPhrase(text: string): string | null {
 
   const candidates = new Map<string, number>();
 
-  for (let size = 3; size >= 2; size -= 1) {
+  for (let size = 4; size >= 2; size -= 1) {
     for (let index = 0; index <= tokens.length - size; index += 1) {
-      const phraseTokens = tokens.slice(index, index + size);
+      const phraseTokens = trimTopicPhraseEdges(tokens.slice(index, index + size));
       if (!isUsefulTopicPhrase(phraseTokens)) {
         continue;
       }
 
       const phrase = phraseTokens.join(" ");
-      const score = size * 10 - index;
+      const score = scoreTopicPhrase(phraseTokens, index);
       candidates.set(phrase, Math.max(candidates.get(phrase) ?? 0, score));
     }
   }
@@ -351,6 +390,27 @@ function extractTopicPhrase(text: string): string | null {
     .split(" ")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function trimTopicPhraseEdges(tokens: string[]): string[] {
+  let start = 0;
+  let end = tokens.length;
+
+  while (start < end && SUBJECT_STOP_WORDS.has(tokens[start])) {
+    start += 1;
+  }
+
+  while (end > start && SUBJECT_STOP_WORDS.has(tokens[end - 1])) {
+    end -= 1;
+  }
+
+  return tokens.slice(start, end);
+}
+
+function scoreTopicPhrase(tokens: string[], index: number): number {
+  const strongTokenCount = tokens.filter((token) => token.length >= 5 && !GENERIC_SUBJECT_TOKENS.has(token)).length;
+  const stopWordPenalty = tokens.filter((token) => SUBJECT_STOP_WORDS.has(token)).length * 6;
+  return tokens.length * 10 + strongTokenCount * 4 - stopWordPenalty - index;
 }
 
 function isUsefulTopicPhrase(tokens: string[]): boolean {

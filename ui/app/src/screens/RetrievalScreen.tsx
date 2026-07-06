@@ -10,6 +10,7 @@ import {
 import { loadSegmentRetrievalIndex } from "../services/segmentRetrievalIndexBridge";
 import { rankSegmentEntries } from "../services/segmentRetrievalRanking";
 import type {
+  ImportRetrievalEvidenceDetail,
   ImportRetrievalIndexEntry,
   ImportRetrievalIndexResult
 } from "../types/importRetrievalIndex";
@@ -26,6 +27,7 @@ import type {
 import { useNavigation } from "../state/navigationContext";
 import { useAgentContext } from "../state/agentContext";
 import { useSettings } from "../state/settingsContext";
+import type { DatasetPreviewIntentKind } from "../utils/datasetIntent";
 
 type RetrievalFilters = RetrievalSavedViewFilters;
 
@@ -49,7 +51,7 @@ function formatEntryKindLabel(kind: string): string {
 }
 
 export default function RetrievalScreen() {
-  const { retrievalIntent, clearRetrievalIntent, setActiveScreen } = useNavigation();
+  const { retrievalIntent, clearRetrievalIntent, setActiveScreen, openDatasetInvestigation } = useNavigation();
   const { setCurrentArtifact } = useAgentContext();
   const { settings } = useSettings();
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -317,6 +319,14 @@ export default function RetrievalScreen() {
     visibleSegments[0] ??
     null
   );
+  const detailSegmentRanking = detailSegment
+    ? rankedSegments.find((item) =>
+        item.entry.runId === detailSegment.runId &&
+        item.entry.conversationId === detailSegment.conversationId &&
+        item.entry.startIndex === detailSegment.startIndex &&
+        item.entry.endIndex === detailSegment.endIndex
+      ) ?? null
+    : null;
 
   const vendorsVisible = [...new Set(visibleEntries.flatMap((entry) => entry.vendorSources))].sort();
   const topicsVisible = [...new Set(visibleEntries.flatMap((entry) => entry.topicHints))].sort();
@@ -395,8 +405,72 @@ export default function RetrievalScreen() {
     return sources.length > 0 ? sources.join(", ") : "source file path";
   }
 
+  function formatEvidenceLabels(details: ImportRetrievalEvidenceDetail[] | undefined, fallback: string[]): string {
+    if (details && details.length > 0) {
+      return details.map((detail) => detail.label).join(", ");
+    }
+
+    return formatEvidenceSources(fallback);
+  }
+
   function formatMatchReasons(reasons: string[]): string {
     return reasons.length > 0 ? reasons.join(", ") : "current filters and recency";
+  }
+
+  function inferSegmentPreviewKind(entry: SegmentRetrievalIndexEntry): DatasetPreviewIntentKind {
+    if (entry.redactionCount > 0 || entry.signalTier === "private_review") {
+      return "private_review";
+    }
+
+    if (entry.intent === "review" || entry.intent === "decision") {
+      return "prompt_response_pairs";
+    }
+
+    if (entry.messageCount <= 3) {
+      return "micro_segments";
+    }
+
+    return "topic_segments";
+  }
+
+  function describeSegmentEvidence(entry: SegmentRetrievalIndexEntry): string[] {
+    const details = [
+      entry.summaryLabel ? `Summary label: ${entry.summaryLabel}` : "",
+      entry.topic ? `Topic clue: ${entry.topic}` : "",
+      entry.title ? `Title clue: ${entry.title}` : "",
+      entry.signalTier === "high_signal" ? "High-signal dataset slice" : "",
+      entry.redactionCount > 0 ? `${entry.redactionCount} redaction marker(s) affected this slice` : ""
+    ].filter(Boolean);
+
+    return details.length > 0 ? details : ["Dataset segment text is the main deterministic clue here."];
+  }
+
+  function describeSegmentNextStep(entry: SegmentRetrievalIndexEntry): string {
+    switch (inferSegmentPreviewKind(entry)) {
+      case "prompt_response_pairs":
+        return "Open Dataset View in prompt/response mode next because this slice is strongest as a compact exchange.";
+      case "micro_segments":
+        return "Open Dataset View in micro-segment mode next because this slice is short and best reviewed as a small message window.";
+      case "private_review":
+        return "Open Dataset View in extra-care review next because this slice carries privacy or sensitive-signal weight.";
+      default:
+        return "Open Dataset View in topic-segment mode next because this slice is strongest as a grouped conversation topic.";
+    }
+  }
+
+  function describeNextStep(entry: ImportRetrievalIndexEntry, linkedSegmentCount: number): string {
+    switch (entry.nextAction) {
+      case "open_archive":
+        return linkedSegmentCount > 0
+          ? "Start in Readable Archive to confirm the human-readable file, then use the linked dataset segments below if you want the structured follow-through."
+          : "Start in Readable Archive first because this result already has archive output ready for review.";
+      case "open_dataset":
+        return "Go to Dataset View next because the strongest evidence here came through structured dataset output.";
+      case "review_outputs":
+        return "Open the output files next because Quantum created supporting artifacts, but this result is not pointing to one primary review lane yet.";
+      default:
+        return "Open the source file next because the file path is the main deterministic clue available here.";
+    }
   }
 
   function followNextStep(entry: ImportRetrievalIndexEntry) {
@@ -418,6 +492,18 @@ export default function RetrievalScreen() {
     }
 
     revealDesktopPath(entry.filePath);
+  }
+
+  function openDatasetFromSegment(entry: SegmentRetrievalIndexEntry) {
+    openDatasetInvestigation({
+      vendor: entry.source,
+      topic: entry.summaryLabel ?? entry.topic,
+      rawTopic: entry.rawTopic,
+      createdAt: entry.createdAt,
+      archiveTitle: entry.title ?? entry.summaryLabel ?? entry.topic,
+      preferredPreviewKind: inferSegmentPreviewKind(entry),
+      previewReason: describeSegmentNextStep(entry)
+    });
   }
 
   function segmentKey(entry: SegmentRetrievalIndexEntry): string {
@@ -771,6 +857,7 @@ export default function RetrievalScreen() {
                       <div><strong>{entry.vendorSources.join(", ") || formatEntryKindLabel(entry.kind)}</strong></div>
                       <div className="muted">{formatEntryKindLabel(entry.kind)} | {entry.status}</div>
                       <div className="muted">{entry.topicHints.slice(0, 3).join(", ") || "No topic hints"}</div>
+                      <div className="muted">Evidence: {formatEvidenceLabels(entry.evidenceDetails, entry.evidenceSources ?? [])}</div>
                       <div className="muted">{entry.nextActionLabel || "Review output files next"}</div>
                       <div className="muted">{formatDateRange(entry.startedAt, entry.endedAt) || new Date(entry.runAt).toLocaleDateString()}</div>
                     </li>
@@ -791,6 +878,7 @@ export default function RetrievalScreen() {
                     <p className="muted">Why this matched: {formatMatchReasons(detailRanking?.reasons ?? [])}</p>
                     <p className="muted">Evidence comes from: {formatEvidenceSources(detailEntry.evidenceSources ?? [])}</p>
                     <p className="muted">Best next step: {detailEntry.nextActionLabel || "Review output files next"}</p>
+                    <p className="muted">{describeNextStep(detailEntry, linkedSegments.length)}</p>
                     {linkedSegments.length > 0 ? (
                       <p className="muted">{linkedSegments.length} related dataset segment(s) are linked below for deeper review.</p>
                     ) : null}
@@ -801,6 +889,16 @@ export default function RetrievalScreen() {
                       <p className="muted">
                         Conversations: {detailEntry.conversationCount ?? 0} | Messages: {detailEntry.messageCount}
                       </p>
+                    ) : null}
+                    {detailEntry.evidenceDetails?.length ? (
+                      <div className="detail-grid two-col">
+                        {detailEntry.evidenceDetails.map((detail) => (
+                          <div key={`${detail.kind}:${detail.label}`} className="detail-box">
+                            <strong>{detail.label}</strong>
+                            <p className="muted">{detail.detail}</p>
+                          </div>
+                        ))}
+                      </div>
                     ) : null}
                     <div className="action-bar">
                       <button
@@ -877,6 +975,10 @@ export default function RetrievalScreen() {
                               <td>{linkedSegments.length}</td>
                             </tr>
                             <tr>
+                              <td>Evidence lanes</td>
+                              <td>{formatEvidenceLabels(detailEntry.evidenceDetails, detailEntry.evidenceSources ?? [])}</td>
+                            </tr>
+                            <tr>
                               <td>Output files</td>
                               <td>{detailEntry.artifactPaths.length}</td>
                             </tr>
@@ -945,6 +1047,7 @@ export default function RetrievalScreen() {
                         {entry.intent ? ` | ${entry.intent}` : ""}
                         {entry.importance ? ` | ${entry.importance} importance` : ""}
                       </div>
+                      <div className="muted">{rankedSegments.find((item) => segmentKey(item.entry) === segmentKey(entry))?.reasons.join(", ") || "matched by current filters"}</div>
                       <div className="muted">{entry.textPreview.slice(0, 120)}</div>
                     </li>
                   );
@@ -959,6 +1062,7 @@ export default function RetrievalScreen() {
                     <strong>Conversation Segment</strong>
                     <p className="muted">Topic: {detailSegment.summaryLabel ?? detailSegment.topic}</p>
                     <p className="muted">Source: {detailSegment.source}</p>
+                    <p className="muted">Why this matched: {formatMatchReasons(detailSegmentRanking?.reasons ?? [])}</p>
                     {detailSegment.intent || detailSegment.importance ? (
                       <p className="muted">
                         {detailSegment.intent ? `Intent: ${detailSegment.intent}` : "Intent: unknown"}
@@ -973,9 +1077,33 @@ export default function RetrievalScreen() {
                     <p className="muted">
                       Signal tier: {detailSegment.signalTier} | Redactions: {detailSegment.redactionCount}
                     </p>
+                    <p className="muted">{describeSegmentNextStep(detailSegment)}</p>
                     {detailSegment.createdAt ? (
                       <p className="muted">Created: {new Date(detailSegment.createdAt).toLocaleString()}</p>
                     ) : null}
+                    <div className="detail-grid two-col">
+                      {describeSegmentEvidence(detailSegment).map((detail) => (
+                        <div key={detail} className="detail-box">
+                          <strong>Evidence clue</strong>
+                          <p className="muted">{detail}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="action-bar">
+                      <button className="primary-btn" type="button" onClick={() => openDatasetFromSegment(detailSegment)}>
+                        Open Matching Dataset View
+                      </button>
+                      {detailSegment.artifactPaths.slice(0, 3).map((artifactPath) => (
+                        <button
+                          key={artifactPath}
+                          className="secondary-btn"
+                          type="button"
+                          onClick={() => revealDesktopPath(artifactPath)}
+                        >
+                          Open Segment Output File
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="record-block">{detailSegment.text}</div>

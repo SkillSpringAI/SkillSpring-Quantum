@@ -53,6 +53,17 @@ This does not change the core priority order.
 
 It means the assistant is now a more realistic secondary explainer surface, while parser trust, retrieval trust, and first-run clarity remain the next MVP-facing priorities.
 
+By end of day on July 6, 2026, the first two items in that next priority chain are also materially in place:
+
+- parser/classifier behavior is now more corpus-agnostic across unfamiliar user phrasing, especially personal-admin, consumer, household, and mixed-topic language
+- retrieval now explains match evidence more clearly at both import and segment level and preserves a better handoff into dataset review
+
+That leaves the next morning queue centered on:
+
+1. first-run beta onboarding and reusable walkthrough path
+2. assistant source-grounding and deterministic-boundary hardening
+3. assistant install/runtime completion pass
+
 ## Near-term priorities
 
 ## Continue Tomorrow
@@ -79,23 +90,21 @@ The next beta-leaning slices should continue from these explicit UX targets:
 
 ### Beta-readiness next three slices
 
-1. **Corpus-agnostic parser hardening**
-   - Make topic and intent segmentation less dependent on the maintainer's own conversation habits, recurring subjects, or preferred vocabulary.
-   - Prefer user-phrase-led summaries and broader cross-domain examples over narrow hand-tuned labels.
-   - Expand fixture coverage so consumer, admin, hobby, technical, and mixed-topic conversations all pass through the same deterministic pipeline cleanly.
-   - Treat overfitting to today's internal corpus as a beta blocker because it can look strong internally while failing on fresh outside exports.
-
-2. **Retrieval quality and evidence-grounded labeling**
-   - Improve retrieval-facing labels, grouping, ranking, and summary cues so users can find what they mean, not only what the parser named.
-   - Keep retrieval grounded in deterministic evidence artifacts rather than speculative enrichment.
-   - Strengthen the handoff between import metadata, archive context, and dataset context so search results explain why they matched.
-   - Treat a future local agent as a second-pass explainer on top of grounded retrieval, not as a substitute for stable indexing.
-
-3. **First-run beta onboarding**
+1. **First-run beta onboarding**
    - Keep the current guided import framing, but plan a short walkthrough or tutorial video that demonstrates the ordinary import -> archive -> dataset -> find-imports path with a real example.
    - Use onboarding to reduce perceived complexity instead of adding more static explanation copy.
    - Keep advanced/operator surfaces hidden unless directly useful.
    - Prepare one stable walkthrough path that can be reused in outside beta sessions.
+
+2. **Assistant source-grounding and deterministic boundary hardening**
+   - Keep `Ask Quantum` attached to the existing workflow instead of letting it drift into a parallel product surface.
+   - Require stronger evidence pointers, narrower supported-action behavior, and better refusal/clarification for ambiguous requests.
+   - Make trust drift the main thing being reduced, not raw assistant breadth.
+
+3. **Assistant install/runtime completion**
+   - Finish the install/start/degraded-state loop so the drawer behaves like a beta-facing feature instead of a partial maintainer tool.
+   - Make low-memory, missing-model, and healthy-running states visibly distinct.
+   - Keep the assistant optional and non-blocking for the main import -> archive -> dataset -> retrieval workflow.
 
 ### Outside-test implementation notes
 

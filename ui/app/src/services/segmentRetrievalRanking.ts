@@ -61,34 +61,44 @@ function scoreSegment(
 
   if (textTerms.length > 0) {
     let matched = 0;
+    let summaryMatches = 0;
+    let topicMatches = 0;
+    let titleMatches = 0;
 
     for (const term of textTerms) {
-      if ((entry.summaryLabel ?? "").toLowerCase().includes(term)) {
+      if (matchesNormalizedTerm((entry.summaryLabel ?? "").toLowerCase(), term)) {
         score += 20;
         matched += 1;
+        summaryMatches += 1;
         continue;
       }
 
-      if (entry.topic.toLowerCase().includes(term)) {
+      if (matchesNormalizedTerm(entry.topic.toLowerCase(), term)) {
         score += 16;
         matched += 1;
+        topicMatches += 1;
         continue;
       }
 
-      if ((entry.title ?? "").toLowerCase().includes(term)) {
+      if (matchesNormalizedTerm((entry.title ?? "").toLowerCase(), term)) {
         score += 18;
         matched += 1;
+        titleMatches += 1;
         continue;
       }
 
-      if (entry.searchText.includes(term)) {
+      if (matchesNormalizedTerm(entry.searchText, term)) {
         score += 8;
         matched += 1;
       }
     }
 
-    if (matched > 0) {
-      reasons.push(matched + " text term match" + (matched === 1 ? "" : "es"));
+    pushFieldMatchReason(reasons, summaryMatches, "summary clue", "summary clues");
+    pushFieldMatchReason(reasons, topicMatches, "topic clue", "topic clues");
+    pushFieldMatchReason(reasons, titleMatches, "title clue", "title clues");
+
+    if (matched > 0 && summaryMatches + topicMatches + titleMatches === 0) {
+      reasons.push(matched + " broad text match" + (matched === 1 ? "" : "es"));
     }
 
     if (matched === textTerms.length && textTerms.length > 1) {
@@ -122,4 +132,47 @@ function tokenize(text: string): string[] {
     .split(/[^a-z0-9]+/g)
     .map((part) => part.trim())
     .filter((part) => part.length >= 2);
+}
+
+function matchesNormalizedTerm(text: string, term: string): boolean {
+  if (text.includes(term)) {
+    return true;
+  }
+
+  const normalizedHaystack = tokenize(text).map(normalizeToken);
+  const normalizedNeedle = normalizeToken(term);
+  return normalizedHaystack.includes(normalizedNeedle);
+}
+
+function normalizeToken(token: string): string {
+  const cleaned = token.toLowerCase().trim();
+  if (cleaned.length <= 4) {
+    return cleaned;
+  }
+
+  if (cleaned.endsWith("ies")) {
+    return cleaned.slice(0, -3) + "y";
+  }
+
+  if (cleaned.endsWith("ing") && cleaned.length > 5) {
+    return cleaned.slice(0, -3);
+  }
+
+  if (cleaned.endsWith("es") && cleaned.length > 4) {
+    return cleaned.slice(0, -2);
+  }
+
+  if (cleaned.endsWith("s") && !cleaned.endsWith("ss") && cleaned.length > 4) {
+    return cleaned.slice(0, -1);
+  }
+
+  return cleaned;
+}
+
+function pushFieldMatchReason(reasons: string[], count: number, singular: string, plural: string): void {
+  if (count <= 0) {
+    return;
+  }
+
+  reasons.push(`${count} ${count === 1 ? singular : plural}`);
 }

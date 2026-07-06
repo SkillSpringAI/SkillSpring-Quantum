@@ -1,5 +1,6 @@
 const path = require("node:path");
 const fs = require("node:fs");
+const os = require("node:os");
 const { spawn } = require("node:child_process");
 const { ipcMain, dialog, shell } = require("electron");
 const { runCommand } = require("../lib/runCommand.cjs");
@@ -207,6 +208,100 @@ function resolveOllamaExecutable() {
   return null;
 }
 
+function currentDriveRoot() {
+  return path.parse(repoRoot()).root || process.cwd();
+}
+
+function bytesToGb(bytes) {
+  return Number((bytes / (1024 ** 3)).toFixed(1));
+}
+
+function getLocalMachineProfile() {
+  const totalMemoryBytes = os.totalmem();
+  const freeMemoryBytes = os.freemem();
+  let freeDiskBytes = null;
+
+  try {
+    const diskStats = fs.statfsSync(currentDriveRoot());
+    freeDiskBytes = diskStats.bavail * diskStats.bsize;
+  } catch {
+    freeDiskBytes = null;
+  }
+
+  return {
+    totalMemoryGb: bytesToGb(totalMemoryBytes),
+    freeMemoryGb: bytesToGb(freeMemoryBytes),
+    freeDiskGb: freeDiskBytes === null ? null : bytesToGb(freeDiskBytes)
+  };
+}
+
+function recommendedAssistantModels() {
+  return {
+    llm: {
+      model: "llama3.2",
+      label: "Recommended chat model",
+      minimumMemoryGb: 8,
+      minimumDiskGb: 4
+    },
+    embeddings: {
+      model: "nomic-embed-text",
+      label: "Recommended embedding model",
+      minimumMemoryGb: 8,
+      minimumDiskGb: 1
+    }
+  };
+}
+
+function assessModelInstallReadiness(kind) {
+  const profile = getLocalMachineProfile();
+  const target = recommendedAssistantModels()[kind];
+  const enoughMemory = profile.totalMemoryGb >= target.minimumMemoryGb;
+  const enoughDisk = profile.freeDiskGb === null ? true : profile.freeDiskGb >= target.minimumDiskGb;
+
+  return {
+    kind,
+    model: target.model,
+    label: target.label,
+    minimumMemoryGb: target.minimumMemoryGb,
+    minimumDiskGb: target.minimumDiskGb,
+    detectedMemoryGb: profile.totalMemoryGb,
+    detectedFreeMemoryGb: profile.freeMemoryGb,
+    detectedFreeDiskGb: profile.freeDiskGb,
+    installReady: enoughDisk,
+    performanceReady: enoughMemory,
+    blockers: [
+      ...(enoughDisk || profile.freeDiskGb === null
+        ? []
+        : [`Needs about ${target.minimumDiskGb} GB free storage; detected ${profile.freeDiskGb} GB.`])
+    ],
+    warnings: [
+      ...(enoughMemory ? [] : [`Needs about ${target.minimumMemoryGb} GB RAM for smoother local use; detected ${profile.totalMemoryGb} GB.`])
+    ]
+  };
+}
+
+function extractMissingInstallKinds(parsed) {
+  const missing = Array.isArray(parsed?.missing) ? parsed.missing : [];
+  const kinds = [];
+
+  if (missing.some((item) => /compatible llm model/i.test(String(item)))) {
+    kinds.push("llm");
+  }
+
+  if (missing.some((item) => /compatible embedding model/i.test(String(item)))) {
+    kinds.push("embeddings");
+  }
+
+  return kinds;
+}
+
+function buildReadinessPlan(parsed) {
+  return {
+    machineProfile: getLocalMachineProfile(),
+    recommended: extractMissingInstallKinds(parsed).map((kind) => assessModelInstallReadiness(kind))
+  };
+}
+
 async function tryStartOllamaRuntime() {
   if (await checkOllamaHealth()) {
     return { attempted: false, started: true, reachable: true };
@@ -330,6 +425,7 @@ async function runAgentHealthProbe(outputRoot) {
   const parsed = readJsonOutput(result.stdout) || {};
   const stdout = result.stdout || "";
   const stderr = result.stderr || "";
+  const readiness = buildReadinessPlan(parsed);
 
   return {
     running: false,
@@ -342,9 +438,40 @@ async function runAgentHealthProbe(outputRoot) {
       code: result.code,
       stdout,
       stderr,
-      parsed
+      parsed,
+      readiness
     }
   };
+}
+
+function buildRunningAgentStatus(health, outputRoot, port) {
+  return {
+    running: true,
+    serverReachable: true,
+    outputRoot: outputRoot || agentOutputRoot,
+    port: port || agentPort,
+    prerequisitesOk: true,
+    summary: "Local assistant is running.",
+    details: health
+  };
+}
+
+async function installOllamaModel(model) {
+  await tryStartOllamaRuntime();
+
+  const executable = resolveOllamaExecutable();
+  if (!executable) {
+    throw new Error("Ollama executable not found.");
+  }
+
+  return await runCommand(executable, ["pull", model], {
+    cwd: repoRoot(),
+    shell: false,
+    env: {
+      ...process.env,
+      NODE_NO_WARNINGS: "1"
+    }
+  });
 }
 
 async function stopAgentServer() {
@@ -466,7 +593,7 @@ async function ensureAgentServer(outputRoot, port = AGENT_DEFAULT_PORT) {
         resolve({
           port,
           outputRoot: desiredOutputRoot,
-          health
+          health: buildRunningAgentStatus(health, desiredOutputRoot, port)
         });
         return;
       }
@@ -545,15 +672,7 @@ function registerIpc() {
       if (liveHealth) {
         return {
           ok: true,
-          result: {
-            running: true,
-            serverReachable: true,
-            outputRoot: payload.outputRoot || agentOutputRoot,
-            port: agentPort,
-            prerequisitesOk: true,
-            summary: "Local agent server is running.",
-            details: liveHealth
-          },
+          result: buildRunningAgentStatus(liveHealth, payload.outputRoot || agentOutputRoot, agentPort),
           message: "Local agent health loaded."
         };
       }
@@ -563,6 +682,44 @@ function registerIpc() {
         ok: true,
         result: probe,
         message: "Local agent prerequisite check completed."
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle("agent:installModel", async (_event, payload = {}) => {
+    try {
+      if (!payload.model || typeof payload.model !== "string") {
+        throw new Error("A model name is required.");
+      }
+
+      const kind = payload.kind === "llm" ? "llm" : "embeddings";
+      const readiness = assessModelInstallReadiness(kind);
+      if (readiness.model === payload.model && !readiness.installReady) {
+        throw new Error(readiness.blockers.join(" "));
+      }
+
+      const result = await installOllamaModel(payload.model);
+      const probe = await runAgentHealthProbe(agentOutputRoot || "organized_output");
+
+      return {
+        ok: result.code === 0,
+        result: {
+          installed: result.code === 0,
+          model: payload.model,
+          kind,
+          stdout: result.stdout,
+          stderr: result.stderr,
+          health: probe
+        },
+        message: result.code === 0 ? `Installed ${payload.model}.` : `Failed to install ${payload.model}.`,
+        stdout: result.stdout,
+        stderr: result.stderr,
+        code: result.code
       };
     } catch (error) {
       return {

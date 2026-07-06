@@ -2,6 +2,7 @@ export type DesktopCommandName =
   | "agent.start"
   | "agent.stop"
   | "agent.health"
+  | "agent.installModel"
   | "agent.chat"
   | "agent.sessions.list"
   | "agent.sessions.create"
@@ -230,6 +231,11 @@ export interface AgentStopPayload {
 export interface AgentHealthPayload {
   outputRoot: string;
   port?: number;
+}
+
+export interface AgentInstallModelPayload {
+  model: string;
+  kind?: "llm" | "embeddings";
 }
 
 export interface AgentChatPayload {

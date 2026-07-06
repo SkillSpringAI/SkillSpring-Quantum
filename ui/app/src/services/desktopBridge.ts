@@ -28,6 +28,7 @@ import type {
   AgentStartPayload,
   AgentStopPayload,
   AgentHealthPayload,
+  AgentInstallModelPayload,
   AgentChatPayload,
   AgentCreateSessionPayload,
   AgentListSessionsPayload,
@@ -109,6 +110,15 @@ export async function readAgentHealth(
 ): Promise<DesktopCommandResponse> {
   return invokeDesktopCommand<AgentHealthPayload, Record<string, unknown>>({
     command: "agent.health",
+    payload
+  });
+}
+
+export async function installAgentModel(
+  payload: AgentInstallModelPayload
+): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<AgentInstallModelPayload, Record<string, unknown>>({
+    command: "agent.installModel",
     payload
   });
 }

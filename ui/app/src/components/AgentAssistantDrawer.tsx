@@ -4,6 +4,7 @@ import { useSettings } from "../state/settingsContext";
 import { useAgentContext, type AgentArtifactContext } from "../state/agentContext";
 import {
   createAgentSession,
+  installAgentModel,
   readAgentHealth,
   sendAgentChat,
   startAgent,
@@ -36,6 +37,31 @@ interface AgentHealthState {
   port: number;
   prerequisitesOk: boolean | null;
   summary: string;
+  details?: {
+    readiness?: {
+      machineProfile?: {
+        totalMemoryGb?: number;
+        freeMemoryGb?: number;
+        freeDiskGb?: number | null;
+      };
+      recommended?: AgentInstallRecommendation[];
+    };
+  };
+}
+
+interface AgentInstallRecommendation {
+  kind: "llm" | "embeddings";
+  model: string;
+  label: string;
+  minimumMemoryGb: number;
+  minimumDiskGb: number;
+  detectedMemoryGb: number;
+  detectedFreeMemoryGb: number;
+  detectedFreeDiskGb: number | null;
+  installReady: boolean;
+  performanceReady?: boolean;
+  blockers: string[];
+  warnings?: string[];
 }
 
 const DEFAULT_HEALTH: AgentHealthState = {
@@ -99,6 +125,8 @@ export default function AgentAssistantDrawer(props: AgentAssistantDrawerProps) {
 
   const starterPrompts = getStarterPrompts(activeScreen);
   const supportedCommands = listSupportedCommands();
+  const recommendations = health.details?.readiness?.recommended ?? [];
+  const installRecommendation = recommendations.find((item) => item.kind === "embeddings" || item.kind === "llm");
 
   async function handleStartAgent() {
     setBusy(true);
@@ -147,6 +175,22 @@ export default function AgentAssistantDrawer(props: AgentAssistantDrawerProps) {
     });
 
     if (!response.ok) {
+      setError(response.error);
+    }
+
+    setBusy(false);
+  }
+
+  async function handleInstallModel(model: string, kind: "llm" | "embeddings") {
+    setBusy(true);
+    setError(null);
+
+    const response = await installAgentModel({ model, kind });
+
+    if (response.ok) {
+      const result = response.result as { health?: unknown };
+      setHealth(normalizeHealthState(result.health ?? result, settings.outputRoot));
+    } else {
       setError(response.error);
     }
 
@@ -308,6 +352,55 @@ export default function AgentAssistantDrawer(props: AgentAssistantDrawerProps) {
         <div className="detail-box">
           <strong>Assistant status</strong>
           <p className="muted">{health.summary}</p>
+          {health.details?.readiness?.machineProfile ? (
+            <div className="signal-badge-row">
+              <span className="signal-badge">
+                RAM: {health.details.readiness.machineProfile.totalMemoryGb ?? "?"} GB
+              </span>
+              {health.details.readiness.machineProfile.freeDiskGb !== null &&
+              health.details.readiness.machineProfile.freeDiskGb !== undefined ? (
+                <span className="signal-badge">
+                  Free disk: {health.details.readiness.machineProfile.freeDiskGb} GB
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+          {installRecommendation ? (
+            <div className="detail-box">
+              <strong>{installRecommendation.label}</strong>
+              <p className="muted">
+                {installRecommendation.installReady
+                  ? `Quantum can install ${installRecommendation.model} here so Ask Quantum can finish local setup.`
+                  : `Quantum found the next recommended model, but this device should be checked before installing ${installRecommendation.model}.`}
+              </p>
+              {installRecommendation.warnings && installRecommendation.warnings.length > 0 ? (
+                <ul className="list">
+                  {installRecommendation.warnings.map((warning) => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
+              ) : null}
+              {installRecommendation.blockers.length > 0 ? (
+                <ul className="list">
+                  {installRecommendation.blockers.map((blocker) => (
+                    <li key={blocker}>{blocker}</li>
+                  ))}
+                </ul>
+              ) : null}
+              <div className="action-bar">
+                <button
+                  className="primary-btn"
+                  type="button"
+                  onClick={() => void handleInstallModel(installRecommendation.model, installRecommendation.kind)}
+                  disabled={busy || !installRecommendation.installReady}
+                >
+                  {installRecommendation.installReady
+                    ? `Install ${installRecommendation.model}`
+                    : `Install blocked for ${installRecommendation.model}`}
+                </button>
+              </div>
+            </div>
+          ) : null}
           {error ? <p className="save-error">{error}</p> : null}
           <div className="action-bar">
             <button className="primary-btn" type="button" onClick={handleStartAgent} disabled={busy}>
@@ -528,7 +621,8 @@ function normalizeHealthState(result: unknown, outputRoot: string): AgentHealthS
       ? candidate.summary
       : candidate.running
         ? "Local assistant is running."
-        : "Ask Quantum is waiting for the local assistant."
+        : "Ask Quantum is waiting for the local assistant.",
+    details: candidate.details as AgentHealthState["details"] | undefined
   };
 }
 

@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld("skillspringDesktop", {
     start: (outputRoot, port) => ipcRenderer.invoke("agent:start", { outputRoot, port }),
     stop: (port) => ipcRenderer.invoke("agent:stop", { port }),
     health: (outputRoot, port) => ipcRenderer.invoke("agent:health", { outputRoot, port }),
+    installModel: (model, kind) => ipcRenderer.invoke("agent:installModel", { model, kind }),
     chat: (outputRoot, sessionId, message, systemPrompt, port) =>
       ipcRenderer.invoke("agent:chat", { outputRoot, sessionId, message, systemPrompt, port }),
     listSessions: (outputRoot, port) => ipcRenderer.invoke("agent:sessions:list", { outputRoot, port }),

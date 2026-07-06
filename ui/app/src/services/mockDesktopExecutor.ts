@@ -27,6 +27,7 @@ import type {
   AgentStartPayload,
   AgentStopPayload,
   AgentHealthPayload,
+  AgentInstallModelPayload,
   AgentChatPayload,
   AgentCreateSessionPayload,
   AgentListSessionsPayload,
@@ -75,6 +76,10 @@ export async function executeMockDesktopCommand(
       case "agent.health": {
         const p = payload as AgentHealthPayload;
         return fromBridge(await bridge.agent.health(p.outputRoot, p.port));
+      }
+      case "agent.installModel": {
+        const p = payload as AgentInstallModelPayload;
+        return fromBridge(await bridge.agent.installModel(p.model, p.kind));
       }
       case "agent.chat": {
         const p = payload as AgentChatPayload;
@@ -252,6 +257,12 @@ export async function executeMockDesktopCommand(
         summary: "Mock desktop bridge only. Launch through Electron for the local assistant."
       }, "Mock local agent health returned.");
     }
+
+    case "agent.installModel":
+      return ok(command, {
+        installed: false,
+        note: "Mock bridge cannot install local models."
+      }, "Mock model install returned.");
 
     case "agent.sessions.list":
       return ok(command, { sessions: [] }, "Mock local agent sessions returned.");

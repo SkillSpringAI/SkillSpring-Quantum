@@ -18,6 +18,7 @@ declare global {
         start: (outputRoot: string, port?: number) => Promise<unknown>;
         stop: (port?: number) => Promise<unknown>;
         health: (outputRoot: string, port?: number) => Promise<unknown>;
+        installModel: (model: string, kind?: "llm" | "embeddings") => Promise<unknown>;
         chat: (
           outputRoot: string,
           sessionId: string | undefined,

@@ -72,6 +72,19 @@ Follow-up runtime note from July 6, 2026:
 - preferred behavior is: detect installed models -> match against preferred and compatible config entries -> auto-select the best fit -> only surface an actionable prerequisite message if no supported local model exists
 - future one-click install work should hang off this same contract so the assistant can say whether it found a usable model, why it fell back, or why it is offering a guided local download
 
+Current repo status after the committed July 6 follow-through:
+
+- the runtime now checks installed local Ollama models for compatibility before treating a missing configured model as a hard failure
+- the assistant drawer now surfaces guided install actions for missing recommended local models
+- the runtime now distinguishes a live local assistant from a stopped one more honestly in the drawer state
+- low-memory hardware is now treated as a user-facing caution for local assistant comfort rather than a silent dead-end control state
+
+Remaining runtime follow-through still needed:
+
+- clearer install-progress and post-install refresh feedback
+- stronger degraded-state distinctions for "installed but not comfortable to run" versus "not installed"
+- continued hardening of source-grounded assistant answers and explicit supported-command boundaries
+
 The same manual check also surfaced a presentation issue:
 
 - experimental `node:sqlite` warnings should not leak directly into the user-facing assistant status message

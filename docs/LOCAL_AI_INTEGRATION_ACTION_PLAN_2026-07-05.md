@@ -213,6 +213,19 @@ Runtime follow-up from July 6, 2026:
 - if no supported model is installed, the next beta-facing slice should be a guided install path that checks storage and memory before offering a one-click pull of the smallest acceptable supported model
 - the fallback chain should remain explicit and inspectable so the UI can explain what Quantum found, what it selected, and why
 
+Current committed status after the July 6 runtime pass:
+
+- the local assistant now has a first real model-inventory and compatibility layer
+- the runtime can fall back to a compatible installed local model instead of only failing on the configured default
+- the drawer can now explain missing-model state more clearly and offer an in-app install action for the recommended local model
+- assistant state reflection is now closer to the actual local runtime state instead of implying the assistant is stopped while the local server is already running
+
+That means the next assistant-facing work should narrow to:
+
+- improving source-grounded answer behavior
+- keeping the supported command boundary explicit and testable
+- completing the install/degraded-state experience for low-memory and partial-setup machines
+
 ### Phase 3: Dataset-backed contextual retrieval
 
 Deliverables:

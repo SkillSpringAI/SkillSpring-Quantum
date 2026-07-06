@@ -42,6 +42,17 @@ Why this matters:
 - retrieval can explain both why something matched and where the user should go next
 - `Ask Quantum` now helps with supported workflow actions without bypassing deterministic execution
 
+Since that July 5 sequence completed, the repo has also landed a first assistant-runtime follow-through pass:
+
+- local Ollama model compatibility detection for chat and embeddings
+- clearer assistant prerequisite summaries instead of raw model-not-found failures
+- in-app install guidance for missing recommended local models
+- drawer-state fixes so a running local assistant is reflected honestly instead of appearing stopped
+
+This does not change the core priority order.
+
+It means the assistant is now a more realistic secondary explainer surface, while parser trust, retrieval trust, and first-run clarity remain the next MVP-facing priorities.
+
 ## Near-term priorities
 
 ## Continue Tomorrow
@@ -95,6 +106,7 @@ Those notes should be treated as supporting slices for the same beta-readiness g
 Working note: `docs/EXTERNAL_TEST_IMPLEMENTATION_NOTES_2026-07-04.md`
 
 Concrete execution note: `docs/NEXT_FIVE_SLICES_2026-07-05.md`
+Updated continuation note: `docs/NEXT_FIVE_SLICES_2026-07-06.md`
 
 ### Local agent incorporation rule
 
@@ -111,6 +123,8 @@ Current implementation note:
 
 - the first assistant slice now follows this rule by trying a validated command catalog before falling back to general explanation
 - that boundary is intentional because outside beta trust depends more on predictable action routing than on open-ended assistant behavior
+- a follow-through runtime pass now also handles local-model compatibility checks, install guidance, and more honest running-state reflection in the drawer
+- the next assistant work should therefore focus less on basic startup plumbing and more on source-grounding, deterministic boundary hardening, and finishing the install/runtime experience cleanly
 
 Working note: `docs/LOCAL_AGENT_INTEGRATION_PLAN_2026-07-04.md`
 Broader action plan: `docs/LOCAL_AI_INTEGRATION_ACTION_PLAN_2026-07-05.md`

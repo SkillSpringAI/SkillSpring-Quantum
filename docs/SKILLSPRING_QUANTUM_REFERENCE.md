@@ -73,6 +73,7 @@ This is narrower than the full internal parser and document-ingestion surface al
 - desktop bridge honesty so import/source inspection fails explicitly when the Electron bridge is unavailable instead of silently falling back to mock behavior
 - React desktop screens for imports, diagnostics, governance, DB browsing, datasets, organized output, review queue, and settings
 - `Ask Quantum` drawer now includes a narrow deterministic command bridge before broader explanation fallback
+- `Ask Quantum` now also includes local model compatibility checks, clearer assistant prerequisite summaries, guided local install actions for missing recommended models, and more honest running-state reflection when the local assistant is already up
 
 ## Current Build Emphasis
 
@@ -147,6 +148,12 @@ The stronger architectural rule is now:
 
 That last rule is no longer only architectural intent. It is now reflected in the UI through the first narrow command catalog used by `Ask Quantum`.
 
+It is also now reflected in the runtime path by:
+
+- detecting installed local Ollama models before treating a missing configured model as a user-facing failure
+- surfacing guided assistant setup feedback in the drawer instead of leaving model compatibility as an invisible backend detail
+- keeping the assistant optional while still attempting local startup or reconnection when assistant features are invoked
+
 Working note: `docs/LOCAL_AI_INTEGRATION_ACTION_PLAN_2026-07-05.md`
 
 ## Internal Coverage Beyond MVP
@@ -198,6 +205,8 @@ The highest-value next slices toward that beta goal are:
 1. corpus-agnostic parser and segmentation hardening across more varied user export shapes
 2. user-natural topic/intent interpretation and retrieval labeling improvements grounded in deterministic evidence
 3. first-run import clarity plus a reusable walkthrough or tutorial path for outside beta sessions
+
+The assistant-runtime work committed on July 6, 2026 should be treated as enabling support for those slices, not as a reason to reorder them above parser, retrieval, or onboarding trust work.
 
 ## User and Governance Surface Model
 

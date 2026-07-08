@@ -7,6 +7,13 @@ export function isPackageCompanionSkip(result: ImportRunFileResult): boolean {
   );
 }
 
+export function isPreviouslyImportedSkip(result: ImportRunFileResult): boolean {
+  return (
+    result.status === "skipped" &&
+    result.message.toLowerCase().includes("already imported successfully")
+  );
+}
+
 export function countPackageCompanionSkips(run: ImportRunSummary | null): number {
   if (!run) {
     return 0;
@@ -23,6 +30,14 @@ export function countUnexpectedSkippedFiles(run: ImportRunSummary | null): numbe
   return Math.max(0, run.unsupportedFilesSkipped - countPackageCompanionSkips(run));
 }
 
+export function countPreviouslyImportedSkips(run: ImportRunSummary | null): number {
+  if (!run) {
+    return 0;
+  }
+
+  return run.results.filter(isPreviouslyImportedSkip).length;
+}
+
 export function runNeedsAttention(run: ImportRunSummary | null): boolean {
   if (!run) {
     return false;
@@ -33,4 +48,26 @@ export function runNeedsAttention(run: ImportRunSummary | null): boolean {
     countUnexpectedSkippedFiles(run) > 0 ||
     run.results.some((result) => result.status === "failed")
   );
+}
+
+export function runHasUsableConversationOutputs(run: ImportRunSummary | null): boolean {
+  if (!run) {
+    return false;
+  }
+
+  return (
+    (
+      (run.filesImported > 0 && run.conversationFilesProcessed > 0) ||
+      countPreviouslyImportedSkips(run) > 0
+    ) &&
+    (run.retrievalSummary?.conversationCount ?? 0) > 0
+  );
+}
+
+export function runHasUsableDatasetOutputs(run: ImportRunSummary | null): boolean {
+  if (!run) {
+    return false;
+  }
+
+  return Boolean(run.retrievalSummary) && (run.filesImported > 0 || countPreviouslyImportedSkips(run) > 0);
 }

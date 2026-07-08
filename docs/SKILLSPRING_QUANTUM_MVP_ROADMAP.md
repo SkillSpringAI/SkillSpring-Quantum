@@ -64,6 +64,18 @@ That leaves the next morning queue centered on:
 2. assistant source-grounding and deterministic-boundary hardening
 3. assistant install/runtime completion pass
 
+The July 8, 2026 import-hardening pass also landed a meaningful reliability improvement for large ChatGPT export retries:
+
+- already imported shard files can now be reused quickly during reruns instead of being processed like a fresh folder
+- missing success-ledger state can now be recovered from recent import history rather than silently losing reuse knowledge
+- import progress now counts against supported import-ready files more honestly
+- interrupted streaming ChatGPT shards now persist per-conversation resume checkpoints
+- failed shard retries are now ordered more deliberately so lighter failed shards can run before the heaviest retry candidate
+
+This does not mean the large-import experience is finished.
+
+It means the bottleneck has moved from whole-folder rerun waste toward the remaining heavy failed shards themselves.
+
 ## Near-term priorities
 
 ## Continue Tomorrow
@@ -90,21 +102,21 @@ The next beta-leaning slices should continue from these explicit UX targets:
 
 ### Beta-readiness next three slices
 
-1. **First-run beta onboarding**
+1. **Heavy-import progress trust**
+   - Make long shard retries feel explainable rather than frozen.
+   - Add clearer per-step wording and introduce estimated-time or duration-range guidance where it can be honest.
+   - Distinguish preparation, retry, resume, and active processing states more plainly.
+
+2. **First-run beta onboarding**
    - Keep the current guided import framing, but plan a short walkthrough or tutorial video that demonstrates the ordinary import -> archive -> dataset -> find-imports path with a real example.
    - Use onboarding to reduce perceived complexity instead of adding more static explanation copy.
    - Keep advanced/operator surfaces hidden unless directly useful.
    - Prepare one stable walkthrough path that can be reused in outside beta sessions.
 
-2. **Assistant source-grounding and deterministic boundary hardening**
+3. **Assistant source-grounding and deterministic boundary hardening**
    - Keep `Ask Quantum` attached to the existing workflow instead of letting it drift into a parallel product surface.
    - Require stronger evidence pointers, narrower supported-action behavior, and better refusal/clarification for ambiguous requests.
    - Make trust drift the main thing being reduced, not raw assistant breadth.
-
-3. **Assistant install/runtime completion**
-   - Finish the install/start/degraded-state loop so the drawer behaves like a beta-facing feature instead of a partial maintainer tool.
-   - Make low-memory, missing-model, and healthy-running states visibly distinct.
-   - Keep the assistant optional and non-blocking for the main import -> archive -> dataset -> retrieval workflow.
 
 ### Outside-test implementation notes
 
@@ -184,6 +196,7 @@ Focus:
 - exact export-shape honesty in UI and docs
 - schema-match clarity inside the vendor-first import flow
 - parser and retrieval behavior that stays stable across unfamiliar user corpora rather than only the maintainer's own exports
+- large-shard retry behavior that can resume work safely and explain how long a retry is likely to take
 
 ## Advanced surface rule
 

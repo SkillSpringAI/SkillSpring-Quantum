@@ -21,8 +21,8 @@ function safeTimestamp(date: Date): string {
   return date.toISOString().replace(/[:.]/g, "-");
 }
 
-export function buildDatasetPaths(rootOutputDir: string, version = "v1"): DatasetPaths {
-  const runId = "run-" + safeTimestamp(new Date());
+export function buildDatasetPaths(rootOutputDir: string, version = "v1", runId?: string): DatasetPaths {
+  const resolvedRunId = runId ?? "run-" + safeTimestamp(new Date());
 
   const datasetsRoot = path.join(rootOutputDir, "datasets");
   const manifestsDir = path.join(datasetsRoot, "manifests");
@@ -33,10 +33,10 @@ export function buildDatasetPaths(rootOutputDir: string, version = "v1"): Datase
   const microSegmentsDir = path.join(datasetsRoot, "micro_segments", version);
 
   const currentDir = path.join(datasetsRoot, "current");
-  const runDir = path.join(runsDir, runId);
+  const runDir = path.join(runsDir, resolvedRunId);
 
   return {
-    runId,
+    runId: resolvedRunId,
     manifestsDir,
     runsDir,
     topicSegmentsFile: path.join(topicSegmentsDir, "data.jsonl"),
@@ -49,6 +49,6 @@ export function buildDatasetPaths(rootOutputDir: string, version = "v1"): Datase
     runPromptResponsePairsFile: path.join(runDir, "prompt_response_pairs.jsonl"),
     runMicroSegmentsFile: path.join(runDir, "micro_segments.jsonl"),
     runPrivateReviewFile: path.join(runDir, "private_review_topic_segments.jsonl"),
-    manifestFile: path.join(manifestsDir, runId + ".json")
+    manifestFile: path.join(manifestsDir, resolvedRunId + ".json")
   };
 }

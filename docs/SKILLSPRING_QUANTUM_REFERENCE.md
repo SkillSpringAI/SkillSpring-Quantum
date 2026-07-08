@@ -2,6 +2,13 @@
 
 SkillSpring Quantum is a local-first Electron + Vite + React desktop application and TypeScript processing engine for turning AI conversation exports into structured, auditable knowledge assets and datasets.
 
+The clearest current use case is:
+
+- a general local user who wants to take a major AI export from ChatGPT, Claude, Gemini, Grok, or the proven Copilot CSV path
+- inspect what Quantum recognizes before importing
+- get both readable archive files and privacy-aware dataset output from the same local run
+- understand success, fallback, retry, and failure states without needing scripts or raw logs first
+
 ## First User-Facing MVP Boundary
 
 The first user-facing MVP should be framed around a narrow AI-export workflow:
@@ -45,6 +52,11 @@ This is narrower than the full internal parser and document-ingestion surface al
 - import retrieval index manifests for search-ready file-level records
 - segment retrieval index manifests for linked dataset segment lookup
 - visible staged import progress updates surfaced into the Electron UI
+- import progress now counts against the import-ready lane more honestly instead of making companion files look like primary work
+- successful-source reuse now fast-skips previously completed files during reruns instead of treating the whole folder like a cold pass
+- rerun recovery can now rebuild reusable-success knowledge from recent import history when a dedicated success ledger is missing
+- ChatGPT shard retries now prefer lighter previously failed shards before returning to the heaviest failed shard
+- ChatGPT streaming shard progress now checkpoints completed conversations so interrupted heavy shards can resume deeper into the file instead of always restarting from conversation one
 - vendor smoke-test coverage for ChatGPT, Claude, Gemini, Grok, and proven Microsoft Copilot intake paths
 - latest dataset summary reader
 - dataset source-context handoff that now carries recovery-path status and package-companion handling into the datasets screen
@@ -106,6 +118,8 @@ This is narrower than the full internal parser and document-ingestion surface al
 - keep curated promotion, purge restore, folder merge, governance editing, and tiered database inspection behind deliberate Extra Tools access
 - define a stable diagnostic explanation contract for future local-assistant use without making assistant integration an MVP blocker
 - decide whether archive-only versus archive-plus-dataset import controls are worth exposing after the current dataset clarity work settles
+- make heavy-shard processing feel more trustworthy by surfacing clearer retry state, shard-level progress cues, and eventually estimated time ranges for long-running steps
+- lighten or bypass full-shard metadata prework where possible so large ChatGPT retries spend less time before visible progress moves
 
 The latest internal pass on July 2, 2026 also clarified an important sequencing point:
 
@@ -130,6 +144,8 @@ Several of the highest-value items from that backlog are now implemented:
 - parser hardening aimed at unfamiliar user corpora
 - retrieval-side evidence and next-step labeling
 - retrieval-side segment explanation and dataset handoff continuity
+- rerun-aware source reuse for already imported files
+- interrupted heavy-shard resume checkpoints for streaming ChatGPT imports
 
 Working note: `docs/EXTERNAL_TEST_IMPLEMENTATION_NOTES_2026-07-04.md`
 
@@ -138,6 +154,13 @@ The July 6, 2026 end-of-day parser and retrieval trust pass also clarified the n
 - corpus-agnostic parser hardening is now far less dependent on maintainer-specific vocabulary
 - retrieval trust labeling now does a better job of explaining what matched, where the evidence came from, and which screen is the right next step
 - the next morning's queue should therefore begin with onboarding and walkthrough clarity, not another parser-first restart
+
+The July 8, 2026 heavy-import hardening pass clarified the next stop point again:
+
+- reruns now acknowledge already imported shards quickly enough to feel materially better
+- the remaining frustration is concentrated in the heavy failed shards rather than the already imported ones
+- progress wording still needs to become more reassuring for long retries, especially around expected time, current step, and what has already been safely reused
+- the next import-hardening slice should therefore focus on trustworthy timing/progress explanation and deeper large-shard retry resilience, not another broad cold-path refactor
 
 As of July 4, 2026, the repo also contains an initial local-agent package candidate under `skillspring-quantum-agent/`.
 

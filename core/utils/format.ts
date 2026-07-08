@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 export function slugify(input: string): string {
   return input
     .toLowerCase()
@@ -8,9 +10,17 @@ export function slugify(input: string): string {
     .replace(/^_+|_+$/g, "");
 }
 
-export function safeFileStem(input: string, fallback = "untitled"): string {
+export function safeFileStem(input: string, fallback = "untitled", maxLength = 96): string {
   const cleaned = slugify(input);
-  return cleaned || fallback;
+  const resolved = cleaned || fallback;
+
+  if (resolved.length <= maxLength) {
+    return resolved;
+  }
+
+  const hash = createHash("sha256").update(resolved).digest("hex").slice(0, 8);
+  const truncatedLength = Math.max(16, maxLength - hash.length - 1);
+  return resolved.slice(0, truncatedLength).replace(/_+$/g, "") + "_" + hash;
 }
 
 export function shortTitle(input: string, maxWords = 8): string {

@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import type { ConversationParserKind, DetectedConversationParse } from "../parser/detectConversationExport.js";
 import { detectAndParseConversationExport } from "../parser/index.js";
+import { looksLikeChatGptConversationArrayText } from "../parser/chatgpt.js";
 import type { Conversation } from "../parser/types.js";
 import { segmentConversation } from "../pipeline/segmenter.js";
 import { formatNormalizedTopicLabel } from "../pipeline/topicNormalizer.js";
@@ -57,9 +58,12 @@ export async function readConversationImportMetadata(
   filePath: string
 ): Promise<ConversationImportMetadata | null> {
   const rawText = await fs.readFile(filePath, "utf-8");
-  const raw = filePath.toLowerCase().endsWith(".html") || filePath.toLowerCase().endsWith(".csv")
-    ? rawText
-    : JSON.parse(rawText) as unknown;
+  const raw =
+    filePath.toLowerCase().endsWith(".html") ||
+    filePath.toLowerCase().endsWith(".csv") ||
+    looksLikeChatGptConversationArrayText(rawText)
+      ? rawText
+      : JSON.parse(rawText) as unknown;
   return summarizeDetectedConversationImport(detectAndParseConversationExport(raw));
 }
 
@@ -268,6 +272,14 @@ export function buildImportRunRetrievalSummary(
   results: ImportRunFileResult[]
 ): ImportRunRetrievalSummary | null {
   const conversationMetadata = results
+    .filter(
+      (result) =>
+        result.status === "imported" ||
+        (
+          result.status === "skipped" &&
+          result.message.toLowerCase().includes("already imported successfully")
+        )
+    )
     .map((result) => result.metadata)
     .filter((metadata): metadata is ConversationImportMetadata => metadata?.sourceCategory === "conversation");
 

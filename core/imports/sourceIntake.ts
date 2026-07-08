@@ -1,6 +1,7 @@
 import path from "node:path";
 import { promises as fs } from "node:fs";
 import { detectAndParseConversationExport } from "../parser/index.js";
+import { looksLikeChatGptConversationArrayText } from "../parser/chatgpt.js";
 import { runConversationPipeline } from "../pipeline/pipeline.js";
 import { ensureDir, fileExists, writeTextFile } from "../utils/fs.js";
 import { safeFileStem } from "../utils/format.js";
@@ -158,6 +159,32 @@ interface RawSourceFileRecord {
   extraction_warnings?: string[];
 }
 
+interface SuccessfulSourceLedgerRecord {
+  sourceId: string;
+  path: string;
+  kind: ImportSourceKind;
+  importedAt: string;
+  metadata?: ImportFileMetadata;
+}
+
+interface SuccessfulSourceLedger {
+  records: SuccessfulSourceLedgerRecord[];
+}
+
+interface PreparedImportFile {
+  path: string;
+  sourceId: string;
+  previouslyImported?: SuccessfulSourceLedgerRecord;
+  previousRunStatus?: ImportRunFileResult["status"];
+  previousRunMetadata?: ImportFileMetadata;
+}
+
+interface LatestImportRunPathRecord {
+  status: ImportRunFileResult["status"];
+  kind: ImportSourceKind;
+  metadata?: ImportFileMetadata;
+}
+
 export async function inspectImportSource(inputPath: string): Promise<ImportSourceSummary> {
   const normalizedPath = inputPath.trim().replace(/^["']|["']$/g, "");
   const countsByKind: Record<ImportSourceKind, number> = {
@@ -298,40 +325,35 @@ export async function runImportSource(
   let archivedOnlyFiles = 0;
   let recoveryPathFiles = 0;
   let unsupportedFilesSkipped = 0;
+  let completedSupportedFiles = 0;
+  const successfulSourceLedger = await loadSuccessfulSourceLedger(outputRoot);
+  const latestRunPathRecords = await loadRecentImportRunPathRecords(outputRoot);
 
   const files = summary.inputType === "folder"
     ? (await resolveDirectoryImportFiles(summary.inputPath)).files
     : [summary.inputPath];
+  const preparedFiles = await prepareImportFilesForRun(files, successfulSourceLedger, latestRunPathRecords, runAt);
   onProgress?.({
     stage: "source_ready",
     message:
       summary.supportedFiles > 0
         ? `Found ${summary.supportedFiles} supported file(s). Preparing the import now.`
         : "No supported files were found in the selected path.",
-    percent: files.length > 0 ? 10 : 100,
-    filesDiscovered: files.length,
+    percent: summary.supportedFiles > 0 ? 10 : 100,
+    filesDiscovered: summary.supportedFiles,
     completedFiles: 0
   });
   const packageCompanionReasons = summary.inputType === "folder"
     ? await buildVendorPackageCompanionReasons(files)
     : new Map<string, string>();
 
-  for (const [index, filePath] of files.entries()) {
-    const entry = await classifyImportFile(filePath, packageCompanionReasons);
-    const progressPercent = files.length > 0
-      ? Math.min(88, 10 + Math.floor((index / files.length) * 75))
-      : 88;
-    onProgress?.({
-      stage: "processing_file",
-      message: `Processing ${index + 1} of ${files.length}: ${path.basename(filePath)}`,
-      percent: progressPercent,
-      filesDiscovered: files.length,
-      completedFiles: index,
-      currentPath: filePath,
-      currentKind: entry.kind
-    });
+  for (const [index, preparedFile] of preparedFiles.entries()) {
+    const filePath = preparedFile.path;
+    const entry = preparedFile.previouslyImported
+      ? null
+      : await classifyImportFile(filePath, packageCompanionReasons);
 
-    if (!entry.supported) {
+    if (entry && !entry.supported) {
       unsupportedFilesSkipped += 1;
       results.push({
         path: filePath,
@@ -342,19 +364,54 @@ export async function runImportSource(
       continue;
     }
 
+    const progressPercent = summary.supportedFiles > 0
+      ? Math.min(88, 10 + Math.floor((completedSupportedFiles / summary.supportedFiles) * 75))
+      : 88;
+    const progressVerb = preparedFile.previousRunStatus === "failed"
+      ? "Retrying"
+      : "Processing";
+    onProgress?.({
+      stage: "processing_file",
+      message: `${progressVerb} ${completedSupportedFiles + 1} of ${summary.supportedFiles}: ${path.basename(filePath)}`,
+      percent: progressPercent,
+      filesDiscovered: summary.supportedFiles,
+      completedFiles: completedSupportedFiles,
+      currentPath: filePath,
+      currentKind: preparedFile.previouslyImported?.kind ?? entry?.kind
+    });
+
+    if (preparedFile.previouslyImported) {
+      await recordSuccessfulSource(outputRoot, successfulSourceLedger, preparedFile.previouslyImported);
+      results.push({
+        path: filePath,
+        kind: preparedFile.previouslyImported.kind,
+        status: "skipped",
+        message: "Skipped: already imported successfully in an earlier run. Quantum reused the existing output state instead of processing this file again.",
+        metadata: preparedFile.previouslyImported.metadata
+      });
+      completedSupportedFiles += 1;
+      continue;
+    }
+
     try {
-      if (entry.kind === "chatgpt_export" || entry.kind === "conversation_json" || entry.kind === "gemini_activity_html") {
+      const supportedEntry = entry!;
+      if (
+        supportedEntry.kind === "chatgpt_export" ||
+        supportedEntry.kind === "conversation_json" ||
+        supportedEntry.kind === "gemini_activity_html"
+      ) {
         const metadata = await readConversationImportMetadata(filePath);
         const diagnostics = await runConversationPipeline(filePath, outputRoot);
         if (diagnostics.status !== "success") {
           filesFailed += 1;
           results.push({
             path: filePath,
-            kind: entry.kind,
+            kind: supportedEntry.kind,
             status: "failed",
             message: "Import failed before archive and dataset outputs were completed. Check diagnostics for details.",
             metadata: metadata ?? undefined
           });
+          completedSupportedFiles += 1;
           continue;
         }
 
@@ -367,23 +424,31 @@ export async function runImportSource(
         artifacts.push(...conversationArtifacts);
         results.push({
           path: filePath,
-          kind: entry.kind,
+          kind: supportedEntry.kind,
           status: "imported",
           message: buildConversationImportResultMessage(metadata, diagnostics),
           artifacts: conversationArtifacts,
           metadata: metadata ?? undefined
         });
+        await recordSuccessfulSource(outputRoot, successfulSourceLedger, {
+          sourceId: preparedFile.sourceId,
+          path: filePath,
+          kind: supportedEntry.kind,
+          importedAt: runAt,
+          metadata: metadata ?? undefined
+        });
+        completedSupportedFiles += 1;
         continue;
       }
 
-      if (entry.kind !== "json_document" && entry.kind !== "text_document" && entry.kind !== "pdf_document") {
-        throw new Error("Unsupported generic import kind: " + entry.kind);
+      if (supportedEntry.kind !== "json_document" && supportedEntry.kind !== "text_document" && supportedEntry.kind !== "pdf_document") {
+        throw new Error("Unsupported generic import kind: " + supportedEntry.kind);
       }
 
-      const imported = await importGenericFile(filePath, outputRoot, entry.kind, runAt);
+      const imported = await importGenericFile(filePath, outputRoot, supportedEntry.kind, runAt);
       filesImported += 1;
 
-      if (entry.kind === "pdf_document") {
+      if (supportedEntry.kind === "pdf_document") {
         pdfFilesArchived += 1;
       } else {
         genericDocumentsProcessed += 1;
@@ -396,22 +461,31 @@ export async function runImportSource(
       artifacts.push(...imported.artifacts);
       results.push({
         path: filePath,
-        kind: entry.kind,
+        kind: supportedEntry.kind,
         status: "imported",
         message: buildDocumentImportResultMessage(imported.metadata),
         artifacts: imported.artifacts,
         metadata: imported.metadata
       });
+      await recordSuccessfulSource(outputRoot, successfulSourceLedger, {
+        sourceId: preparedFile.sourceId,
+        path: filePath,
+        kind: supportedEntry.kind,
+        importedAt: runAt,
+        metadata: imported.metadata
+      });
+      completedSupportedFiles += 1;
     } catch (error) {
       filesFailed += 1;
       results.push({
         path: filePath,
-        kind: entry.kind,
+        kind: entry?.kind ?? "unsupported",
         status: "failed",
         message: error instanceof Error
           ? "Import failed: " + error.message
           : "Import failed before outputs were completed."
       });
+      completedSupportedFiles += 1;
     }
   }
 
@@ -420,8 +494,8 @@ export async function runImportSource(
     stage: "writing_history",
     message: "Writing import history and output manifests.",
     percent: 92,
-    filesDiscovered: files.length,
-    completedFiles: files.length
+    filesDiscovered: summary.supportedFiles,
+    completedFiles: completedSupportedFiles
   });
 
   const historyPath = await writeImportRunHistory(outputRoot, runAt, {
@@ -466,8 +540,8 @@ export async function runImportSource(
     stage: "writing_indexes",
     message: "Updating retrieval and DB summary indexes.",
     percent: 97,
-    filesDiscovered: files.length,
-    completedFiles: files.length
+    filesDiscovered: summary.supportedFiles,
+    completedFiles: completedSupportedFiles
   });
   await writeDbManifest(dbRoot, "latest-source-import.json", result);
   await writeImportRetrievalIndex(outputRoot, result);
@@ -478,11 +552,150 @@ export async function runImportSource(
         ? `Import complete: ${filesImported} imported, ${filesFailed} failed, ${unsupportedFilesSkipped} skipped.`
         : "Import finished without usable outputs.",
     percent: 100,
-    filesDiscovered: files.length,
-    completedFiles: files.length
+    filesDiscovered: summary.supportedFiles,
+    completedFiles: completedSupportedFiles
   });
 
   return result;
+}
+
+async function getSourceFileIdentity(filePath: string): Promise<{
+  sourceId: string;
+  stat: Awaited<ReturnType<typeof fs.stat>>;
+  sizeBytes: number;
+}> {
+  const stat = await fs.stat(filePath);
+  const sizeBytes = Number(stat.size);
+  return {
+    sourceId: sha256(filePath + "|" + sizeBytes + "|" + stat.mtimeMs),
+    stat,
+    sizeBytes
+  };
+}
+
+async function loadRecentImportRunPathRecords(
+  outputRoot: string
+): Promise<Map<string, LatestImportRunPathRecord>> {
+  try {
+    const statuses = new Map<string, LatestImportRunPathRecord>();
+    const latestRunPath = path.join(outputRoot, "imports", "latest-import-run.json");
+    const historyDir = path.join(outputRoot, "imports", "history");
+    const runFiles: string[] = [];
+
+    if (await fileExists(latestRunPath)) {
+      runFiles.push(latestRunPath);
+    }
+
+    if (await fileExists(historyDir)) {
+      const entries = await fs.readdir(historyDir, { withFileTypes: true });
+      runFiles.push(
+        ...entries
+          .filter((entry) => entry.isFile() && /^import-run-.*\.json$/i.test(entry.name))
+          .map((entry) => path.join(historyDir, entry.name))
+          .sort()
+          .reverse()
+      );
+    }
+
+    for (const runFile of runFiles) {
+      const latestRun = JSON.parse(await fs.readFile(runFile, "utf-8")) as ImportRunSummary;
+
+      for (const result of latestRun.results ?? []) {
+        const key = normalizeImportPathKey(result.path);
+        if (!statuses.has(key) || result.status === "imported") {
+          statuses.set(key, {
+            status: result.status,
+            kind: result.kind,
+            metadata: result.metadata
+          });
+        }
+      }
+    }
+
+    return statuses;
+  } catch {
+    return new Map();
+  }
+}
+
+async function prepareImportFilesForRun(
+  files: string[],
+  successfulSourceLedger: Map<string, SuccessfulSourceLedgerRecord>,
+  latestRunPathRecords: Map<string, LatestImportRunPathRecord>,
+  importedAt: string
+): Promise<PreparedImportFile[]> {
+  const prepared = await Promise.all(
+    files.map(async (filePath) => {
+      const sourceIdentity = await getSourceFileIdentity(filePath);
+      const latestRunRecord = latestRunPathRecords.get(normalizeImportPathKey(filePath));
+      const historyRecoveredSuccess =
+        !successfulSourceLedger.has(sourceIdentity.sourceId) &&
+        latestRunRecord?.status === "imported"
+          ? {
+              sourceId: sourceIdentity.sourceId,
+              path: filePath,
+              kind: latestRunRecord.kind,
+              importedAt,
+              metadata: latestRunRecord.metadata
+            } satisfies SuccessfulSourceLedgerRecord
+          : undefined;
+
+      return {
+        path: filePath,
+        sourceId: sourceIdentity.sourceId,
+        previouslyImported: successfulSourceLedger.get(sourceIdentity.sourceId) ?? historyRecoveredSuccess,
+        previousRunStatus: latestRunRecord?.status,
+        previousRunMetadata: latestRunRecord?.metadata
+      } satisfies PreparedImportFile;
+    })
+  );
+
+  return prepared.sort((left, right) => {
+    return preparedImportPriority(left) - preparedImportPriority(right) ||
+      preparedImportRetryWeight(left) - preparedImportRetryWeight(right) ||
+      left.path.localeCompare(right.path);
+  });
+}
+
+function preparedImportPriority(file: PreparedImportFile): number {
+  if (file.previouslyImported) {
+    return 0;
+  }
+
+  if (file.previousRunStatus === "failed") {
+    return 1;
+  }
+
+  if (file.previousRunStatus === "imported") {
+    return 2;
+  }
+
+  if (file.previousRunStatus === "skipped") {
+    return 3;
+  }
+
+  return 4;
+}
+
+function preparedImportRetryWeight(file: PreparedImportFile): number {
+  if (file.previousRunStatus !== "failed") {
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+  const metadata = file.previousRunMetadata;
+  if (metadata?.sourceCategory === "conversation") {
+    return metadata.messageCount;
+  }
+
+  if (metadata?.sourceCategory === "document") {
+    return metadata.sizeBytes;
+  }
+
+  return Number.MAX_SAFE_INTEGER - 1;
+}
+
+function normalizeImportPathKey(filePath: string): string {
+  return path.normalize(filePath).toLowerCase();
 }
 
 export function buildConversationImportResultMessage(
@@ -581,9 +794,8 @@ async function importGenericFile(
   kind: Exclude<ImportSourceKind, "chatgpt_export" | "conversation_json" | "gemini_activity_html" | "unsupported">,
   importedAt: string
 ): Promise<{ artifacts: ImportArtifact[]; metadata: DocumentImportMetadata }> {
-  const stat = await fs.stat(filePath);
+  const { sourceId, stat, sizeBytes } = await getSourceFileIdentity(filePath);
   const ext = path.extname(filePath).toLowerCase();
-  const sourceId = sha256(filePath + "|" + stat.size + "|" + stat.mtimeMs);
   const archiveName = safeFileStem(path.basename(filePath, ext), "document") + "_" + sourceId.slice(0, 8);
   const archiveDir = path.join(outputRoot, "source_archive", kind);
   await ensureDir(archiveDir);
@@ -634,7 +846,7 @@ async function importGenericFile(
         file_name: path.basename(filePath),
         file_extension: ext,
         archive_path: path.relative(outputRoot, archivePath).replace(/\\/g, "/"),
-        original_size_bytes: stat.size,
+        original_size_bytes: sizeBytes,
         parse_status: extraction.ok ? "text_extracted" : "binary_archived_only",
         extraction_warnings: extraction.warnings
       },
@@ -647,7 +859,7 @@ async function importGenericFile(
         file_name_hash: sha256(path.basename(filePath)),
         source_path_hash: sha256(filePath),
         archive_path: path.relative(outputRoot, summaryPath).replace(/\\/g, "/"),
-        original_size_bytes: stat.size,
+        original_size_bytes: sizeBytes,
         parse_status: extraction.ok ? "text_extracted" : "binary_archived_only",
         text_length: redactedExtraction ? redactedExtraction.text.length : 0,
         redaction_count: redactedExtraction ? redactedExtraction.redactionCount : 0,
@@ -668,7 +880,7 @@ async function importGenericFile(
         sourceKind: kind,
         supportTier: "experimental_expansion",
         fileExtension: ext,
-        sizeBytes: stat.size,
+        sizeBytes,
         parseStatus: extraction.ok ? "text_extracted" : "binary_archived_only",
         textLength: extraction.ok ? extraction.text.length : 0
       }
@@ -702,7 +914,7 @@ async function importGenericFile(
       file_name: path.basename(filePath),
       file_extension: ext,
       archive_path: path.relative(outputRoot, archivePath).replace(/\\/g, "/"),
-      original_size_bytes: stat.size,
+      original_size_bytes: sizeBytes,
       parse_status: "text_extracted"
     },
     processedRecord: {
@@ -714,7 +926,7 @@ async function importGenericFile(
       file_name_hash: sha256(path.basename(filePath)),
       source_path_hash: sha256(filePath),
       archive_path: path.relative(outputRoot, archivePath).replace(/\\/g, "/"),
-      original_size_bytes: stat.size,
+      original_size_bytes: sizeBytes,
       parse_status: "text_extracted",
       text_length: redacted.text.length,
       redaction_count: redacted.redactionCount,
@@ -733,11 +945,48 @@ async function importGenericFile(
         sourceKind: kind,
         supportTier: "experimental_expansion",
         fileExtension: ext,
-        sizeBytes: stat.size,
+        sizeBytes,
         parseStatus: "text_extracted",
       textLength: rawText.length
     }
   };
+}
+
+async function loadSuccessfulSourceLedger(outputRoot: string): Promise<Map<string, SuccessfulSourceLedgerRecord>> {
+  const ledgerPath = path.join(outputRoot, "imports", "successful-source-ledger.json");
+
+  if (!(await fileExists(ledgerPath))) {
+    return new Map();
+  }
+
+  try {
+    const loaded = JSON.parse(await fs.readFile(ledgerPath, "utf-8")) as SuccessfulSourceLedger;
+    return new Map(
+      (loaded.records ?? []).map((record) => [record.sourceId, record] as const)
+    );
+  } catch {
+    return new Map();
+  }
+}
+
+async function recordSuccessfulSource(
+  outputRoot: string,
+  ledger: Map<string, SuccessfulSourceLedgerRecord>,
+  record: SuccessfulSourceLedgerRecord
+): Promise<void> {
+  ledger.set(record.sourceId, record);
+  const ledgerPath = path.join(outputRoot, "imports", "successful-source-ledger.json");
+  await ensureDir(path.dirname(ledgerPath));
+  await writeTextFile(
+    ledgerPath,
+    JSON.stringify(
+      {
+        records: [...ledger.values()].sort((left, right) => left.path.localeCompare(right.path))
+      } satisfies SuccessfulSourceLedger,
+      null,
+      2
+    )
+  );
 }
 
 async function writeSourceRecords(
@@ -1034,8 +1283,9 @@ async function classifyImportFile(
   if (ext === ".json") {
     try {
       const raw = await fs.readFile(filePath, "utf-8");
-      const parsed = JSON.parse(raw);
-      const detected = detectAndParseConversationExport(parsed);
+      const detected = detectAndParseConversationExport(
+        looksLikeChatGptConversationArrayText(raw) ? raw : JSON.parse(raw)
+      );
 
       if (detected.kind === "chatgpt_export") {
         return {
@@ -1192,6 +1442,26 @@ async function buildVendorPackageCompanionReasons(files: string[]): Promise<Map<
       directoryFiles.map((filePath) => [path.basename(filePath).toLowerCase(), filePath] as const)
     );
 
+    const chatGptExportManifestPath = byName.get("export_manifest.json");
+    const chatGptConversationShardPaths = directoryFiles.filter((filePath) =>
+      isChatGptConversationShardFileName(path.basename(filePath))
+    );
+
+    if (
+      chatGptExportManifestPath &&
+      chatGptConversationShardPaths.length > 0 &&
+      await areChatGptConversationShardFiles(chatGptConversationShardPaths)
+    ) {
+      for (const filePath of directoryFiles) {
+        if (chatGptConversationShardPaths.includes(filePath)) continue;
+        reasons.set(
+          filePath,
+          "Companion file for ChatGPT export. Quantum uses the exported conversation shard files as the main import source for this package, so this file is not imported separately."
+        );
+      }
+      continue;
+    }
+
     const geminiHtmlPath =
       byName.get("myactivity.html") ??
       byName.get("my activity.html");
@@ -1266,6 +1536,28 @@ async function isChatGptHtmlExportFile(filePath: string): Promise<boolean> {
   } finally {
     await fileHandle.close();
   }
+}
+
+async function areChatGptConversationShardFiles(filePaths: string[]): Promise<boolean> {
+  for (const filePath of filePaths.slice(0, 2)) {
+    try {
+      const raw = await fs.readFile(filePath, "utf-8");
+      const detected = detectAndParseConversationExport(
+        looksLikeChatGptConversationArrayText(raw) ? raw : JSON.parse(raw)
+      );
+      if (detected.kind !== "chatgpt_export") {
+        return false;
+      }
+    } catch {
+      return false;
+    }
+  }
+
+  return filePaths.length > 0;
+}
+
+function isChatGptConversationShardFileName(fileName: string): boolean {
+  return /^conversations-\d+\.json$/i.test(fileName);
 }
 
 function sortImportSourceEntriesForDisplay(entries: ImportSourceEntry[]): ImportSourceEntry[] {
@@ -1465,6 +1757,41 @@ async function resolveDirectoryImportFiles(
   const chatGptHtmlPath = topLevelFiles.find(
     (filePath) => path.basename(filePath).toLowerCase() === "chat.html"
   );
+  const chatGptExportManifestPath = topLevelFiles.find(
+    (filePath) => path.basename(filePath).toLowerCase() === "export_manifest.json"
+  );
+  const chatGptConversationShardFiles = topLevelFiles.filter((filePath) =>
+    isChatGptConversationShardFileName(path.basename(filePath))
+  );
+
+  if (
+    chatGptExportManifestPath &&
+    chatGptConversationShardFiles.length > 0 &&
+    await areChatGptConversationShardFiles(chatGptConversationShardFiles)
+  ) {
+    const companionNames = new Set([
+      "chat.html",
+      "conversation_asset_file_names.json",
+      "export_manifest.json",
+      "library_files.json",
+      "message_feedback.json",
+      "shared_conversations.json",
+      "user_settings.json",
+      "user.json"
+    ]);
+    const files = topLevelFiles.filter(
+      (filePath) =>
+        isChatGptConversationShardFileName(path.basename(filePath)) ||
+        companionNames.has(path.basename(filePath).toLowerCase())
+    );
+
+    return {
+      files,
+      notes: [
+        "Large ChatGPT export bundle detected. Quantum will inspect the exported conversation shards directly and batch them instead of using the heavyweight chat.html bundle as the main import path."
+      ]
+    };
+  }
 
   if (chatGptHtmlPath && await isChatGptHtmlExportFile(chatGptHtmlPath)) {
     const companionNames = new Set([

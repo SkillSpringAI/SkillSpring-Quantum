@@ -82,4 +82,36 @@ assert.ok((runSummary?.messageCount ?? 0) >= (claudeMetadata?.messageCount ?? 0)
 assert.ok(runSummary?.startedAt, "Expected aggregated start timestamp");
 assert.ok(runSummary?.endedAt, "Expected aggregated end timestamp");
 
+const failedOnlySummary = buildImportRunRetrievalSummary([
+  {
+    path: "claude.json",
+    kind: "conversation_json",
+    status: "failed",
+    message: "failed",
+    metadata: claudeMetadata ?? undefined
+  }
+]);
+
+assert.equal(
+  failedOnlySummary,
+  null,
+  "Expected failed conversation metadata not to create a retrieval summary that looks like usable imported output"
+);
+
+const reusedSummary = buildImportRunRetrievalSummary([
+  {
+    path: "claude.json",
+    kind: "conversation_json",
+    status: "skipped",
+    message: "Skipped: already imported successfully in an earlier run. Quantum reused the existing output state instead of processing this file again.",
+    metadata: claudeMetadata ?? undefined
+  }
+]);
+
+assert.ok(
+  reusedSummary,
+  "Expected already-imported reuse skips to still expose usable retrieval summary context"
+);
+assert.deepEqual(reusedSummary?.vendorSources, ["claude"]);
+
 console.log("import-metadata.test.ts passed");

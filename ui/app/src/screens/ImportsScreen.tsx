@@ -35,7 +35,10 @@ import { useAgentContext } from "../state/agentContext";
 import { useSettings } from "../state/settingsContext";
 import {
   countPackageCompanionSkips,
+  countPreviouslyImportedSkips,
   countUnexpectedSkippedFiles,
+  runHasUsableConversationOutputs,
+  runHasUsableDatasetOutputs,
   runNeedsAttention
 } from "../utils/importTrust";
 
@@ -211,6 +214,7 @@ function summarizeRunOutcomeCounts(run: ImportRunSummary | null): string | null 
     ).length;
 
   const companionSkips = countPackageCompanionSkips(run);
+  const previouslyImported = countPreviouslyImportedSkips(run);
   const unexpectedSkips = countUnexpectedSkippedFiles(run);
   const parts = [
     run.filesImported + " imported",
@@ -228,6 +232,10 @@ function summarizeRunOutcomeCounts(run: ImportRunSummary | null): string | null 
 
   if (companionSkips > 0) {
     parts.push(companionSkips + " package companion file(s) handled");
+  }
+
+  if (previouslyImported > 0) {
+    parts.push(previouslyImported + " already imported");
   }
 
   return parts.join(" | ");
@@ -248,6 +256,7 @@ function buildRecoveryGuidance(run: ImportRunSummary | null): string[] {
         result.metadata?.sourceCategory === "conversation" &&
         result.metadata.supportTier === "mvp_compatibility_fallback"
     ).length;
+  const previouslyImported = countPreviouslyImportedSkips(run);
 
   if (failedFiles > 0) {
     steps.push("Open Diagnostics first, then check the failed file messages in Import History to see whether the export shape broke before archive and dataset output finished.");
@@ -262,6 +271,10 @@ function buildRecoveryGuidance(run: ImportRunSummary | null): string[] {
   }
 
   if (run.filesImported === 0) {
+    if (previouslyImported > 0) {
+      steps.push("Quantum recognized files that were already imported successfully here, so you can keep using the existing archive and dataset outputs instead of rerunning the same export unchanged.");
+      return steps;
+    }
     steps.push("Do not keep rerunning the same path unchanged. Inspect it first, then either clean the export package up or switch to the vendor’s main export file.");
   }
 
@@ -286,8 +299,12 @@ function buildPostRunStatusMessage(run: ImportRunSummary | null, fallbackMessage
         result.metadata?.sourceCategory === "conversation" &&
         result.metadata.supportTier === "mvp_compatibility_fallback"
     ).length;
+  const previouslyImported = countPreviouslyImportedSkips(run);
 
   if (run.filesImported === 0) {
+    if (previouslyImported > 0) {
+      return "Import finished quickly. Quantum recognized files that were already imported successfully here, so it reused the existing archive and dataset outputs instead of processing them again.";
+    }
     return "Import finished without usable outputs. Re-inspect the source path and open diagnostics before retrying.";
   }
 
@@ -309,7 +326,7 @@ function buildPostRunStatusMessage(run: ImportRunSummary | null, fallbackMessage
 export default function ImportsScreen() {
   const { openRetrievalInvestigation, setActiveScreen } = useNavigation();
   const { setCurrentArtifact } = useAgentContext();
-  const { settings, updateSettings } = useSettings();
+  const { settings, updateSettings, reopenOnboarding } = useSettings();
   const [showImportHelp, setShowImportHelp] = useState(false);
   const [showSourceDetails, setShowSourceDetails] = useState(false);
   const [showRecoveryGuidance, setShowRecoveryGuidance] = useState(false);
@@ -563,8 +580,8 @@ export default function ImportsScreen() {
   const latestArchiveArtifactPath = findLatestArchiveArtifactPath(latestRunForNextSteps ?? null);
   const latestDatasetArtifactPath = findLatestDatasetArtifactPath(latestRunForNextSteps ?? null);
   const latestRunOutcomeSummary = summarizeRunOutcomeCounts(latestRunForNextSteps ?? null);
-  const hasConversationOutputs = (latestRunForNextSteps?.conversationFilesProcessed ?? 0) > 0;
-  const hasDatasetOutputs = !!latestRunForNextSteps?.retrievalSummary;
+  const hasConversationOutputs = runHasUsableConversationOutputs(latestRunForNextSteps ?? null);
+  const hasDatasetOutputs = runHasUsableDatasetOutputs(latestRunForNextSteps ?? null);
   const latestPackageCompanionSkips = countPackageCompanionSkips(latestRunForNextSteps ?? null);
   const runNeedsDiagnostics = runNeedsAttention(latestRunForNextSteps ?? null);
   const recoveryGuidance = buildRecoveryGuidance(latestRunForNextSteps ?? null);
@@ -597,7 +614,11 @@ export default function ImportsScreen() {
       ? [
           latestRunOutcomeSummary ?? "",
           hasConversationOutputs ? "archive available" : "",
-          hasDatasetOutputs ? "structured view available" : ""
+          hasDatasetOutputs
+            ? runNeedsDiagnostics
+              ? "partial dataset available"
+              : "structured view available"
+            : ""
         ].filter(Boolean)
       : [];
   const latestRunFormSummary = latestRunForNextSteps
@@ -619,7 +640,11 @@ export default function ImportsScreen() {
   }, [form, latestRunForNextSteps, sourceSummary]);
 
   function nextStepSummary(run: ImportRunSummary): string {
+    const previouslyImported = countPreviouslyImportedSkips(run);
     if (run.filesImported === 0) {
+      if (previouslyImported > 0) {
+        return "This export was already imported successfully before. Quantum reused the existing outputs instead of processing the same files all over again.";
+      }
       return "This run did not produce imported files. Check the source summary and diagnostics before trying again.";
     }
 
@@ -722,8 +747,16 @@ export default function ImportsScreen() {
               <span className={runNeedsDiagnostics ? "signal-badge warning" : "signal-badge success"}>
                 {runNeedsDiagnostics ? "spot-check next" : "ready to continue"}
               </span>
-              {hasConversationOutputs ? <span className="signal-badge">archive available</span> : null}
-              {hasDatasetOutputs ? <span className="signal-badge">dataset view ready</span> : null}
+              {hasConversationOutputs ? (
+                <span className="signal-badge">
+                  {runNeedsDiagnostics ? "partial archive available" : "archive available"}
+                </span>
+              ) : null}
+              {hasDatasetOutputs ? (
+                <span className="signal-badge">
+                  {runNeedsDiagnostics ? "partial dataset available" : "dataset view ready"}
+                </span>
+              ) : null}
             </div>
           </div>
           {latestPackageCompanionSkips > 0 ? (
@@ -739,7 +772,7 @@ export default function ImportsScreen() {
             ) : null}
             {hasDatasetOutputs ? (
               <button className="primary-btn" type="button" onClick={() => setActiveScreen("datasets")}>
-                Open Dataset View
+                {runNeedsDiagnostics ? "Open Partial Dataset View" : "Open Dataset View"}
               </button>
             ) : null}
             {runNeedsDiagnostics ? (
@@ -1077,12 +1110,35 @@ export default function ImportsScreen() {
       ) : showFirstUseResultsPlaceholder ? (
         <div className="panel large">
           <h2>What To Do Next</h2>
-          <ul className="list">
-            <li>Choose the export source you want to import.</li>
-            <li>Browse to the downloaded file or folder.</li>
-            <li>Run the export check and look for a ready or caution result.</li>
-            <li>Import from the same path when it looks right.</li>
-          </ul>
+          <div className="detail-box">
+            <strong>Ordinary path</strong>
+            <p className="muted">Imports -&gt; Readable Archive -&gt; Datasets -&gt; Find Imports</p>
+            <p className="muted">
+              Stay on this path for the normal workflow. Diagnostics and the other extra tools only matter when trust breaks or something needs explanation.
+            </p>
+          </div>
+          <div className="stats-grid onboarding-grid">
+            <div className="stat-card">
+              <span className="label">Step 1</span>
+              <strong>Choose the export source</strong>
+              <p className="muted">Pick the vendor first so the check result is easier to interpret.</p>
+            </div>
+            <div className="stat-card">
+              <span className="label">Step 2</span>
+              <strong>Run the export check</strong>
+              <p className="muted">Look for a ready, caution, or mismatch result before you import.</p>
+            </div>
+            <div className="stat-card">
+              <span className="label">Step 3</span>
+              <strong>Import from the same path</strong>
+              <p className="muted">Then continue into Readable Archive before moving into Datasets.</p>
+            </div>
+          </div>
+          <div className="action-bar">
+            <button className="secondary-btn" type="button" onClick={reopenOnboarding}>
+              Open Walkthrough
+            </button>
+          </div>
         </div>
       ) : null}
 

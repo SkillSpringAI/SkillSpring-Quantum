@@ -7,8 +7,11 @@ import { useNavigation } from "../state/navigationContext";
 import { useSettings } from "../state/settingsContext";
 import {
   countPackageCompanionSkips,
+  countPreviouslyImportedSkips,
   countUnexpectedSkippedFiles,
   isPackageCompanionSkip,
+  runHasUsableConversationOutputs,
+  runHasUsableDatasetOutputs,
   runNeedsAttention
 } from "../utils/importTrust";
 
@@ -27,15 +30,15 @@ export default function DashboardScreen() {
 
   const latestTrustBadges = summarizeLatestRunSignals(latestRun);
   const runNeedsDiagnostics = runNeedsAttention(latestRun);
-  const hasConversationOutputs = (latestRun?.conversationFilesProcessed ?? 0) > 0;
-  const hasDatasetOutputs = !!latestRun?.retrievalSummary;
+  const hasConversationOutputs = runHasUsableConversationOutputs(latestRun);
+  const hasDatasetOutputs = runHasUsableDatasetOutputs(latestRun);
   const latestOutcomeSummary = latestRun ? summarizeRunOutcomeCounts(latestRun) : null;
   const latestPackageCompanionSkips = countPackageCompanionSkips(latestRun);
   const latestConversationCount = latestRun?.retrievalSummary?.conversationCount ?? 0;
   const latestMessageCount = latestRun?.retrievalSummary?.messageCount ?? 0;
   const latestReviewState = runNeedsDiagnostics
     ? "Needs check"
-    : hasConversationOutputs
+    : hasDatasetOutputs || hasConversationOutputs
       ? "Ready"
       : latestRun
         ? "Imported"
@@ -196,6 +199,7 @@ function summarizeRunOutcomeCounts(run: ImportRunSummary): string {
     ).length;
 
   const companionSkips = countPackageCompanionSkips(run);
+  const previouslyImported = countPreviouslyImportedSkips(run);
   const unexpectedSkips = countUnexpectedSkippedFiles(run);
   const parts = [
     run.filesImported + " imported",
@@ -213,6 +217,10 @@ function summarizeRunOutcomeCounts(run: ImportRunSummary): string {
 
   if (companionSkips > 0) {
     parts.push(companionSkips + " package companion file(s) handled");
+  }
+
+  if (previouslyImported > 0) {
+    parts.push(previouslyImported + " already imported");
   }
 
   return parts.join(" | ");

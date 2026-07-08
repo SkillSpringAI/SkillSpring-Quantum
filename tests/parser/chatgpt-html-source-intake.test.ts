@@ -48,6 +48,68 @@ try {
   assert.equal(summary.vendorSummaries[0]?.vendor, "chatgpt");
   assert.equal(summary.vendorSummaries[0]?.detectedFiles, 1);
   assert.equal(summary.vendorSummaries[0]?.companionFiles, 1);
+
+  const shardedExportFolder = path.join(tempRoot, "chatgpt-export-sharded");
+  await fs.mkdir(shardedExportFolder, { recursive: true });
+  await fs.writeFile(
+    path.join(shardedExportFolder, "conversations-000.json"),
+    JSON.stringify([chatgptFixture], null, 2),
+    "utf-8"
+  );
+  await fs.writeFile(
+    path.join(shardedExportFolder, "conversations-001.json"),
+    JSON.stringify([chatgptFixture], null, 2),
+    "utf-8"
+  );
+  await fs.writeFile(
+    path.join(shardedExportFolder, "export_manifest.json"),
+    JSON.stringify({
+      export_files: [
+        { path: "chat.html", size_bytes: 1234 },
+        { path: "conversations-000.json", size_bytes: 5678 },
+        { path: "conversations-001.json", size_bytes: 6789 },
+        { path: "library_files.json", size_bytes: 222 }
+      ]
+    }, null, 2),
+    "utf-8"
+  );
+  await fs.writeFile(
+    path.join(shardedExportFolder, "chat.html"),
+    [
+      "<html>",
+      "<head><title>ChatGPT Data Export</title></head>",
+      "<body>",
+      "<script>",
+      "var jsonData = " + JSON.stringify([chatgptFixture]) + ";",
+      "</script>",
+      "</body>",
+      "</html>"
+    ].join(""),
+    "utf-8"
+  );
+  await fs.writeFile(path.join(shardedExportFolder, "library_files.json"), JSON.stringify([], null, 2), "utf-8");
+  await fs.writeFile(path.join(shardedExportFolder, "user.json"), JSON.stringify({ id: "user_1" }, null, 2), "utf-8");
+
+  const shardedSummary = await inspectImportSource(shardedExportFolder);
+  assert.equal(shardedSummary.inputType, "folder", "Expected sharded ChatGPT export to inspect as a folder");
+  assert.equal(shardedSummary.supportedFiles, 2, "Expected conversation shard files to be the supported import entries");
+  assert.equal(shardedSummary.countsByKind.chatgpt_export, 2, "Expected both conversation shard files to be recognized as ChatGPT exports");
+  assert.equal(shardedSummary.countsByKind.json_document, 0, "Expected manifest and metadata files not to fall back to generic JSON import");
+  assert.ok(
+    shardedSummary.notes.some((note) => note.includes("conversation shards directly")),
+    "Expected sharded ChatGPT package note to explain direct shard batching"
+  );
+
+  const htmlCompanionEntry = shardedSummary.sampleFiles.find((entry) => path.basename(entry.path) === "chat.html");
+  assert.ok(htmlCompanionEntry, "Expected chat.html to show as a companion entry in the sharded package");
+  assert.equal(htmlCompanionEntry?.supported, false, "Expected chat.html to be skipped when conversation shards are present");
+  assert.ok(
+    htmlCompanionEntry?.reason.includes("conversation shard files as the main import source"),
+    "Expected chat.html companion reason to explain the shard-first package path"
+  );
+  assert.equal(shardedSummary.vendorSummaries[0]?.vendor, "chatgpt");
+  assert.equal(shardedSummary.vendorSummaries[0]?.detectedFiles, 2);
+  assert.ok((shardedSummary.vendorSummaries[0]?.companionFiles ?? 0) >= 3);
 } finally {
   await fs.rm(tempRoot, { recursive: true, force: true });
 }

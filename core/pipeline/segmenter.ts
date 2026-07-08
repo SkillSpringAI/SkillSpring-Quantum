@@ -41,22 +41,52 @@ const GENERIC_TOPIC_TOKENS = new Set([
   "talk","task","thing","things","topic","topics","update","updates","user"
 ]);
 
+const TOKEN_CACHE_LIMIT = 12000;
+
+function getCachedValue<K, V>(cache: Map<K, V>, key: K, compute: () => V, limit?: number): V {
+  const existing = cache.get(key);
+  if (existing !== undefined) {
+    cache.delete(key);
+    cache.set(key, existing);
+    return existing;
+  }
+
+  const value = compute();
+  cache.set(key, value);
+
+  if (limit && cache.size > limit) {
+    const oldestKey = cache.keys().next().value as K | undefined;
+    if (oldestKey !== undefined) {
+      cache.delete(oldestKey);
+    }
+  }
+
+  return value;
+}
+
+const tokenCache = new Map<string, string[]>();
+const candidateTokenCache = new Map<string, string[]>();
+
 function tokenize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .split(/\s+/)
-    .map(x => x.trim())
-    .filter(x => x.length > 2 && !STOP_WORDS.has(x));
+  return getCachedValue(tokenCache, text, () => (
+    text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .map(x => x.trim())
+      .filter(x => x.length > 2 && !STOP_WORDS.has(x))
+  ), TOKEN_CACHE_LIMIT);
 }
 
 function normalizeCandidateTokens(text: string): string[] {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .split(/\s+/)
-    .map((token) => token.trim())
-    .filter((token) => token.length > 2 && !STOP_WORDS.has(token) && !GENERIC_TOPIC_TOKENS.has(token));
+  return getCachedValue(candidateTokenCache, text, () => (
+    text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .map((token) => token.trim())
+      .filter((token) => token.length > 2 && !STOP_WORDS.has(token) && !GENERIC_TOPIC_TOKENS.has(token))
+  ), TOKEN_CACHE_LIMIT);
 }
 
 function scoreMessageRole(role: ConversationMessage["role"]): number {
@@ -177,6 +207,10 @@ export function segmentConversation(
   }
 
   const provisionalSegments: ConversationSegment[] = [];
+  const topicInferenceCache = new Map<string, { rawTopic: string; confidence: number }>();
+  const normalizedTopicCache = new Map<string, ReturnType<typeof normalizeTopic>>();
+  const classificationCache = new Map<string, ReturnType<typeof classifyMessages>>();
+  const segmentCache = new Map<string, ConversationSegment>();
 
   let messageIndex = 0;
   let currentWindow: ConversationMessage[] = [];
@@ -184,20 +218,93 @@ export function segmentConversation(
 
   const exchanges = groupMessagesByExchange(conversation.messages);
 
+  function windowKey(messages: ConversationMessage[]): string {
+    if (messages.length === 0) {
+      return "empty";
+    }
+
+    const first = messages[0];
+    const last = messages[messages.length - 1];
+    return [
+      messages.length,
+      first.id ?? first.role,
+      first.text.length,
+      last.id ?? last.role,
+      last.text.length
+    ].join("|");
+  }
+
+  function inferRawTopicCached(messages: ConversationMessage[]): { rawTopic: string; confidence: number } {
+    const key = windowKey(messages);
+    return getCachedValue(topicInferenceCache, key, () => inferRawTopic(messages));
+  }
+
+  function normalizeTopicCached(rawTopic: string): ReturnType<typeof normalizeTopic> {
+    const key = rawTopic.trim().toLowerCase();
+    return getCachedValue(normalizedTopicCache, key, () => normalizeTopic(rawTopic, index));
+  }
+
+  function classifyMessagesCached(messages: ConversationMessage[]): ReturnType<typeof classifyMessages> {
+    const key = windowKey(messages);
+    return getCachedValue(classificationCache, key, () => classifyMessages(conversation.title, messages));
+  }
+
+  function buildSegmentCached(
+    messages: ConversationMessage[],
+    startIndex: number,
+    endIndex: number
+  ): ConversationSegment {
+    const key = `${windowKey(messages)}|${startIndex}|${endIndex}`;
+    return getCachedValue(segmentCache, key, () => {
+      const inferred = inferRawTopicCached(messages);
+      const normalized = normalizeTopicCached(inferred.rawTopic);
+      const classified = classifyMessagesCached(messages);
+      const summaryLabel = buildDeterministicSummaryLabel(
+        classified?.summaryLabel,
+        classified?.intent,
+        normalized.normalizedTopic,
+        normalized.rawTopic,
+        conversation.title
+      );
+
+      return {
+        conversationId: conversation.id,
+        source: conversation.source,
+        title: conversation.title,
+        createdAt: conversation.createdAt,
+        participants: conversation.participants,
+        topic: normalized.normalizedTopic,
+        rawTopic: normalized.rawTopic,
+        confidence: Math.max(inferred.confidence, normalized.confidence, classified?.confidence ?? 0),
+        reason: normalized.reason,
+        matchedKeywords: normalized.matchedKeywords,
+        summaryLabel,
+        intent: classified?.intent,
+        importance: classified?.importance,
+        classificationConfidence: classified?.confidence,
+        classificationReasons: classified?.reasons,
+        domainHint: classified?.domain,
+        startIndex,
+        endIndex,
+        messages
+      };
+    });
+  }
+
   for (const exchange of exchanges) {
     const candidateWindow = [...currentWindow, ...exchange];
-    const inferredCurrent = currentWindow.length > 0 ? inferRawTopic(currentWindow) : undefined;
-    const inferredCandidate = inferRawTopic(candidateWindow);
-    const inferredExchange = inferRawTopic(exchange);
+    const inferredCurrent = currentWindow.length > 0 ? inferRawTopicCached(currentWindow) : undefined;
+    const inferredCandidate = inferRawTopicCached(candidateWindow);
+    const inferredExchange = inferRawTopicCached(exchange);
     const currentTokens = inferredCurrent ? tokenize(inferredCurrent.rawTopic) : [];
     const candidateTokens = tokenize(inferredCandidate.rawTopic);
     const exchangeTokens = tokenize(inferredExchange.rawTopic);
     const similarity = inferredCurrent ? jaccardSimilarity(currentTokens, candidateTokens) : 1;
     const exchangeSimilarity = inferredCurrent ? jaccardSimilarity(currentTokens, exchangeTokens) : 1;
-    const currentNormalizedTopic = inferredCurrent ? normalizeTopic(inferredCurrent.rawTopic, index).normalizedTopic : "general";
-    const exchangeNormalizedTopic = normalizeTopic(inferredExchange.rawTopic, index).normalizedTopic;
-    const currentClassification = currentWindow.length > 0 ? classifyMessages(conversation.title, currentWindow) : null;
-    const exchangeClassification = classifyMessages(conversation.title, exchange);
+    const currentNormalizedTopic = inferredCurrent ? normalizeTopicCached(inferredCurrent.rawTopic).normalizedTopic : "general";
+    const exchangeNormalizedTopic = normalizeTopicCached(inferredExchange.rawTopic).normalizedTopic;
+    const currentClassification = currentWindow.length > 0 ? classifyMessagesCached(currentWindow) : null;
+    const exchangeClassification = classifyMessagesCached(exchange);
     const strongDomainShift =
       !!currentClassification &&
       !!exchangeClassification &&
@@ -225,12 +332,10 @@ export function segmentConversation(
       ((currentWindow.length + exchange.length > windowSize && similarity < 0.45) || hardSplit);
 
     if (shouldSplit) {
-      const segment = buildSegment(
-        conversation,
+      const segment = buildSegmentCached(
         currentWindow,
         currentStartIndex,
-        currentStartIndex + currentWindow.length - 1,
-        index
+        currentStartIndex + currentWindow.length - 1
       );
 
       provisionalSegments.push(segment);
@@ -245,12 +350,10 @@ export function segmentConversation(
 
   if (currentWindow.length > 0) {
     provisionalSegments.push(
-      buildSegment(
-        conversation,
+      buildSegmentCached(
         currentWindow,
         currentStartIndex,
-        currentStartIndex + currentWindow.length - 1,
-        index
+        currentStartIndex + currentWindow.length - 1
       )
     );
   }
@@ -292,47 +395,6 @@ export function segmentConversation(
   }
 
   return merged.filter(segment => segment.messages.length > 0);
-}
-
-function buildSegment(
-  conversation: Conversation,
-  messages: ConversationMessage[],
-  startIndex: number,
-  endIndex: number,
-  index?: LocalIndexState
-): ConversationSegment {
-  const inferred = inferRawTopic(messages);
-  const normalized = normalizeTopic(inferred.rawTopic, index);
-  const classified = classifyMessages(conversation.title, messages);
-  const summaryLabel = buildDeterministicSummaryLabel(
-    classified?.summaryLabel,
-    classified?.intent,
-    normalized.normalizedTopic,
-    normalized.rawTopic,
-    conversation.title
-  );
-
-  return {
-    conversationId: conversation.id,
-    source: conversation.source,
-    title: conversation.title,
-    createdAt: conversation.createdAt,
-    participants: conversation.participants,
-    topic: normalized.normalizedTopic,
-    rawTopic: normalized.rawTopic,
-    confidence: Math.max(inferred.confidence, normalized.confidence, classified?.confidence ?? 0),
-    reason: normalized.reason,
-    matchedKeywords: normalized.matchedKeywords,
-    summaryLabel,
-    intent: classified?.intent,
-    importance: classified?.importance,
-    classificationConfidence: classified?.confidence,
-    classificationReasons: classified?.reasons,
-    domainHint: classified?.domain,
-    startIndex,
-    endIndex,
-    messages
-  };
 }
 
 const GENERIC_SUMMARY_LABELS = new Set([

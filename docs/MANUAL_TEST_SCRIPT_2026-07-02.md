@@ -19,6 +19,19 @@ The main question today is:
 
 - does the ordinary user flow feel steady, trustworthy, and easy to follow after a successful import?
 
+Use the same stable walkthrough path now reinforced in the UI:
+
+- Imports
+- Readable Archive
+- Datasets
+- Find Imports
+
+Treat that as the reusable baseline for:
+
+- internal manual validation
+- outside beta onboarding
+- a future short tutorial video
+
 ## Primary Path
 
 Run this screen order:
@@ -28,6 +41,8 @@ Run this screen order:
 3. Datasets
 4. Find Imports
 5. Imports return check
+
+If the first-run overlay or `Open Walkthrough` entry point is visible, follow that same path rather than inventing a new test order.
 
 ## Recommended Test Input
 
@@ -49,6 +64,8 @@ This pass is mainly checking:
 - whether loaded states feel truthful and calm
 - whether copy still sounds too internal or operator-oriented
 - whether scrolling and panel pacing make the app feel heavier than it should
+- whether long-running retry states feel active enough to trust
+- whether progress wording matches the actual import-ready file count
 
 This pass is not mainly about:
 
@@ -87,6 +104,8 @@ Record:
 - result wording shown by Export Check
 - import result summary
 - any confusing labels or layout friction
+- whether progress counted import-ready files honestly
+- whether rerun reuse of already imported files was immediate enough to feel right
 
 ### 2. Readable Archive
 
@@ -191,6 +210,15 @@ Open Diagnostics only if one of these happens:
 - loading behavior undermines trust badly enough that we need evidence
 
 If Diagnostics is opened, record why it became necessary. That is part of the UX signal.
+
+## Additional heavy-shard check
+
+If the tested export contains large ChatGPT shards:
+
+1. note which shard is the first heavy retry candidate
+2. record whether the status text makes it obvious that Quantum is retrying prior failed work rather than redoing the whole folder
+3. record whether the user would need an estimated-time hint or elapsed-time hint to stay confident
+4. if the app is closed mid-shard and reopened later, check whether the retry feels like it resumes meaningfully deeper into that shard
 
 ## Fast Scoring
 

@@ -11,6 +11,19 @@ This should be treated as both:
 - a manual product validation pass
 - a UX research and documentation pass for the current MVP surface
 
+Start from the same ordinary walkthrough path now reinforced in the UI:
+
+1. Imports
+2. Readable Archive
+3. Datasets
+4. Find Imports
+
+That same route should now act as:
+
+- the first-use in-app walkthrough
+- the manual validation spine
+- the baseline for a future short tutorial video
+
 ## Run through these screens
 
 1. Imports
@@ -66,3 +79,13 @@ Write a short walkthrough record afterward that includes:
 The point of this pass is not only to prove that the app works.
 
 The point is to document how the app feels to use now that Imports, Readable Archive, and Datasets are more connected, so the next UI/UX polish pass can be based on direct observation.
+
+## Additional import-hardening checks
+
+During the next manual pass, also note:
+
+- whether supported-file progress counts now match the user-facing import-ready count
+- whether already imported files are acknowledged quickly on rerun
+- whether a heavy failed shard shows clear enough retry state to feel trustworthy
+- whether the app now needs estimated-time guidance for long retries more than it needs more raw percentage math
+- whether interrupted heavy-shard retries resume materially deeper into the shard on the next attempt

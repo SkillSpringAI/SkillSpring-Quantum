@@ -30,6 +30,14 @@ SkillSpring Quantum should be:
 
 Quantum should not try to compete first as a generic note-taking app, a general-purpose document manager, or a broad local ingestion engine before the core export-to-archive-to-dataset loop is complete.
 
+The most credible early audience is still broader than "technical operators," but narrower than "everyone with files."
+
+The strongest current audience is:
+
+- people who actively use major AI chat tools and want a local way to review, search, and preserve their exports
+- users who want readable evidence and privacy-aware structured output from the same import
+- small teams, independent operators, researchers, and heavy individual users who care about traceability but do not want to live in scripts
+
 ## MVP promise
 
 A general user should be able to:
@@ -78,6 +86,8 @@ Priority items:
 - clear failure states and recovery guidance
 - expected vendor-package companion files should read as normal package handling, not as reasons to panic or immediately open diagnostics
 - "what was created" summaries with links to archive and dataset outputs
+- progress and retry explanations that stay trustworthy when large shards take a long time
+- eventual time-range guidance for heavy processing steps when it can be honest rather than decorative
 
 Why this matters:
 
@@ -202,6 +212,7 @@ Quantum is moving in the right direction when:
 - preserved attachments and uploaded files remain traceable when the source export includes them
 - privacy-aware datasets are visible and understandable
 - failed and partial imports are explainable without reading code or raw logs
+- long-running imports feel trustworthy enough that users can tell the difference between "still working" and "stuck"
 
 ## Current implementation implication
 

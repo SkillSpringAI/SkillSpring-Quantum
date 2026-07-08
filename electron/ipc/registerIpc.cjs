@@ -18,6 +18,22 @@ function nodeCommand() {
   return process.env.npm_node_execpath || "node";
 }
 
+function recommendedImportHeapMb() {
+  const totalMemoryMb = Math.floor(os.totalmem() / (1024 * 1024));
+  const target = Math.floor(totalMemoryMb * 0.4);
+  const clamped = Math.max(2048, Math.min(4096, target));
+  return Math.floor(clamped / 256) * 256;
+}
+
+function tsxNodeArgs(root, scriptPath, args = [], options = {}) {
+  const nodeArgs = [];
+  if (options.largeHeap) {
+    nodeArgs.push(`--max-old-space-size=${recommendedImportHeapMb()}`);
+  }
+
+  return [...nodeArgs, tsxCli(root), scriptPath, ...args];
+}
+
 const AGENT_DEFAULT_PORT = 5678;
 let agentProcess = null;
 let agentStartPromise = null;
@@ -35,7 +51,7 @@ async function runTsx(scriptPath, args = []) {
 
   const result = await runCommand(
     nodeCommand(),
-    [tsxCli(root), fullScriptPath, ...args],
+    tsxNodeArgs(root, fullScriptPath, args),
     {
       cwd: root,
       shell: false
@@ -55,7 +71,12 @@ async function runImportTsxWithProgress(webContents, inputPath, outputRoot) {
   return await new Promise((resolve) => {
     const child = spawn(
       nodeCommand(),
-      [tsxCli(root), fullScriptPath, inputPath, outputRoot || "organized_output", "--progress"],
+      tsxNodeArgs(
+        root,
+        fullScriptPath,
+        [inputPath, outputRoot || "organized_output", "--progress"],
+        { largeHeap: true }
+      ),
       {
         cwd: root,
         env: { ...process.env },
@@ -140,6 +161,22 @@ function fail(result, fallback) {
     stderr: result.stderr,
     code: result.code
   };
+}
+
+function formatImportFailure(result, fallback) {
+  const stderr = result.stderr || "";
+  if (/heap out of memory|allocation failed - javascript heap out of memory/i.test(stderr)) {
+    return {
+      ok: false,
+      error:
+        "Quantum ran out of local import memory while processing this export. This usually means the export is very large. Try again after closing other memory-heavy apps. If it still fails, this export likely needs a more streaming-friendly import path.",
+      stdout: result.stdout,
+      stderr: result.stderr,
+      code: result.code
+    };
+  }
+
+  return fail(result, fallback);
 }
 
 async function requestAgent(pathname, options = {}) {
@@ -931,7 +968,7 @@ function registerIpc() {
 
   ipcMain.handle("imports:run", async (event, payload) => {
     const result = await runImportTsxWithProgress(event.sender, payload.inputPath, payload.outputRoot || "organized_output");
-    return result.ok ? ok(result, "Import source processed.") : fail(result, "Failed to process import source.");
+    return result.ok ? ok(result, "Import source processed.") : formatImportFailure(result, "Failed to process import source.");
   });
 
   ipcMain.handle("imports:history", async (_event, payload = {}) => {

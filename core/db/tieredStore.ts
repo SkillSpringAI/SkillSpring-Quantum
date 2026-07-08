@@ -1,5 +1,5 @@
 import path from "node:path";
-import { ensureDir, fileExists, writeTextFile } from "../utils/fs.js";
+import { appendTextFile, ensureDir, writeTextFile } from "../utils/fs.js";
 import {
   addFingerprint,
   fingerprintRecord,
@@ -24,21 +24,7 @@ export interface TieredDbWriteResult {
 async function appendJsonl(filePath: string, lines: string[]): Promise<void> {
   if (lines.length === 0) return;
 
-  await ensureDir(path.dirname(filePath));
-
-  let existing = "";
-  if (await fileExists(filePath)) {
-    const fs = await import("node:fs/promises");
-    existing = await fs.readFile(filePath, "utf-8");
-  }
-
-  const content =
-    existing +
-    (existing && !existing.endsWith("\n") ? "\n" : "") +
-    lines.join("\n") +
-    "\n";
-
-  await writeTextFile(filePath, content);
+  await appendTextFile(filePath, lines.join("\n") + "\n");
 }
 
 export async function writeTierRecords(

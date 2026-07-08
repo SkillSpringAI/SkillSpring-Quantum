@@ -2,10 +2,14 @@ import path from "node:path";
 import type { Conversation } from "../parser/types.js";
 import type { ConversationSegment } from "./segmenter.js";
 import type { LocalIndexState } from "../index/state.js";
+import { findFingerprintByHash, rememberFingerprint } from "../index/indexStore.js";
 import { ensureDir, fileExists, moveFile, writeTextFile } from "../utils/fs.js";
 import { datePrefix, monthPrefix, safeFileStem, shortTitle } from "../utils/format.js";
 import { renderConversationMarkdown, renderSegmentMarkdown } from "../utils/markdown.js";
 import { sha256 } from "../utils/hash.js";
+
+const EXPORT_FOLDER_STEM_MAX = 48;
+const EXPORT_FILE_STEM_MAX = 96;
 
 export interface ExportResult {
   outputDir: string;
@@ -34,7 +38,7 @@ async function writeWithDeduplication(
   index: LocalIndexState
 ): Promise<ExportResult> {
   const hash = sha256(content);
-  const existing = index.fingerprints.find(f => f.hash === hash);
+  const existing = findFingerprintByHash(index, hash);
 
   if (existing) {
     if (existing.backupFile) {
@@ -81,7 +85,7 @@ async function writeWithDeduplication(
   await ensureDir(path.dirname(outputFile));
   await writeTextFile(outputFile, content);
 
-  index.fingerprints.push({
+  rememberFingerprint(index, {
     hash,
     primaryFile: outputFile
   });
@@ -105,7 +109,7 @@ export async function exportConversationMarkdown(
   const month = monthPrefix(conversation.createdAt);
   const date = datePrefix(conversation.createdAt);
 
-  const folderName = safeFileStem(month + "_" + topic, "general");
+  const folderName = safeFileStem(month + "_" + topic, "general", EXPORT_FOLDER_STEM_MAX);
   const firstUserMessage =
     conversation.messages.find(m => m.role === "user")?.text ||
     conversation.title ||
@@ -113,7 +117,8 @@ export async function exportConversationMarkdown(
 
   const fileStem = safeFileStem(
     date + "_" + shortTitle(firstUserMessage, 8),
-    "conversation"
+    "conversation",
+    EXPORT_FILE_STEM_MAX
   );
 
   const outputDir = path.join(rootOutputDir, folderName);
@@ -137,7 +142,7 @@ export async function exportSegmentMarkdown(
   const month = monthPrefix(segment.createdAt);
   const date = datePrefix(segment.createdAt);
 
-  const folderName = safeFileStem(month + "_" + segment.topic, "general");
+  const folderName = safeFileStem(month + "_" + segment.topic, "general", EXPORT_FOLDER_STEM_MAX);
   const firstUserMessage =
     segment.messages.find(m => m.role === "user")?.text ||
     segment.title ||
@@ -145,7 +150,8 @@ export async function exportSegmentMarkdown(
 
   const fileStem = safeFileStem(
     date + "_" + shortTitle(firstUserMessage, 8) + "_part_" + segment.startIndex,
-    "segment"
+    "segment",
+    EXPORT_FILE_STEM_MAX
   );
 
   const outputDir = path.join(rootOutputDir, folderName);
@@ -162,10 +168,15 @@ export async function exportPurgedSegmentMarkdown(
   const month = monthPrefix(segment.createdAt);
   const date = datePrefix(segment.createdAt);
 
-  const outputDir = path.join(rootOutputDir, "purge", safeFileStem(month + "_" + segment.topic, "general"));
+  const outputDir = path.join(
+    rootOutputDir,
+    "purge",
+    safeFileStem(month + "_" + segment.topic, "general", EXPORT_FOLDER_STEM_MAX)
+  );
   const fileStem = safeFileStem(
     date + "_" + shortTitle(segment.title || "purged_segment", 6) + "_part_" + segment.startIndex,
-    "purged_segment"
+    "purged_segment",
+    EXPORT_FILE_STEM_MAX
   );
   const outputFile = path.join(outputDir, fileStem + ".md");
   const markdown = renderSegmentMarkdown(segment);

@@ -1,7 +1,7 @@
 import path from "node:path";
 import type { ConversationMessage } from "../parser/types.js";
 import type { ConversationSegment } from "./segmenter.js";
-import { ensureDir, writeTextFile, fileExists } from "../utils/fs.js";
+import { appendTextFile, ensureDir, writeTextFile } from "../utils/fs.js";
 import { redactMessages } from "./redaction.js";
 import { assessSegmentSignal, type SignalTier } from "./signalScorer.js";
 import { buildDatasetPaths } from "./datasetVersioning.js";
@@ -10,6 +10,7 @@ import { writeTierRecords, writeDbManifest } from "../db/tieredStore.js";
 import { formatRelativeTimestamp } from "../utils/time.js";
 import { writeSegmentRetrievalIndex, type SegmentRetrievalIndexEntry } from "./segmentRetrievalIndex.js";
 import type { ImportSupportTier } from "../imports/importMetadata.js";
+import type { DatasetPaths } from "./datasetVersioning.js";
 
 export interface DatasetSourceContext {
   pipeline_run_id: string;
@@ -127,21 +128,7 @@ function toJsonlLine(value: unknown): string {
 async function appendJsonl(filePath: string, lines: string[]): Promise<void> {
   if (lines.length === 0) return;
 
-  await ensureDir(path.dirname(filePath));
-
-  let existing = "";
-  if (await fileExists(filePath)) {
-    const fs = await import("node:fs/promises");
-    existing = await fs.readFile(filePath, "utf-8");
-  }
-
-  const content =
-    existing +
-    (existing && !existing.endsWith("\n") ? "\n" : "") +
-    lines.join("\n") +
-    "\n";
-
-  await writeTextFile(filePath, content);
+  await appendTextFile(filePath, lines.join("\n") + "\n");
 }
 
 function chunkMessages(
@@ -159,9 +146,10 @@ export async function exportDatasets(
   segments: ConversationSegment[],
   rootOutputDir: string,
   version = "v1",
-  sourceContext?: Partial<DatasetSourceContext>
+  sourceContext?: Partial<DatasetSourceContext>,
+  pathsOverride?: DatasetPaths
 ): Promise<DatasetSummary> {
-  const paths = buildDatasetPaths(rootOutputDir, version);
+  const paths = pathsOverride ?? buildDatasetPaths(rootOutputDir, version);
   const dbRoot = path.join(rootOutputDir, "db");
 
   const topicSegmentLines: string[] = [];
@@ -373,13 +361,12 @@ export async function exportDatasets(
   await appendJsonl(paths.currentPromptResponsePairsFile, promptResponseLines);
   await appendJsonl(paths.currentMicroSegmentsFile, microSegmentLines);
 
-  await ensureDir(path.dirname(paths.runTopicSegmentsFile));
-  await writeTextFile(paths.runTopicSegmentsFile, topicSegmentLines.join("\n") + (topicSegmentLines.length > 0 ? "\n" : ""));
-  await writeTextFile(paths.runPromptResponsePairsFile, promptResponseLines.join("\n") + (promptResponseLines.length > 0 ? "\n" : ""));
-  await writeTextFile(paths.runMicroSegmentsFile, microSegmentLines.join("\n") + (microSegmentLines.length > 0 ? "\n" : ""));
-  await writeTextFile(
+  await appendJsonl(paths.runTopicSegmentsFile, topicSegmentLines);
+  await appendJsonl(paths.runPromptResponsePairsFile, promptResponseLines);
+  await appendJsonl(paths.runMicroSegmentsFile, microSegmentLines);
+  await appendJsonl(
     paths.runPrivateReviewFile,
-    privateReviewTopicRecords.map((record) => toJsonlLine(record)).join("\n") + (privateReviewTopicRecords.length > 0 ? "\n" : "")
+    privateReviewTopicRecords.map((record) => toJsonlLine(record))
   );
 
   const processedTopicWrite = await writeTierRecords(dbRoot, "tier1_processed", "topic_segments", processedTopicRecords);

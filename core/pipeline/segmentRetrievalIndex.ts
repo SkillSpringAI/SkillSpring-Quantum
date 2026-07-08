@@ -61,8 +61,9 @@ function mergeIndex(
   runId: string,
   latestEntries: SegmentRetrievalIndexEntry[]
 ): SegmentRetrievalIndexManifest {
+  const sameRunEntries = (existing?.entries ?? []).filter((entry) => entry.runId === runId);
   const otherEntries = (existing?.entries ?? []).filter((entry) => entry.runId !== runId);
-  const entries = [...latestEntries, ...otherEntries];
+  const entries = [...sameRunEntries, ...latestEntries, ...otherEntries];
   const topics = uniqueValues(entries.map((entry) => entry.topic)).sort();
   const sources = uniqueValues(entries.map((entry) => entry.source)).sort();
   const timestamps = entries

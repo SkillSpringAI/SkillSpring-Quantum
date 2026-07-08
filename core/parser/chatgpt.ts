@@ -31,6 +31,19 @@ interface ChatGPTConversationLike {
 
 const CHATGPT_HTML_JSON_MARKER = "var jsonData = ";
 
+export function looksLikeChatGptConversationArrayText(raw: string): boolean {
+  const trimmed = raw.trimStart();
+  if (!trimmed.startsWith("[")) {
+    return false;
+  }
+
+  return (
+    raw.includes("\"mapping\"") &&
+    raw.includes("\"message\"") &&
+    (raw.includes("\"conversation_id\"") || raw.includes("\"title\""))
+  );
+}
+
 function mapRole(role?: string): Role {
   switch (role) {
     case "user":
@@ -143,7 +156,7 @@ export function parseChatGPTExport(raw: unknown): ParseResult {
     }
 
     const trimmed = raw.trimStart();
-    if (trimmed.startsWith("[")) {
+    if (looksLikeChatGptConversationArrayText(raw)) {
       return parseChatGptConversationArrayText(trimmed);
     }
   }
@@ -178,6 +191,18 @@ export function parseChatGPTExport(raw: unknown): ParseResult {
   return { conversations: [] };
 }
 
+export function *iterateChatGptConversationsFromRaw(raw: string): IterableIterator<Conversation> {
+  const embeddedJson = extractEmbeddedChatGptExportJsonText(raw);
+  if (embeddedJson !== null) {
+    yield* iterateChatGptConversationArrayText(embeddedJson);
+    return;
+  }
+
+  if (looksLikeChatGptConversationArrayText(raw)) {
+    yield* iterateChatGptConversationArrayText(raw.trimStart());
+  }
+}
+
 function extractEmbeddedChatGptExportJsonText(raw: string): string | null {
   if (!raw.includes("ChatGPT Data Export")) {
     return null;
@@ -198,11 +223,16 @@ function extractEmbeddedChatGptExportJsonText(raw: string): string | null {
 }
 
 function parseChatGptConversationArrayText(arrayText: string): ParseResult {
+  return {
+    conversations: [...iterateChatGptConversationArrayText(arrayText)]
+  };
+}
+
+function *iterateChatGptConversationArrayText(arrayText: string): IterableIterator<Conversation> {
   if (!arrayText.trimStart().startsWith("[")) {
-    return { conversations: [] };
+    return;
   }
 
-  const conversations: Conversation[] = [];
   let objectStart = -1;
   let nestingDepth = 0;
   let inString = false;
@@ -253,16 +283,14 @@ function parseChatGptConversationArrayText(arrayText: string): ParseResult {
           const parsed = JSON.parse(arrayText.slice(objectStart, index + 1)) as ChatGPTConversationLike;
           const conversation = parseSingleConversation(parsed);
           if (conversation) {
-            conversations.push(conversation);
+            yield conversation;
           }
         } catch {
-          return { conversations: [] };
+          return;
         }
 
         objectStart = -1;
       }
     }
   }
-
-  return { conversations };
 }

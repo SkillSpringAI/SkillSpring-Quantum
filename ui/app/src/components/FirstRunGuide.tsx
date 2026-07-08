@@ -1,16 +1,68 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigation } from "../state/navigationContext";
 import { useSettings } from "../state/settingsContext";
 
+type WalkthroughStep = {
+  id: string;
+  label: string;
+  title: string;
+  screen: "imports" | "organized-output" | "datasets" | "retrieval";
+  summary: string;
+  check: string;
+  cta: string;
+};
+
+const WALKTHROUGH_STEPS: WalkthroughStep[] = [
+  {
+    id: "imports",
+    label: "Step 1",
+    title: "Check one export in Imports",
+    screen: "imports",
+    summary: "Choose ChatGPT, Claude, Grok, Gemini, Copilot, or Auto Detect, then run the export check before importing.",
+    check: "Look for a clear ready, caution, or mismatch result before you import.",
+    cta: "Open Imports"
+  },
+  {
+    id: "archive",
+    label: "Step 2",
+    title: "Read the Archive first",
+    screen: "organized-output",
+    summary: "Use Readable Archive as the first review lane after import so the conversation stays human-readable.",
+    check: "Confirm the archive body, source clues, and next action feel easy to follow.",
+    cta: "Open Archive"
+  },
+  {
+    id: "datasets",
+    label: "Step 3",
+    title: "Open Dataset View when you want structure",
+    screen: "datasets",
+    summary: "Go to Datasets after archive review when you want topic segments, prompt/response previews, or redaction context.",
+    check: "Confirm the dataset view still feels connected to what you just reviewed in Archive.",
+    cta: "Open Datasets"
+  },
+  {
+    id: "retrieval",
+    label: "Step 4",
+    title: "Use Find Imports when you need to trace it later",
+    screen: "retrieval",
+    summary: "Find Imports is the follow-up lane for searching prior runs, checking match evidence, and reopening context.",
+    check: "Make sure the selected result explains why it matched and where to go next.",
+    cta: "Open Find Imports"
+  }
+];
+
 export default function FirstRunGuide() {
   const { settings, dismissOnboarding } = useSettings();
-  const { setActiveScreen } = useNavigation();
+  const { activeScreen, setActiveScreen } = useNavigation();
   const [showExample, setShowExample] = useState(false);
 
-  const visible = useMemo(() => !settings.onboardingDismissed, [settings.onboardingDismissed]);
-
-  if (!visible) {
+  if (settings.onboardingDismissed) {
     return null;
+  }
+
+  function openWalkthroughStep(step: WalkthroughStep) {
+    setActiveScreen(step.screen);
+    dismissOnboarding();
   }
 
   return (
@@ -20,28 +72,10 @@ export default function FirstRunGuide() {
           <div>
             <h2 id="first-run-guide-title">Welcome to SkillSpring Quantum</h2>
             <p className="muted">
-              Start with one export, check it once, then follow the ordinary path into archive and dataset review.
+              Start with one export, check it once, then follow the ordinary path through archive, datasets, and retrieval only when you need it.
             </p>
           </div>
           <span className="status-pill idle">First use</span>
-        </div>
-
-        <div className="stats-grid onboarding-grid">
-          <div className="stat-card">
-            <span className="label">Step 1</span>
-            <strong>Pick the export source</strong>
-            <p className="muted">Choose ChatGPT, Claude, Grok, Gemini, Copilot, or Auto Detect before browsing.</p>
-          </div>
-          <div className="stat-card">
-            <span className="label">Step 2</span>
-            <strong>Check the export first</strong>
-            <p className="muted">Use the export check before importing so Quantum can confirm the path looks usable.</p>
-          </div>
-          <div className="stat-card">
-            <span className="label">Step 3</span>
-            <strong>Start review in Archive</strong>
-            <p className="muted">Read the human-readable archive first, then open datasets when you want structured output.</p>
-          </div>
         </div>
 
         <div className="detail-box">
@@ -52,14 +86,30 @@ export default function FirstRunGuide() {
           </p>
         </div>
 
+        <div className="stats-grid onboarding-grid">
+          {WALKTHROUGH_STEPS.map((step) => {
+            const active = activeScreen === step.screen;
+            return (
+              <div key={step.id} className={active ? "stat-card selected-row" : "stat-card"}>
+                <span className="label">{step.label}</span>
+                <strong>{step.title}</strong>
+                <p className="muted">{step.summary}</p>
+                <p className="muted">{step.check}</p>
+                <div className="action-bar">
+                  <button className={step.screen === "imports" ? "primary-btn" : "secondary-btn"} type="button" onClick={() => openWalkthroughStep(step)}>
+                    {step.cta}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
         <div className="action-bar">
           <button
             className="primary-btn"
             type="button"
-            onClick={() => {
-              setActiveScreen("imports");
-              dismissOnboarding();
-            }}
+            onClick={() => openWalkthroughStep(WALKTHROUGH_STEPS[0])}
           >
             Start Guided Import
           </button>
@@ -68,7 +118,7 @@ export default function FirstRunGuide() {
             type="button"
             onClick={() => setShowExample((current) => !current)}
           >
-            {showExample ? "Hide Example Walkthrough" : "See Example Walkthrough"}
+            {showExample ? "Hide Walkthrough Notes" : "See Walkthrough Notes"}
           </button>
           <button className="secondary-btn" type="button" onClick={dismissOnboarding}>
             Skip For Now
@@ -77,15 +127,15 @@ export default function FirstRunGuide() {
 
         {showExample ? (
           <div className="detail-box">
-            <strong>Example walkthrough</strong>
+            <strong>Reusable walkthrough path</strong>
             <ul className="list">
-              <li>Pick `Claude` or `ChatGPT` and browse to the downloaded export folder.</li>
-              <li>Use `Check This Export` and confirm Quantum says the path is ready or clearly explains any caution.</li>
-              <li>Run the import from the same path, then open `Readable Archive` first.</li>
-              <li>Open `Dataset View` only when you want the structured version of what you just reviewed.</li>
+              <li>Use one recognizable export and keep the same path through check and import.</li>
+              <li>After import, review Readable Archive before opening Datasets.</li>
+              <li>Use Find Imports only after the main review path works and you want to trace the run back later.</li>
+              <li>If trust breaks or the normal path gets confusing, open Diagnostics then record why it became necessary.</li>
             </ul>
             <p className="muted">
-              This is the smallest guided version for now. A short tutorial video can later replace or reinforce this walkthrough.
+              This is the stable walkthrough we can reuse for internal checks, outside beta onboarding, and a future short tutorial video.
             </p>
           </div>
         ) : null}

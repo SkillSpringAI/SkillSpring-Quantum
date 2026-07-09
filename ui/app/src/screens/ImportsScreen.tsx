@@ -349,10 +349,35 @@ function formatProgressStateLabel(update: ImportProgressUpdate): string {
   }
 }
 
-function buildRunningStatusDetail(update: ImportProgressUpdate): string {
+function getKnownProgressFileTotal(
+  update: ImportProgressUpdate,
+  sourceSummary: ImportSourceSummary | null,
+  latestRun: ImportRunSummary | null
+): number {
+  if (update.filesDiscovered > 0) {
+    return update.filesDiscovered;
+  }
+
+  if (sourceSummary?.supportedFiles && sourceSummary.supportedFiles > 0) {
+    return sourceSummary.supportedFiles;
+  }
+
+  if (latestRun?.filesDiscovered && latestRun.filesDiscovered > 0) {
+    return latestRun.filesDiscovered;
+  }
+
+  return 0;
+}
+
+function buildRunningStatusDetail(
+  update: ImportProgressUpdate,
+  sourceSummary: ImportSourceSummary | null,
+  latestRun: ImportRunSummary | null
+): string {
+  const knownTotal = getKnownProgressFileTotal(update, sourceSummary, latestRun);
   const parts = [
     `${update.percent}% complete`,
-    `${update.completedFiles} of ${update.filesDiscovered} file(s) processed`,
+    `${update.completedFiles} of ${knownTotal} file(s) processed`,
     formatProgressElapsed(update.elapsedMs)
   ];
 
@@ -375,16 +400,38 @@ function buildRunningStatusDetail(update: ImportProgressUpdate): string {
   return parts.join(" | ");
 }
 
-function buildRunningStatusBadges(update: ImportProgressUpdate): string[] {
+function buildRunningStatusBadges(
+  update: ImportProgressUpdate,
+  sourceSummary: ImportSourceSummary | null,
+  latestRun: ImportRunSummary | null
+): string[] {
+  const knownTotal = getKnownProgressFileTotal(update, sourceSummary, latestRun);
   return [
     formatProgressStateLabel(update),
-    `${update.completedFiles}/${update.filesDiscovered} file(s)`,
+    `${update.completedFiles}/${knownTotal} file(s)`,
     update.currentKind ? update.currentKind.replace(/_/g, " ") : "",
     update.reusedFiles ? `${update.reusedFiles} reused` : "",
     update.processingState === "resuming_interrupted_shard" && update.resumeCheckpointCount
       ? `${update.resumeCheckpointCount} checkpointed`
       : ""
   ].filter(Boolean);
+}
+
+function buildRunningNextStepSummary(update: ImportProgressUpdate): string {
+  switch (update.processingState) {
+    case "reusing_completed_file":
+      return "Quantum is reusing output it already verified for unchanged files, so this rerun should move faster than a cold import.";
+    case "retrying_failed_file":
+      return "Quantum is retrying previously failing work now. Let this finish before deciding whether diagnostics are still needed.";
+    case "resuming_interrupted_shard":
+      return "Quantum is resuming an interrupted shard from the last safe checkpoint instead of starting the whole file over again.";
+    case "writing_outputs":
+      return "Quantum has finished the main import work and is writing the updated archive, dataset, and related output files now.";
+    case "processing_new_file":
+      return "Quantum is processing a file that still needs fresh work on this run.";
+    default:
+      return "Quantum is preparing the checked files for this rerun now. The next progress update should clarify whether it is reusing, retrying, or resuming work.";
+  }
 }
 
 export default function ImportsScreen() {
@@ -663,13 +710,13 @@ export default function ImportsScreen() {
       : statusMessage;
   const statusDetail =
     runState === "running" && importProgress
-      ? buildRunningStatusDetail(importProgress)
+      ? buildRunningStatusDetail(importProgress, sourceSummary, latestRunForNextSteps ?? null)
       : latestRunForNextSteps && runState !== "running"
       ? `Latest run: ${new Date(latestRunForNextSteps.runAt).toLocaleString()} | output ${describeOutputRoot(latestRunForNextSteps.outputRoot)}`
       : undefined;
   const statusBadges =
     runState === "running" && importProgress
-      ? buildRunningStatusBadges(importProgress)
+      ? buildRunningStatusBadges(importProgress, sourceSummary, latestRunForNextSteps ?? null)
       : latestRunForNextSteps && runState !== "running"
       ? [
           latestRunOutcomeSummary ?? "",
@@ -797,55 +844,87 @@ export default function ImportsScreen() {
 
       {latestRunForNextSteps ? (
         <div className="panel workspace-anchor-panel">
-          <h2>Next Step</h2>
+          <h2>{runState === "running" ? "Current Import" : "Next Step"}</h2>
           <div className="detail-box follow-up-card">
-            <strong>{nextStepSummary(latestRunForNextSteps)}</strong>
+            <strong>
+              {runState === "running" && importProgress
+                ? buildRunningNextStepSummary(importProgress)
+                : nextStepSummary(latestRunForNextSteps)}
+            </strong>
             <p className="muted">
-              Latest run: {new Date(latestRunForNextSteps.runAt).toLocaleString()} | {latestRunOutcomeSummary}
+              {runState === "running" && importProgress
+                ? buildRunningStatusDetail(importProgress, sourceSummary, latestRunForNextSteps ?? null)
+                : `Latest run: ${new Date(latestRunForNextSteps.runAt).toLocaleString()} | ${latestRunOutcomeSummary}`}
             </p>
             <div className="signal-badge-row">
-              <span className={runNeedsDiagnostics ? "signal-badge warning" : "signal-badge success"}>
-                {runNeedsDiagnostics ? "spot-check next" : "ready to continue"}
+              <span
+                className={
+                  runState === "running"
+                    ? "signal-badge"
+                    : runNeedsDiagnostics
+                    ? "signal-badge warning"
+                    : "signal-badge success"
+                }
+              >
+                {runState === "running" && importProgress
+                  ? formatProgressStateLabel(importProgress)
+                  : runNeedsDiagnostics
+                  ? "spot-check next"
+                  : "ready to continue"}
               </span>
-              {hasConversationOutputs ? (
+              {runState === "running" && importProgress
+                ? buildRunningStatusBadges(importProgress, sourceSummary, latestRunForNextSteps ?? null)
+                    .filter((badge) => badge !== formatProgressStateLabel(importProgress))
+                    .map((badge) => (
+                      <span key={badge} className="signal-badge">
+                        {badge}
+                      </span>
+                    ))
+                : null}
+              {runState !== "running" && hasConversationOutputs ? (
                 <span className="signal-badge">
                   {runNeedsDiagnostics ? "partial archive available" : "archive available"}
                 </span>
               ) : null}
-              {hasDatasetOutputs ? (
+              {runState !== "running" && hasDatasetOutputs ? (
                 <span className="signal-badge">
                   {runNeedsDiagnostics ? "partial dataset available" : "dataset view ready"}
                 </span>
               ) : null}
             </div>
           </div>
-          {latestPackageCompanionSkips > 0 ? (
+          {runState !== "running" && latestPackageCompanionSkips > 0 ? (
             <p className="muted">
               Package note: {latestPackageCompanionSkips} companion file(s) were expected and were handled through the main import automatically instead of being treated like separate sources.
             </p>
           ) : null}
           <div className="action-bar">
-            {hasConversationOutputs ? (
+            {runState !== "running" && hasConversationOutputs ? (
               <button className="primary-btn" type="button" onClick={() => setActiveScreen("organized-output")}>
                 Open Readable Archive
               </button>
             ) : null}
-            {hasDatasetOutputs ? (
+            {runState !== "running" && hasDatasetOutputs ? (
               <button className="primary-btn" type="button" onClick={() => setActiveScreen("datasets")}>
                 {runNeedsDiagnostics ? "Open Partial Dataset View" : "Open Dataset View"}
               </button>
             ) : null}
-            {runNeedsDiagnostics ? (
+            {runState === "running" ? (
+              <button className="secondary-btn" type="button" onClick={() => setActiveScreen("diagnostics")}>
+                Open Diagnostics If This Stalls
+              </button>
+            ) : null}
+            {runState !== "running" && runNeedsDiagnostics ? (
               <button className="secondary-btn" type="button" onClick={() => setActiveScreen("diagnostics")}>
                 Open Diagnostics
               </button>
             ) : null}
-            {latestArchiveArtifactPath ? (
+            {runState !== "running" && latestArchiveArtifactPath ? (
               <OpenPathButton className="secondary-btn" targetPath={latestArchiveArtifactPath}>
                 Open Latest Archive File
               </OpenPathButton>
             ) : null}
-            {latestDatasetArtifactPath ? (
+            {runState !== "running" && latestDatasetArtifactPath ? (
               <OpenPathButton className="secondary-btn" targetPath={latestDatasetArtifactPath}>
                 Open Latest Dataset File
               </OpenPathButton>

@@ -202,6 +202,7 @@ The next heavier UX round should likely happen after some outside test-user sess
 The current local AI direction is documented here:
 
 - [docs/LOCAL_AI_INTEGRATION_ACTION_PLAN_2026-07-05.md](docs/LOCAL_AI_INTEGRATION_ACTION_PLAN_2026-07-05.md)
+- [CHANGELOG.md](CHANGELOG.md)
 
 The near-term implementation order remains:
 

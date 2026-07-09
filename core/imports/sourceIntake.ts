@@ -11,6 +11,7 @@ import { writeTierRecords, writeDbManifest } from "../db/tieredStore.js";
 import { resolveOutputRoot } from "../utils/paths.js";
 import { extractPdfText } from "./pdfText.js";
 import { buildDatasetPaths } from "../pipeline/datasetVersioning.js";
+import programManifest from "../../config/programManifest.json" with { type: "json" };
 import {
   buildImportRunRetrievalSummary,
   classifyConversationSupportTier,
@@ -32,6 +33,16 @@ const TEXT_EXTENSIONS = new Set([
   ".csv",
   ".log"
 ]);
+
+const IMPORT_REUSE_CONFIG_HASH = sha256(JSON.stringify(programManifest));
+const IMPORT_REUSE_PROGRAM_VERSION = programManifest.program_version;
+const IMPORT_REUSE_PIPELINE_VERSION = programManifest.pipeline_version;
+const CONVERSATION_OUTPUT_SCHEMA_VERSION = programManifest.dataset_version;
+const DOCUMENT_OUTPUT_SCHEMA_VERSION = "source_document.v1";
+
+function getElapsedMs(startedAtMs: number): number {
+  return Math.max(0, Date.now() - startedAtMs);
+}
 
 export type ImportSourceKind =
   | "chatgpt_export"
@@ -79,6 +90,7 @@ export interface ImportRunFileResult {
   message: string;
   artifacts?: ImportArtifact[];
   metadata?: ImportFileMetadata;
+  reuseValidation?: ReuseValidationRecord;
 }
 
 export interface ImportArtifact {
@@ -123,6 +135,17 @@ export interface ImportProgressUpdate {
   percent: number;
   filesDiscovered: number;
   completedFiles: number;
+  elapsedMs: number;
+  processingState?:
+    | "preparing_files"
+    | "processing_new_file"
+    | "reusing_completed_file"
+    | "retrying_failed_file"
+    | "resuming_interrupted_shard"
+    | "writing_outputs";
+  reusedFiles?: number;
+  retriedFiles?: number;
+  resumeCheckpointCount?: number;
   currentPath?: string;
   currentKind?: ImportSourceKind;
 }
@@ -165,6 +188,7 @@ interface SuccessfulSourceLedgerRecord {
   kind: ImportSourceKind;
   importedAt: string;
   metadata?: ImportFileMetadata;
+  reuseValidation?: ReuseValidationRecord;
 }
 
 interface SuccessfulSourceLedger {
@@ -174,6 +198,7 @@ interface SuccessfulSourceLedger {
 interface PreparedImportFile {
   path: string;
   sourceId: string;
+  sourceContentHash?: string;
   previouslyImported?: SuccessfulSourceLedgerRecord;
   previousRunStatus?: ImportRunFileResult["status"];
   previousRunMetadata?: ImportFileMetadata;
@@ -183,6 +208,15 @@ interface LatestImportRunPathRecord {
   status: ImportRunFileResult["status"];
   kind: ImportSourceKind;
   metadata?: ImportFileMetadata;
+  reuseValidation?: ReuseValidationRecord;
+}
+
+export interface ReuseValidationRecord {
+  sourceContentHash: string;
+  programVersion: string;
+  pipelineVersion: string;
+  outputSchemaVersion: string;
+  configHash: string;
 }
 
 export async function inspectImportSource(inputPath: string): Promise<ImportSourceSummary> {
@@ -301,12 +335,17 @@ export async function runImportSource(
   onProgress?: (update: ImportProgressUpdate) => void
 ): Promise<ImportRunSummary> {
   const outputRoot = resolveOutputRoot(outputRootArg);
+  const progressStartedAtMs = Date.now();
   onProgress?.({
     stage: "inspecting_source",
     message: "Checking the selected export path.",
     percent: 5,
     filesDiscovered: 0,
-    completedFiles: 0
+    completedFiles: 0,
+    elapsedMs: getElapsedMs(progressStartedAtMs),
+    processingState: "preparing_files",
+    reusedFiles: 0,
+    retriedFiles: 0
   });
   const summary = await inspectImportSource(inputPath);
 
@@ -326,6 +365,8 @@ export async function runImportSource(
   let recoveryPathFiles = 0;
   let unsupportedFilesSkipped = 0;
   let completedSupportedFiles = 0;
+  let reusedFiles = 0;
+  let retriedFiles = 0;
   const successfulSourceLedger = await loadSuccessfulSourceLedger(outputRoot);
   const latestRunPathRecords = await loadRecentImportRunPathRecords(outputRoot);
 
@@ -341,7 +382,11 @@ export async function runImportSource(
         : "No supported files were found in the selected path.",
     percent: summary.supportedFiles > 0 ? 10 : 100,
     filesDiscovered: summary.supportedFiles,
-    completedFiles: 0
+    completedFiles: 0,
+    elapsedMs: getElapsedMs(progressStartedAtMs),
+    processingState: "preparing_files",
+    reusedFiles,
+    retriedFiles
   });
   const packageCompanionReasons = summary.inputType === "folder"
     ? await buildVendorPackageCompanionReasons(files)
@@ -367,15 +412,37 @@ export async function runImportSource(
     const progressPercent = summary.supportedFiles > 0
       ? Math.min(88, 10 + Math.floor((completedSupportedFiles / summary.supportedFiles) * 75))
       : 88;
-    const progressVerb = preparedFile.previousRunStatus === "failed"
-      ? "Retrying"
-      : "Processing";
+    const resumeCheckpointCount =
+      preparedFile.previousRunStatus === "failed"
+        ? await loadResumeCheckpointCount(outputRoot, filePath)
+        : 0;
+    const processingState =
+      preparedFile.previouslyImported
+        ? "reusing_completed_file"
+        : preparedFile.previousRunStatus === "failed"
+          ? resumeCheckpointCount > 0
+            ? "resuming_interrupted_shard"
+            : "retrying_failed_file"
+          : "processing_new_file";
+    const progressMessage =
+      processingState === "reusing_completed_file"
+        ? `Reusing completed file ${completedSupportedFiles + 1} of ${summary.supportedFiles}: ${path.basename(filePath)}. Quantum verified the previous output and is keeping the existing archive and dataset artifacts.`
+        : processingState === "resuming_interrupted_shard"
+          ? `Resuming interrupted shard ${completedSupportedFiles + 1} of ${summary.supportedFiles}: ${path.basename(filePath)}. ${resumeCheckpointCount} conversation(s) were already checkpointed safely.`
+          : processingState === "retrying_failed_file"
+            ? `Retrying failed file ${completedSupportedFiles + 1} of ${summary.supportedFiles}: ${path.basename(filePath)}. Quantum is rerunning this file because the earlier attempt did not finish cleanly.`
+            : `Processing new file ${completedSupportedFiles + 1} of ${summary.supportedFiles}: ${path.basename(filePath)}.`;
     onProgress?.({
       stage: "processing_file",
-      message: `${progressVerb} ${completedSupportedFiles + 1} of ${summary.supportedFiles}: ${path.basename(filePath)}`,
+      message: progressMessage,
       percent: progressPercent,
       filesDiscovered: summary.supportedFiles,
       completedFiles: completedSupportedFiles,
+      elapsedMs: getElapsedMs(progressStartedAtMs),
+      processingState,
+      reusedFiles,
+      retriedFiles,
+      resumeCheckpointCount: resumeCheckpointCount > 0 ? resumeCheckpointCount : undefined,
       currentPath: filePath,
       currentKind: preparedFile.previouslyImported?.kind ?? entry?.kind
     });
@@ -387,8 +454,10 @@ export async function runImportSource(
         kind: preparedFile.previouslyImported.kind,
         status: "skipped",
         message: "Skipped: already imported successfully in an earlier run. Quantum reused the existing output state instead of processing this file again.",
-        metadata: preparedFile.previouslyImported.metadata
+        metadata: preparedFile.previouslyImported.metadata,
+        reuseValidation: preparedFile.previouslyImported.reuseValidation
       });
+      reusedFiles += 1;
       completedSupportedFiles += 1;
       continue;
     }
@@ -400,6 +469,9 @@ export async function runImportSource(
         supportedEntry.kind === "conversation_json" ||
         supportedEntry.kind === "gemini_activity_html"
       ) {
+        if (preparedFile.previousRunStatus === "failed") {
+          retriedFiles += 1;
+        }
         const metadata = await readConversationImportMetadata(filePath);
         const diagnostics = await runConversationPipeline(filePath, outputRoot);
         if (diagnostics.status !== "success") {
@@ -420,7 +492,12 @@ export async function runImportSource(
         if (metadata?.supportTier === "mvp_compatibility_fallback") {
           recoveryPathFiles += 1;
         }
+        preparedFile.sourceContentHash ??= await hashSourceFileContent(filePath);
         const conversationArtifacts = await collectConversationArtifacts(outputRoot, diagnostics);
+        const reuseValidation =
+          preparedFile.sourceContentHash
+            ? buildReuseValidationRecord(supportedEntry.kind, preparedFile.sourceContentHash)
+            : undefined;
         artifacts.push(...conversationArtifacts);
         results.push({
           path: filePath,
@@ -428,14 +505,16 @@ export async function runImportSource(
           status: "imported",
           message: buildConversationImportResultMessage(metadata, diagnostics),
           artifacts: conversationArtifacts,
-          metadata: metadata ?? undefined
+          metadata: metadata ?? undefined,
+          reuseValidation
         });
         await recordSuccessfulSource(outputRoot, successfulSourceLedger, {
           sourceId: preparedFile.sourceId,
           path: filePath,
           kind: supportedEntry.kind,
           importedAt: runAt,
-          metadata: metadata ?? undefined
+          metadata: metadata ?? undefined,
+          reuseValidation
         });
         completedSupportedFiles += 1;
         continue;
@@ -446,6 +525,9 @@ export async function runImportSource(
       }
 
       const imported = await importGenericFile(filePath, outputRoot, supportedEntry.kind, runAt);
+      if (preparedFile.previousRunStatus === "failed") {
+        retriedFiles += 1;
+      }
       filesImported += 1;
 
       if (supportedEntry.kind === "pdf_document") {
@@ -459,20 +541,27 @@ export async function runImportSource(
       }
 
       artifacts.push(...imported.artifacts);
+      preparedFile.sourceContentHash ??= await hashSourceFileContent(filePath);
+      const reuseValidation =
+        preparedFile.sourceContentHash
+          ? buildReuseValidationRecord(supportedEntry.kind, preparedFile.sourceContentHash)
+          : undefined;
       results.push({
         path: filePath,
         kind: supportedEntry.kind,
         status: "imported",
         message: buildDocumentImportResultMessage(imported.metadata),
         artifacts: imported.artifacts,
-        metadata: imported.metadata
+        metadata: imported.metadata,
+        reuseValidation
       });
       await recordSuccessfulSource(outputRoot, successfulSourceLedger, {
         sourceId: preparedFile.sourceId,
         path: filePath,
         kind: supportedEntry.kind,
         importedAt: runAt,
-        metadata: imported.metadata
+        metadata: imported.metadata,
+        reuseValidation
       });
       completedSupportedFiles += 1;
     } catch (error) {
@@ -492,10 +581,17 @@ export async function runImportSource(
   const retrievalSummary = buildImportRunRetrievalSummary(results);
   onProgress?.({
     stage: "writing_history",
-    message: "Writing import history and output manifests.",
+    message:
+      reusedFiles > 0
+        ? `Writing import history and output manifests. ${reusedFiles} file(s) were safely reused earlier in this run.`
+        : "Writing import history and output manifests.",
     percent: 92,
     filesDiscovered: summary.supportedFiles,
-    completedFiles: completedSupportedFiles
+    completedFiles: completedSupportedFiles,
+    elapsedMs: getElapsedMs(progressStartedAtMs),
+    processingState: "writing_outputs",
+    reusedFiles,
+    retriedFiles
   });
 
   const historyPath = await writeImportRunHistory(outputRoot, runAt, {
@@ -541,7 +637,11 @@ export async function runImportSource(
     message: "Updating retrieval and DB summary indexes.",
     percent: 97,
     filesDiscovered: summary.supportedFiles,
-    completedFiles: completedSupportedFiles
+    completedFiles: completedSupportedFiles,
+    elapsedMs: getElapsedMs(progressStartedAtMs),
+    processingState: "writing_outputs",
+    reusedFiles,
+    retriedFiles
   });
   await writeDbManifest(dbRoot, "latest-source-import.json", result);
   await writeImportRetrievalIndex(outputRoot, result);
@@ -549,11 +649,15 @@ export async function runImportSource(
     stage: "completed",
     message:
       filesImported > 0
-        ? `Import complete: ${filesImported} imported, ${filesFailed} failed, ${unsupportedFilesSkipped} skipped.`
+        ? `Import complete: ${filesImported} imported, ${reusedFiles} reused, ${filesFailed} failed, ${unsupportedFilesSkipped} skipped.`
         : "Import finished without usable outputs.",
     percent: 100,
     filesDiscovered: summary.supportedFiles,
-    completedFiles: completedSupportedFiles
+    completedFiles: completedSupportedFiles,
+    elapsedMs: getElapsedMs(progressStartedAtMs),
+    processingState: "writing_outputs",
+    reusedFiles,
+    retriedFiles
   });
 
   return result;
@@ -571,6 +675,66 @@ async function getSourceFileIdentity(filePath: string): Promise<{
     stat,
     sizeBytes
   };
+}
+
+async function hashSourceFileContent(filePath: string): Promise<string> {
+  return sha256((await fs.readFile(filePath)).toString("base64"));
+}
+
+function getStreamingShardProgressPath(outputRoot: string, filePath: string): string {
+  return path.join(
+    outputRoot,
+    "imports",
+    "streaming-shard-progress",
+    sha256(path.normalize(filePath).toLowerCase()) + ".json"
+  );
+}
+
+async function loadResumeCheckpointCount(outputRoot: string, filePath: string): Promise<number> {
+  const progressPath = getStreamingShardProgressPath(outputRoot, filePath);
+  if (!(await fileExists(progressPath))) {
+    return 0;
+  }
+
+  try {
+    const loaded = JSON.parse(await fs.readFile(progressPath, "utf-8")) as { completedConversationIds?: string[] };
+    return loaded.completedConversationIds?.length ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+function buildReuseValidationRecord(
+  kind: ImportSourceKind,
+  sourceContentHash: string
+): ReuseValidationRecord {
+  return {
+    sourceContentHash,
+    programVersion: IMPORT_REUSE_PROGRAM_VERSION,
+    pipelineVersion: IMPORT_REUSE_PIPELINE_VERSION,
+    outputSchemaVersion:
+      kind === "json_document" || kind === "text_document" || kind === "pdf_document"
+        ? DOCUMENT_OUTPUT_SCHEMA_VERSION
+        : CONVERSATION_OUTPUT_SCHEMA_VERSION,
+    configHash: IMPORT_REUSE_CONFIG_HASH
+  };
+}
+
+function isReuseValidationMatch(
+  expected: ReuseValidationRecord,
+  actual: ReuseValidationRecord | undefined
+): boolean {
+  if (!actual) {
+    return false;
+  }
+
+  return (
+    expected.sourceContentHash === actual.sourceContentHash &&
+    expected.programVersion === actual.programVersion &&
+    expected.pipelineVersion === actual.pipelineVersion &&
+    expected.outputSchemaVersion === actual.outputSchemaVersion &&
+    expected.configHash === actual.configHash
+  );
 }
 
 async function loadRecentImportRunPathRecords(
@@ -602,11 +766,13 @@ async function loadRecentImportRunPathRecords(
 
       for (const result of latestRun.results ?? []) {
         const key = normalizeImportPathKey(result.path);
-        if (!statuses.has(key) || result.status === "imported") {
+        const existing = statuses.get(key);
+        if (!existing || (existing.status !== "imported" && result.status === "imported")) {
           statuses.set(key, {
             status: result.status,
             kind: result.kind,
-            metadata: result.metadata
+            metadata: result.metadata,
+            reuseValidation: result.reuseValidation
           });
         }
       }
@@ -628,22 +794,42 @@ async function prepareImportFilesForRun(
     files.map(async (filePath) => {
       const sourceIdentity = await getSourceFileIdentity(filePath);
       const latestRunRecord = latestRunPathRecords.get(normalizeImportPathKey(filePath));
+      const ledgerRecord = successfulSourceLedger.get(sourceIdentity.sourceId);
+      const candidateKind = ledgerRecord?.kind ?? latestRunRecord?.kind;
+      const sourceContentHash =
+        candidateKind && (ledgerRecord || latestRunRecord?.status === "imported")
+          ? await hashSourceFileContent(filePath)
+          : undefined;
+      const expectedReuseValidation =
+        candidateKind && sourceContentHash
+          ? buildReuseValidationRecord(candidateKind, sourceContentHash)
+          : undefined;
+      const validatedLedgerRecord =
+        ledgerRecord &&
+        expectedReuseValidation &&
+        isReuseValidationMatch(expectedReuseValidation, ledgerRecord.reuseValidation)
+          ? ledgerRecord
+          : undefined;
       const historyRecoveredSuccess =
-        !successfulSourceLedger.has(sourceIdentity.sourceId) &&
-        latestRunRecord?.status === "imported"
+        !validatedLedgerRecord &&
+        latestRunRecord?.status === "imported" &&
+        expectedReuseValidation &&
+        isReuseValidationMatch(expectedReuseValidation, latestRunRecord.reuseValidation)
           ? {
               sourceId: sourceIdentity.sourceId,
               path: filePath,
               kind: latestRunRecord.kind,
               importedAt,
-              metadata: latestRunRecord.metadata
+              metadata: latestRunRecord.metadata,
+              reuseValidation: latestRunRecord.reuseValidation
             } satisfies SuccessfulSourceLedgerRecord
           : undefined;
 
       return {
         path: filePath,
         sourceId: sourceIdentity.sourceId,
-        previouslyImported: successfulSourceLedger.get(sourceIdentity.sourceId) ?? historyRecoveredSuccess,
+        sourceContentHash,
+        previouslyImported: validatedLedgerRecord ?? historyRecoveredSuccess,
         previousRunStatus: latestRunRecord?.status,
         previousRunMetadata: latestRunRecord?.metadata
       } satisfies PreparedImportFile;

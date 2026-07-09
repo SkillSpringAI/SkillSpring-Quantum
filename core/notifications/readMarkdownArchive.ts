@@ -137,7 +137,7 @@ async function main(): Promise<void> {
     const selectedFile = await buildSingleFileRecord(outputRoot, options.requestedFile, attachmentSummaries, {
       includeContent: options.includeContent
     });
-    const content = selectedFile && options.includeContent
+    const content = selectedFile
       ? await fs.readFile(selectedFile.path, "utf-8")
       : "";
 
@@ -182,14 +182,16 @@ async function main(): Promise<void> {
 
   let selectedFile: MarkdownArchiveFile | null = null;
   if (options.requestedFile) {
-    selectedFile = allFiles.find((file) => file.path === options.requestedFile) ?? null;
+    selectedFile = await buildSingleFileRecord(outputRoot, options.requestedFile, attachmentSummaries, {
+      includeContent: options.includeContent
+    });
   } else {
     selectedFile = allFiles
       .slice()
       .sort((left, right) => right.modifiedAt.localeCompare(left.modifiedAt))[0] ?? null;
   }
 
-  const content = selectedFile && options.includeContent
+  const content = selectedFile
     ? await fs.readFile(selectedFile.path, "utf-8")
     : "";
 
@@ -208,11 +210,14 @@ function parseCliArgs(args: string[]): MarkdownArchiveCliOptions {
     includeTopics: true
   };
 
+  let positionalRequestedFileUsed = false;
+
   for (let index = 0; index < args.length; index += 1) {
     const value = args[index];
 
     if (value === "--file") {
       options.requestedFile = args[index + 1];
+      options.includeContent = true;
       index += 1;
       continue;
     }
@@ -224,6 +229,13 @@ function parseCliArgs(args: string[]): MarkdownArchiveCliOptions {
 
     if (value === "--skip-topics") {
       options.includeTopics = false;
+      continue;
+    }
+
+    if (!value.startsWith("--") && !positionalRequestedFileUsed) {
+      options.requestedFile = value;
+      options.includeContent = true;
+      positionalRequestedFileUsed = true;
     }
   }
 

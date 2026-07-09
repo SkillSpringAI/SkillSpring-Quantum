@@ -62,7 +62,14 @@ try {
     "Expected sharded ChatGPT package import to preserve the ChatGPT retrieval vendor"
   );
 
-  const rerun = await runImportSource(exportFolder, outputRoot);
+  const rerunProgress: Array<{ message: string; processingState?: string; reusedFiles?: number }> = [];
+  const rerun = await runImportSource(exportFolder, outputRoot, (update) => {
+    rerunProgress.push({
+      message: update.message,
+      processingState: update.processingState,
+      reusedFiles: update.reusedFiles
+    });
+  });
   assert.equal(rerun.filesImported, 0, "Expected rerun to skip already imported shard files");
   assert.equal(rerun.filesFailed, 0, "Expected rerun skip behavior not to create failures");
   assert.ok(
@@ -73,8 +80,75 @@ try {
     rerun.retrievalSummary?.vendorSources.includes("chatgpt"),
     "Expected rerun to preserve ChatGPT retrieval summary from the reused imported files"
   );
+  assert.ok(
+    rerunProgress.some((entry) => entry.processingState === "reusing_completed_file"),
+    "Expected rerun progress to explicitly report completed-file reuse"
+  );
+  assert.ok(
+    rerunProgress.some((entry) => entry.message.includes("keeping the existing archive and dataset artifacts")),
+    "Expected rerun progress wording to explain that existing outputs were safely reused"
+  );
 
-  await fs.rm(path.join(outputRoot, "imports", "successful-source-ledger.json"), { force: true });
+  const ledgerPath = path.join(outputRoot, "imports", "successful-source-ledger.json");
+  const latestRunPath = path.join(outputRoot, "imports", "latest-import-run.json");
+  const historyDir = path.join(outputRoot, "imports", "history");
+  const historyFiles = (await fs.readdir(historyDir))
+    .filter((name) => name.endsWith(".json"))
+    .map((name) => path.join(historyDir, name));
+
+  const tamperReuseValidation = async (filePath: string, mutate: (value: any) => void) => {
+    const value = JSON.parse(await fs.readFile(filePath, "utf-8"));
+    mutate(value);
+    await fs.writeFile(filePath, JSON.stringify(value, null, 2), "utf-8");
+  };
+
+  await tamperReuseValidation(ledgerPath, (value) => {
+    for (const record of value.records ?? []) {
+      if (record.reuseValidation) {
+        record.reuseValidation.pipelineVersion = "pipeline.legacy";
+      }
+    }
+  });
+  await tamperReuseValidation(latestRunPath, (value) => {
+    for (const result of value.results ?? []) {
+      if (result.reuseValidation) {
+        result.reuseValidation.pipelineVersion = "pipeline.legacy";
+      }
+    }
+  });
+  for (const historyFile of historyFiles) {
+    await tamperReuseValidation(historyFile, (value) => {
+      for (const result of value.results ?? []) {
+        if (result.reuseValidation) {
+          result.reuseValidation.pipelineVersion = "pipeline.legacy";
+        }
+      }
+    });
+  }
+
+  const rerunAfterValidationMismatchProgress: Array<{ message: string; processingState?: string }> = [];
+  const rerunAfterValidationMismatch = await runImportSource(exportFolder, outputRoot, (update) => {
+    rerunAfterValidationMismatchProgress.push({
+      message: update.message,
+      processingState: update.processingState
+    });
+  });
+  assert.equal(
+    rerunAfterValidationMismatch.filesImported,
+    2,
+    "Expected stale reuse validation metadata to invalidate cache reuse and reimport both shard files"
+  );
+  assert.equal(
+    rerunAfterValidationMismatch.results.filter((entry) => entry.message.includes("already imported successfully")).length,
+    0,
+    "Expected stale reuse validation metadata not to report already-imported reuse"
+  );
+  assert.ok(
+    rerunAfterValidationMismatchProgress.some((entry) => entry.processingState === "processing_new_file"),
+    "Expected invalidated rerun progress to fall back to explicit new-file processing"
+  );
+
+  await fs.rm(ledgerPath, { force: true });
 
   const rerunWithoutLedger = await runImportSource(exportFolder, outputRoot);
   assert.equal(rerunWithoutLedger.filesImported, 0, "Expected rerun without a ledger file to still reuse prior successful shard imports");

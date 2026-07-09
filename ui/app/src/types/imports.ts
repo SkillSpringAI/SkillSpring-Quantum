@@ -71,6 +71,17 @@ export interface ImportProgressUpdate {
   percent: number;
   filesDiscovered: number;
   completedFiles: number;
+  elapsedMs: number;
+  processingState?:
+    | "preparing_files"
+    | "processing_new_file"
+    | "reusing_completed_file"
+    | "retrying_failed_file"
+    | "resuming_interrupted_shard"
+    | "writing_outputs";
+  reusedFiles?: number;
+  retriedFiles?: number;
+  resumeCheckpointCount?: number;
   currentPath?: string;
   currentKind?:
     | "chatgpt_export"

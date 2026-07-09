@@ -197,6 +197,55 @@ function groupMessagesByExchange(messages: ConversationMessage[]): ConversationM
   return groups;
 }
 
+function messageGroupSimilarity(
+  leftMessages: ConversationMessage[],
+  rightMessages: ConversationMessage[]
+): number {
+  const leftTokens = tokenize(leftMessages.map((message) => message.text).join(" "));
+  const rightTokens = tokenize(rightMessages.map((message) => message.text).join(" "));
+  return jaccardSimilarity(leftTokens, rightTokens);
+}
+
+function collapseAdjacentSegments(segments: ConversationSegment[]): ConversationSegment[] {
+  const merged: ConversationSegment[] = [];
+
+  for (const segment of segments) {
+    const previous = merged[merged.length - 1];
+
+    if (previous && sameTopic(previous, segment)) {
+      previous.endIndex = segment.endIndex;
+      previous.messages.push(...segment.messages);
+      previous.confidence = Math.max(previous.confidence, segment.confidence);
+      previous.matchedKeywords = [...new Set([...previous.matchedKeywords, ...segment.matchedKeywords])];
+      if (!previous.summaryLabel && segment.summaryLabel) {
+        previous.summaryLabel = segment.summaryLabel;
+      }
+      if ((!previous.importance || previous.importance === "low") && segment.importance) {
+        previous.importance = segment.importance;
+      }
+      if ((!previous.intent || previous.intent === "general") && segment.intent) {
+        previous.intent = segment.intent;
+      }
+      previous.classificationConfidence = Math.max(
+        previous.classificationConfidence ?? 0,
+        segment.classificationConfidence ?? 0
+      );
+      previous.classificationReasons = [
+        ...new Set([...(previous.classificationReasons ?? []), ...(segment.classificationReasons ?? [])])
+      ];
+      continue;
+    }
+
+    merged.push({
+      ...segment,
+      messages: [...segment.messages],
+      matchedKeywords: [...segment.matchedKeywords]
+    });
+  }
+
+  return merged;
+}
+
 export function segmentConversation(
   conversation: Conversation,
   windowSize = 4,
@@ -301,6 +350,7 @@ export function segmentConversation(
     const exchangeTokens = tokenize(inferredExchange.rawTopic);
     const similarity = inferredCurrent ? jaccardSimilarity(currentTokens, candidateTokens) : 1;
     const exchangeSimilarity = inferredCurrent ? jaccardSimilarity(currentTokens, exchangeTokens) : 1;
+    const lexicalSimilarity = currentWindow.length > 0 ? messageGroupSimilarity(currentWindow, exchange) : 1;
     const currentNormalizedTopic = inferredCurrent ? normalizeTopicCached(inferredCurrent.rawTopic).normalizedTopic : "general";
     const exchangeNormalizedTopic = normalizeTopicCached(inferredExchange.rawTopic).normalizedTopic;
     const currentClassification = currentWindow.length > 0 ? classifyMessagesCached(currentWindow) : null;
@@ -322,8 +372,13 @@ export function segmentConversation(
       exchangeNormalizedTopic !== "general" &&
       currentNormalizedTopic !== exchangeNormalizedTopic &&
       exchangeSimilarity < 0.22;
+    const obviousLexicalShift =
+      currentNormalizedTopic !== exchangeNormalizedTopic &&
+      lexicalSimilarity < 0.12 &&
+      exchangeSimilarity < 0.22;
     const hardSplit = currentWindow.length > 0 && (
       strongTopicShift ||
+      obviousLexicalShift ||
       (strongDomainShift && exchangeSimilarity < 0.18) ||
       (strongIntentShift && exchangeSimilarity < 0.12)
     );
@@ -358,43 +413,43 @@ export function segmentConversation(
     );
   }
 
-  const merged: ConversationSegment[] = [];
+  const merged = collapseAdjacentSegments(provisionalSegments).filter(segment => segment.messages.length > 0);
 
-  for (const segment of provisionalSegments) {
-    const previous = merged[merged.length - 1];
+  if (merged.length === 1 && exchanges.length > 1) {
+    let offset = 0;
+    const exchangeLevelSegments = exchanges
+      .flatMap((exchange) => {
+        const exchangeConversation: Conversation = {
+          ...conversation,
+          messages: exchange
+        };
+        const standalone = segmentConversation(exchangeConversation, windowSize, index)[0];
+        if (!standalone) {
+          offset += exchange.length;
+          return [];
+        }
 
-    if (previous && sameTopic(previous, segment)) {
-      previous.endIndex = segment.endIndex;
-      previous.messages.push(...segment.messages);
-      previous.confidence = Math.max(previous.confidence, segment.confidence);
-      previous.matchedKeywords = [...new Set([...previous.matchedKeywords, ...segment.matchedKeywords])];
-      if (!previous.summaryLabel && segment.summaryLabel) {
-        previous.summaryLabel = segment.summaryLabel;
-      }
-      if ((!previous.importance || previous.importance === "low") && segment.importance) {
-        previous.importance = segment.importance;
-      }
-      if ((!previous.intent || previous.intent === "general") && segment.intent) {
-        previous.intent = segment.intent;
-      }
-      previous.classificationConfidence = Math.max(
-        previous.classificationConfidence ?? 0,
-        segment.classificationConfidence ?? 0
-      );
-      previous.classificationReasons = [
-        ...new Set([...(previous.classificationReasons ?? []), ...(segment.classificationReasons ?? [])])
-      ];
-      continue;
+        const adjusted = {
+          ...standalone,
+          startIndex: offset,
+          endIndex: offset + exchange.length - 1,
+          messages: [...standalone.messages],
+          matchedKeywords: [...standalone.matchedKeywords]
+        };
+        offset += exchange.length;
+        return [adjusted];
+      });
+
+    const collapsedExchangeLevel = collapseAdjacentSegments(exchangeLevelSegments).filter(
+      (segment) => segment.messages.length > 0
+    );
+
+    if (collapsedExchangeLevel.length > 1) {
+      return collapsedExchangeLevel;
     }
-
-    merged.push({
-      ...segment,
-      messages: [...segment.messages],
-      matchedKeywords: [...segment.matchedKeywords]
-    });
   }
 
-  return merged.filter(segment => segment.messages.length > 0);
+  return merged;
 }
 
 const GENERIC_SUMMARY_LABELS = new Set([

@@ -226,9 +226,29 @@ The next validation step is manual Electron use against real exports rather than
 
 ## Morning Note
 
-The next recommended validation step is a full manual walkthrough of the desktop app in Electron using real or realistic fixture-backed exports.
+The next recommended implementation step is to continue from the July 8, 2026 heavy-import hardening pass rather than restarting from a generic walkthrough-first queue.
 
-That walkthrough should cover the whole ordinary user flow:
+That pass materially improved the large ChatGPT rerun path:
+
+- already imported shard files can now be reused quickly during reruns
+- reusable-success state can now be recovered from recent import history when a dedicated ledger is missing
+- interrupted streaming shards now retain deeper per-conversation resume checkpoints
+- failed shard retries are ordered more deliberately so lighter failed shards can run before the heaviest retry
+- supported-file progress counts now align more closely with what the user was told was actually import-ready
+
+That means the immediate bottleneck has changed.
+
+The next morning queue should begin with import trust and retry resilience:
+
+1. harden cache correctness so reused output is invalidated when parser, pipeline, schema, or relevant config behavior changes
+2. make long heavy-shard retries feel more trustworthy with clearer current-step, reuse, retry, and resume wording
+3. repair the default regression gate so `test:all` actually covers the newer import, rerun, retrieval, smoke, and assistant-adjacent suites
+4. run a focused Electron retest that validates rerun reuse, heavy retry state, archive handoff, dataset handoff, and retrieval continuity
+5. then continue with the reusable first-run walkthrough and onboarding path for outside beta
+
+The walkthrough is still important, but it is no longer the clearest first move.
+
+The next focused manual validation pass in Electron should still cover the ordinary user flow:
 
 1. Imports
 2. import history
@@ -237,7 +257,14 @@ That walkthrough should cover the whole ordinary user flow:
 5. retrieval / Find Imports
 6. diagnostics only when needed
 
-The goal is not only to check correctness. It is also to document the interaction flow, friction points, confusing labels, dead-end actions, and moments where the UI still feels too internal or too dense. That documentation should feed the next UI/UX polish pass.
+But it should now pay special attention to the import-hardening questions opened by the July 8 checkpoint:
+
+- whether already imported files are acknowledged quickly enough on rerun to feel obviously reused
+- whether a heavy failed shard explains retry versus resume state clearly enough to feel trustworthy
+- whether progress wording needs estimated-duration guidance more than it needs additional raw percentages
+- whether interrupted heavy-shard retries resume materially deeper into the file on the next attempt
+
+The goal is therefore not only to check correctness. It is also to validate that the large-import experience now feels honest, legible, and recoverable before the next onboarding polish pass.
 
 Use [docs/MORNING_MANUAL_TEST_NOTE.md](docs/MORNING_MANUAL_TEST_NOTE.md) as the checklist and capture template for that walkthrough.
 
@@ -342,6 +369,7 @@ npm run purge:restore -- "organized_output\purge\some_folder\some_file.md" "orga
 - anti-drift scope lock: [docs/SKILLSPRING_MVP_SCOPE_LOCK.md](docs/SKILLSPRING_MVP_SCOPE_LOCK.md)
 - checkable MVP roadmap: [docs/SKILLSPRING_QUANTUM_MVP_ROADMAP.md](docs/SKILLSPRING_QUANTUM_MVP_ROADMAP.md)
 - future-scope PIE boundary: [docs/SKILLSPRING_PIE_FUTURE_SCOPE.md](docs/SKILLSPRING_PIE_FUTURE_SCOPE.md)
+- next implementation note: [docs/NEXT_FIVE_SLICES_2026-07-09.md](docs/NEXT_FIVE_SLICES_2026-07-09.md)
 - morning manual walkthrough note: [docs/MORNING_MANUAL_TEST_NOTE.md](docs/MORNING_MANUAL_TEST_NOTE.md)
 - first walkthrough record: [docs/MANUAL_WALKTHROUGH_2026-06-28.md](docs/MANUAL_WALKTHROUGH_2026-06-28.md)
 

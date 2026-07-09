@@ -323,6 +323,70 @@ function buildPostRunStatusMessage(run: ImportRunSummary | null, fallbackMessage
   return "Import finished cleanly. Open Readable Archive first, then use Datasets when you want the structured version.";
 }
 
+function formatProgressElapsed(elapsedMs: number): string {
+  const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return minutes > 0 ? `${minutes}m ${seconds}s elapsed` : `${seconds}s elapsed`;
+}
+
+function formatProgressStateLabel(update: ImportProgressUpdate): string {
+  switch (update.processingState) {
+    case "preparing_files":
+      return "preparing";
+    case "processing_new_file":
+      return "processing new file";
+    case "reusing_completed_file":
+      return "reusing completed file";
+    case "retrying_failed_file":
+      return "retrying failed file";
+    case "resuming_interrupted_shard":
+      return "resuming from checkpoint";
+    case "writing_outputs":
+      return "writing outputs";
+    default:
+      return update.stage.replace(/_/g, " ");
+  }
+}
+
+function buildRunningStatusDetail(update: ImportProgressUpdate): string {
+  const parts = [
+    `${update.percent}% complete`,
+    `${update.completedFiles} of ${update.filesDiscovered} file(s) processed`,
+    formatProgressElapsed(update.elapsedMs)
+  ];
+
+  if (typeof update.reusedFiles === "number" && update.reusedFiles > 0) {
+    parts.push(`${update.reusedFiles} reused`);
+  }
+
+  if (typeof update.retriedFiles === "number" && update.retriedFiles > 0) {
+    parts.push(`${update.retriedFiles} retried`);
+  }
+
+  if (update.resumeCheckpointCount && update.resumeCheckpointCount > 0) {
+    parts.push(`${update.resumeCheckpointCount} checkpointed conversation(s)`);
+  }
+
+  if (update.currentPath) {
+    parts.push(update.currentPath.split(/[\\/]/).pop() ?? update.currentPath);
+  }
+
+  return parts.join(" | ");
+}
+
+function buildRunningStatusBadges(update: ImportProgressUpdate): string[] {
+  return [
+    formatProgressStateLabel(update),
+    `${update.completedFiles}/${update.filesDiscovered} file(s)`,
+    update.currentKind ? update.currentKind.replace(/_/g, " ") : "",
+    update.reusedFiles ? `${update.reusedFiles} reused` : "",
+    update.processingState === "resuming_interrupted_shard" && update.resumeCheckpointCount
+      ? `${update.resumeCheckpointCount} checkpointed`
+      : ""
+  ].filter(Boolean);
+}
+
 export default function ImportsScreen() {
   const { openRetrievalInvestigation, setActiveScreen } = useNavigation();
   const { setCurrentArtifact } = useAgentContext();
@@ -599,17 +663,13 @@ export default function ImportsScreen() {
       : statusMessage;
   const statusDetail =
     runState === "running" && importProgress
-      ? `${importProgress.percent}% complete | ${importProgress.completedFiles} of ${importProgress.filesDiscovered} file(s) processed${importProgress.currentPath ? ` | ${importProgress.currentPath.split(/[\\/]/).pop()}` : ""}`
+      ? buildRunningStatusDetail(importProgress)
       : latestRunForNextSteps && runState !== "running"
       ? `Latest run: ${new Date(latestRunForNextSteps.runAt).toLocaleString()} | output ${describeOutputRoot(latestRunForNextSteps.outputRoot)}`
       : undefined;
   const statusBadges =
     runState === "running" && importProgress
-      ? [
-          importProgress.stage.replace(/_/g, " "),
-          `${importProgress.completedFiles}/${importProgress.filesDiscovered} file(s)`,
-          importProgress.currentKind ? importProgress.currentKind.replace(/_/g, " ") : ""
-        ].filter(Boolean)
+      ? buildRunningStatusBadges(importProgress)
       : latestRunForNextSteps && runState !== "running"
       ? [
           latestRunOutcomeSummary ?? "",

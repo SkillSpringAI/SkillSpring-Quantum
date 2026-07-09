@@ -328,6 +328,16 @@ function buildSummaryLabel(
 
 function detectPreferredSubject(text: string, domain: string): string | null {
   const tokens = tokenizeForMatching(text);
+  if (containsKeyword(text, tokens, "docker")) return "Docker";
+  if (containsKeyword(text, tokens, "nginx")) return "Nginx";
+  if (containsKeyword(text, tokens, "api")) return "API";
+  if (containsKeyword(text, tokens, "roadmap")) return "Roadmap";
+  if (containsKeyword(text, tokens, "retrieval")) return "Retrieval";
+  if (containsKeyword(text, tokens, "dataset")) return "Dataset";
+  if (containsKeyword(text, tokens, "privacy")) return "Privacy";
+  if (containsKeyword(text, tokens, "governance")) return "Governance";
+  if (containsKeyword(text, tokens, "crypto")) return "Crypto Markets";
+
   const extractedPhrase = extractTopicPhrase(text);
   if (extractedPhrase) {
     return extractedPhrase;
@@ -341,16 +351,6 @@ function detectPreferredSubject(text: string, domain: string): string | null {
       }
     }
   }
-
-  if (containsKeyword(text, tokens, "docker")) return "Docker";
-  if (containsKeyword(text, tokens, "nginx")) return "Nginx";
-  if (containsKeyword(text, tokens, "api")) return "API";
-  if (containsKeyword(text, tokens, "roadmap")) return "Roadmap";
-  if (containsKeyword(text, tokens, "retrieval")) return "Retrieval";
-  if (containsKeyword(text, tokens, "dataset")) return "Dataset";
-  if (containsKeyword(text, tokens, "privacy")) return "Privacy";
-  if (containsKeyword(text, tokens, "governance")) return "Governance";
-  if (containsKeyword(text, tokens, "crypto")) return "Crypto Markets";
 
   return null;
 }

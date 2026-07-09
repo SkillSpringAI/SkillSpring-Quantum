@@ -223,33 +223,34 @@ That sequence is now materially further along:
 - retrieval evidence-grounding improvements are implemented
 - the first narrow command bridge is implemented
 
-The next validation step is manual Electron use against real exports rather than another large architecture swing.
+A focused Electron retest has now also been recorded against the hardened rerun path.
+
+The next validation step is no longer "prove that the rerun stack works at all."
+
+It is to smooth the first trust window of that rerun flow so the UI stops looking anchored to the previous finished run while new work is already underway.
 
 ## Morning Note
 
-The next recommended implementation step is to continue from the July 8, 2026 heavy-import hardening pass rather than restarting from a generic walkthrough-first queue.
+The July 9, 2026 checkpoint closed the earlier import-hardening queue materially further:
 
-That pass materially improved the large ChatGPT rerun path:
+- cache and reuse validation are now stronger and no longer rely only on path, size, and modification time
+- progress wording can now distinguish preparing, reuse, retry, resume, and output-writing states
+- the default regression gate now runs through `npm run test:ci`
+- a focused Electron rerun retest has now been captured
 
-- already imported shard files can now be reused quickly during reruns
-- reusable-success state can now be recovered from recent import history when a dedicated ledger is missing
-- interrupted streaming shards now retain deeper per-conversation resume checkpoints
-- failed shard retries are ordered more deliberately so lighter failed shards can run before the heaviest retry
-- supported-file progress counts now align more closely with what the user was told was actually import-ready
+That means the immediate bottleneck has shifted again.
 
-That means the immediate bottleneck has changed.
+The next morning queue should begin with the remaining first-minute rerun trust gap and then continue into outside-beta-oriented onboarding polish:
 
-The next morning queue should begin with import trust and retry resilience:
-
-1. harden cache correctness so reused output is invalidated when parser, pipeline, schema, or relevant config behavior changes
-2. make long heavy-shard retries feel more trustworthy with clearer current-step, reuse, retry, and resume wording
-3. repair the default regression gate so `test:all` actually covers the newer import, rerun, retrieval, smoke, and assistant-adjacent suites
-4. run a focused Electron retest that validates rerun reuse, heavy retry state, archive handoff, dataset handoff, and retrieval continuity
+1. make the earliest active rerun state displace stale finished-run framing faster on Imports
+2. avoid weak early progress states like `0 of 0 file(s) processed` when Quantum already knows the checked import-ready file count
+3. surface reuse, retry, or resume intent earlier once that determination is known
+4. run one more focused Electron confirmation pass across Imports -> Readable Archive -> Datasets -> Find Imports after the Imports-state polish lands
 5. then continue with the reusable first-run walkthrough and onboarding path for outside beta
 
-The walkthrough is still important, but it is no longer the clearest first move.
+The walkthrough is still important, but it now supports a more specific trust question rather than a generic "does the app work?" pass.
 
-The next focused manual validation pass in Electron should still cover the ordinary user flow:
+The latest focused manual validation pass still follows the ordinary user flow:
 
 1. Imports
 2. import history
@@ -258,23 +259,22 @@ The next focused manual validation pass in Electron should still cover the ordin
 5. retrieval / Find Imports
 6. diagnostics only when needed
 
-But it should now pay special attention to the import-hardening questions opened by the July 8 checkpoint:
+But the current emphasis is narrower:
 
-- whether already imported files are acknowledged quickly enough on rerun to feel obviously reused
-- whether a heavy failed shard explains retry versus resume state clearly enough to feel trustworthy
-- whether progress wording needs estimated-duration guidance more than it needs additional raw percentages
-- whether interrupted heavy-shard retries resume materially deeper into the file on the next attempt
+- does rerun reuse feel intentional rather than mysterious?
+- does retry versus resume become visible early enough?
+- does the UI acknowledge current in-progress truth before it keeps talking like the previous run is still the main state?
+- does the same path still hand off cleanly into archive, dataset, and retrieval review once the rerun settles?
 
-The goal is therefore not only to check correctness. It is also to validate that the large-import experience now feels honest, legible, and recoverable before the next onboarding polish pass.
+Use [docs/MORNING_MANUAL_TEST_NOTE.md](docs/MORNING_MANUAL_TEST_NOTE.md) as the checklist and capture template for the next pass.
 
-Use [docs/MORNING_MANUAL_TEST_NOTE.md](docs/MORNING_MANUAL_TEST_NOTE.md) as the checklist and capture template for that walkthrough.
-
-The first walkthrough pass has now been recorded here:
+The recorded walkthroughs now live here:
 
 - [docs/MANUAL_WALKTHROUGH_2026-06-28.md](docs/MANUAL_WALKTHROUGH_2026-06-28.md)
 - [docs/MANUAL_WALKTHROUGH_2026-06-30.md](docs/MANUAL_WALKTHROUGH_2026-06-30.md)
+- [docs/MANUAL_WALKTHROUGH_2026-07-09.md](docs/MANUAL_WALKTHROUGH_2026-07-09.md)
 
-The next morning retest should start from that record and confirm the import-to-archive-to-dataset handoff in a fresh Electron session.
+The next retest should start from the July 9 record and confirm that the Imports rerun-state polish removes the stale-finished-run feel without weakening the ordinary archive and dataset handoff.
 
 After another internal pass or two, the next best validation step is likely a small external-user walkthrough round so we can see where the product still feels too dense, too internal, or too easy to misread without prior context.
 

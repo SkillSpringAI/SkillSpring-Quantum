@@ -153,7 +153,7 @@ The July 6, 2026 end-of-day parser and retrieval trust pass also clarified the n
 
 - corpus-agnostic parser hardening is now far less dependent on maintainer-specific vocabulary
 - retrieval trust labeling now does a better job of explaining what matched, where the evidence came from, and which screen is the right next step
-- the next morning's queue should therefore begin with onboarding and walkthrough clarity, not another parser-first restart
+- the next morning's queue should therefore begin with the remaining rerun-trust polish and then continue into onboarding and walkthrough clarity, not another parser-first restart
 
 The July 8, 2026 heavy-import hardening pass clarified the next stop point again:
 
@@ -229,7 +229,7 @@ The next explicit UX continuation slices are:
 - keep smoothing visual density, hierarchy, and button emphasis across the general-user surface
 - keep fixing the remaining alignment, spacing, and "old operator screen" feel that still shows up once users start scrolling through loaded states
 - keep advanced assurance tools contextual and avoid making the ordinary flow feel like a product to be studied
-- run a full manual Electron walkthrough across Imports, Readable Archive, Datasets, Find Imports, and contextual diagnostics, documenting the interaction flow and friction points for the next UI/UX pass
+- use the current manual Electron walkthrough record to remove the stale-finished-run feel from early rerun states, then run the next full pass across Imports, Readable Archive, Datasets, Find Imports, and contextual diagnostics
 - after the next internal stabilization pass, run a small outside test-user walkthrough round so the next UX decisions are based on fresh-user behavior instead of maintainer familiarity
 
 The highest-value next slices toward that beta goal are:

@@ -8,6 +8,7 @@ ui/app/dist/
 organized_output/
 organized_output_*/
 manual_test_output/
+manual_test_output_*/
 /data/
 /db/
 Exports/

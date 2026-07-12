@@ -8,6 +8,20 @@ It is intentionally lightweight.
 - it does not try to list every internal edit
 - it is meant to complement the deeper roadmap and walkthrough notes under `docs/`
 
+## 2026-07-12
+
+### Added
+
+- comprehensive README rewrite reflecting the actual July 2026 product shape and capabilities
+- new `docs/NEXT_FIVE_SLICES_2026-07-12.md` with updated priority sequence after full-repo verification
+- `manual_test_output_*/` pattern to `.gitignore` to cover dated manual test directories
+
+### Changed
+
+- README now accurately documents the settings output root persistence, archive filtering, attachment visibility, auto-select behaviors, and review queue empty states that were already implemented in the July 9 commit
+- next-slice priority order updated to reflect that settings, filtering, attachment surfacing, auto-select, and review queue states are verified complete
+- priority shifted forward from "repair the shell" to "prepare for outside beta" framing
+
 ## 2026-07-09
 
 ### Added

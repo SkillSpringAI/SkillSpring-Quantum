@@ -2,6 +2,7 @@ import type {
   DesktopCommandName,
   DesktopCommandResponse,
   ImportPathPayload,
+  StopImportPayload,
   GovernanceListRulesPayload,
   GovernanceReadRulePayload,
   GovernanceWriteRulePayload,
@@ -116,6 +117,10 @@ export async function executeMockDesktopCommand(
       case "imports.run": {
         const p = payload as ImportPathPayload;
         return fromBridge(await bridge.imports.runSource(p.inputPath, p.outputRoot));
+      }
+      case "imports.stop": {
+        const p = payload as StopImportPayload;
+        return fromBridge(await bridge.imports.stopSource(p.reason));
       }
       case "imports.history": {
         const p = payload as ImportHistoryPayload;
@@ -354,6 +359,14 @@ export async function executeMockDesktopCommand(
         results: [],
         retrievalSummary: null
       }, "Mock import run accepted.");
+    }
+
+    case "imports.stop": {
+      const p = payload as StopImportPayload;
+      return ok(command, {
+        stopped: true,
+        reason: p.reason ?? "User requested stop."
+      }, "Mock import stop accepted.");
     }
 
     case "imports.history": {

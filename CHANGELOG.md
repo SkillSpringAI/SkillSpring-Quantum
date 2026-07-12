@@ -14,6 +14,8 @@ It is intentionally lightweight.
 
 - comprehensive README rewrite reflecting the actual July 2026 product shape and capabilities
 - new `docs/NEXT_FIVE_SLICES_2026-07-12.md` with updated priority sequence after full-repo verification
+- new `docs/MANUAL_WALKTHROUGH_2026-07-12.md` capturing the unchanged-rerun trust result on a real large ChatGPT export
+- new `docs/MANUAL_TEST_SCRIPT_2026-07-12.md` for the full Slice 3 Electron retest across Imports, import history, archive, datasets, retrieval, and return-to-Imports continuity
 - `manual_test_output_*/` pattern to `.gitignore` to cover dated manual test directories
 
 ### Changed
@@ -21,6 +23,9 @@ It is intentionally lightweight.
 - README now accurately documents the settings output root persistence, archive filtering, attachment visibility, auto-select behaviors, and review queue empty states that were already implemented in the July 9 commit
 - next-slice priority order updated to reflect that settings, filtering, attachment surfacing, auto-select, and review queue states are verified complete
 - priority shifted forward from "repair the shell" to "prepare for outside beta" framing
+- manual retest guidance now reflects that a full large ChatGPT import completed in roughly 90 minutes and an unchanged rerun completed in under 30 seconds through honest reuse
+- Imports now makes output-root scope more explicit so already-imported reuse is easier to understand when users switch local workspaces
+- active imports can now be force-stopped from the Imports screen instead of only waiting for completion or failure
 
 ## 2026-07-09
 

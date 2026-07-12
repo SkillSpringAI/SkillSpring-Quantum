@@ -85,8 +85,16 @@ try {
     "Expected rerun progress to explicitly report completed-file reuse"
   );
   assert.ok(
+    rerunProgress.some((entry) => entry.processingState === "verifying_previous_output"),
+    "Expected rerun progress to explicitly report the preflight verification step before reuse planning"
+  );
+  assert.ok(
     rerunProgress.some((entry) => entry.message.includes("keeping the existing archive and dataset artifacts")),
     "Expected rerun progress wording to explain that existing outputs were safely reused"
+  );
+  assert.ok(
+    rerunProgress.some((entry) => entry.message.includes("ready to reuse")),
+    "Expected rerun planning progress to explain what work can be safely reused before the main import resumes"
   );
 
   const ledgerPath = path.join(outputRoot, "imports", "successful-source-ledger.json");
@@ -146,6 +154,36 @@ try {
   assert.ok(
     rerunAfterValidationMismatchProgress.some((entry) => entry.processingState === "processing_new_file"),
     "Expected invalidated rerun progress to fall back to explicit new-file processing"
+  );
+
+  await tamperReuseValidation(ledgerPath, (value) => {
+    for (const record of value.records ?? []) {
+      delete record.reuseValidation;
+    }
+  });
+  await tamperReuseValidation(latestRunPath, (value) => {
+    for (const result of value.results ?? []) {
+      delete result.reuseValidation;
+    }
+  });
+  for (const historyFile of historyFiles) {
+    await tamperReuseValidation(historyFile, (value) => {
+      for (const result of value.results ?? []) {
+        delete result.reuseValidation;
+      }
+    });
+  }
+
+  const rerunWithLegacyValidationRecords = await runImportSource(exportFolder, outputRoot);
+  assert.equal(
+    rerunWithLegacyValidationRecords.filesImported,
+    2,
+    "Expected legacy records without reuse validation metadata to degrade safely and force reimport"
+  );
+  assert.equal(
+    rerunWithLegacyValidationRecords.results.filter((entry) => entry.message.includes("already imported successfully")).length,
+    0,
+    "Expected legacy records without reuse validation metadata not to be trusted as reusable imports"
   );
 
   await fs.rm(ledgerPath, { force: true });

@@ -49,6 +49,59 @@ try {
   assert.equal(summary.vendorSummaries[0]?.detectedFiles, 1);
   assert.equal(summary.vendorSummaries[0]?.companionFiles, 1);
 
+  const legacyHtmlExportFolder = path.join(tempRoot, "chatgpt-export-legacy-html");
+  await fs.mkdir(legacyHtmlExportFolder, { recursive: true });
+  await fs.writeFile(
+    path.join(legacyHtmlExportFolder, "chat.html"),
+    [
+      "<html>",
+      "<head><title>ChatGPT Data Export</title></head>",
+      "<body>",
+      "<script>",
+      "var jsonData = " + JSON.stringify([chatgptFixture]) + ";",
+      "</script>",
+      "</body>",
+      "</html>"
+    ].join(""),
+    "utf-8"
+  );
+  await fs.writeFile(
+    path.join(legacyHtmlExportFolder, "file_0001-image.png"),
+    "binary-placeholder",
+    "utf-8"
+  );
+  await fs.mkdir(path.join(legacyHtmlExportFolder, "69090dd7-6ba8-8322-886a-3c0dd3678e10"), { recursive: true });
+  await fs.writeFile(
+    path.join(legacyHtmlExportFolder, "69090dd7-6ba8-8322-886a-3c0dd3678e10", "metadata.json"),
+    JSON.stringify({ ok: true }, null, 2),
+    "utf-8"
+  );
+  await fs.mkdir(path.join(legacyHtmlExportFolder, "user-TJUulLqHTxSF4TxWDVZYgym4"), { recursive: true });
+  await fs.writeFile(
+    path.join(legacyHtmlExportFolder, "user-TJUulLqHTxSF4TxWDVZYgym4", "profile.png"),
+    "binary-placeholder",
+    "utf-8"
+  );
+
+  const legacyHtmlSummary = await inspectImportSource(legacyHtmlExportFolder);
+  assert.equal(
+    legacyHtmlSummary.totalFiles,
+    1,
+    "Expected legacy ChatGPT HTML package inspection to stay focused on chat.html instead of every attachment and nested folder file"
+  );
+  assert.equal(
+    legacyHtmlSummary.supportedFiles,
+    1,
+    "Expected legacy ChatGPT HTML package to keep chat.html as the single importable entry"
+  );
+  assert.ok(
+    legacyHtmlSummary.notes.some((note) => note.includes("chat bundle directly instead of flooding review")),
+    "Expected legacy ChatGPT HTML package note to explain the attachment-sparing import path"
+  );
+  assert.equal(legacyHtmlSummary.vendorSummaries[0]?.vendor, "chatgpt");
+  assert.equal(legacyHtmlSummary.vendorSummaries[0]?.detectedFiles, 1);
+  assert.equal(legacyHtmlSummary.vendorSummaries[0]?.companionFiles, 0);
+
   const shardedExportFolder = path.join(tempRoot, "chatgpt-export-sharded");
   await fs.mkdir(shardedExportFolder, { recursive: true });
   await fs.writeFile(

@@ -57,6 +57,7 @@ export interface ImportSourceSummary {
 export interface ImportRunResult {
   ok: boolean;
   message: string;
+  stopped?: boolean;
 }
 
 export interface ImportProgressUpdate {
@@ -74,10 +75,13 @@ export interface ImportProgressUpdate {
   elapsedMs: number;
   processingState?:
     | "preparing_files"
+    | "verifying_previous_output"
     | "processing_new_file"
     | "reusing_completed_file"
     | "retrying_failed_file"
     | "resuming_interrupted_shard"
+    | "writing_history"
+    | "writing_indexes"
     | "writing_outputs";
   reusedFiles?: number;
   retriedFiles?: number;

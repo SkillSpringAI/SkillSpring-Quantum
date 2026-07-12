@@ -14,10 +14,12 @@ interface ImportFormProps {
   onOutputRootChange: (nextOutputRoot: string) => void;
   onRestoreLatestRun?: () => void;
   onSubmit: () => void;
+  onStopImport?: () => void;
   onBrowseSource: () => void;
   onBrowseOutput: () => void;
   onInspectSource: () => void;
   disabled?: boolean;
+  isRunning?: boolean;
 }
 
 export default function ImportForm(props: ImportFormProps) {
@@ -165,6 +167,9 @@ export default function ImportForm(props: ImportFormProps) {
           </button>
           </div>
         </label>
+      <p className="muted">
+        Import history, reuse checks, and already-imported acknowledgement follow this output root. If you switch folders, Quantum treats that as a different local workspace until it has its own import history.
+      </p>
 
       <div className="detail-box follow-up-card">
         <strong>3. Check first, then import from the same path</strong>
@@ -190,6 +195,15 @@ export default function ImportForm(props: ImportFormProps) {
         >
           Run Import
         </button>
+        {props.isRunning && props.onStopImport ? (
+          <button
+            className="secondary-btn"
+            type="button"
+            onClick={props.onStopImport}
+          >
+            Force Stop Import
+          </button>
+        ) : null}
       </div>
     </div>
   );

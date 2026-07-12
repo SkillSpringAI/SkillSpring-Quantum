@@ -21,6 +21,7 @@ import {
   chooseFolder,
   chooseImportFile,
   inspectSourcePath,
+  stopImportJob,
   subscribeToImportProgress,
   submitImportJob,
   updateActiveImportPath
@@ -334,6 +335,8 @@ function formatProgressStateLabel(update: ImportProgressUpdate): string {
   switch (update.processingState) {
     case "preparing_files":
       return "preparing";
+    case "verifying_previous_output":
+      return "verifying previous output";
     case "processing_new_file":
       return "processing new file";
     case "reusing_completed_file":
@@ -342,10 +345,39 @@ function formatProgressStateLabel(update: ImportProgressUpdate): string {
       return "retrying failed file";
     case "resuming_interrupted_shard":
       return "resuming from checkpoint";
+    case "writing_history":
+      return "writing import history";
+    case "writing_indexes":
+      return "updating indexes";
     case "writing_outputs":
       return "writing outputs";
     default:
       return update.stage.replace(/_/g, " ");
+  }
+}
+
+function buildRunningExpectation(update: ImportProgressUpdate): string | null {
+  switch (update.processingState) {
+    case "verifying_previous_output":
+      return "ETA unknown while Quantum checks what can be safely reused, retried, or resumed before the heavy work starts.";
+    case "processing_new_file":
+      return update.currentKind === "chatgpt_export" || update.currentKind === "conversation_json" || update.currentKind === "gemini_activity_html"
+        ? "Large conversation files can stay on one step for a while. Elapsed time is more trustworthy here than a guessed finish time."
+        : "Quantum is doing fresh work on this file now.";
+    case "retrying_failed_file":
+      return "This can be the longest step on a heavy rerun. Exact ETA is unknown, but previously preserved output stays intact while Quantum retries the remaining file.";
+    case "resuming_interrupted_shard":
+      return "Checkpointed conversations are already preserved. Quantum is only finishing the remaining shard work, so elapsed time matters more than any guessed ETA.";
+    case "reusing_completed_file":
+      return "This part should move faster than a cold import because Quantum already verified the preserved output.";
+    case "writing_history":
+      return "Main file processing is done. Quantum is recording this run so the preserved and newly written output can be traced later.";
+    case "writing_indexes":
+      return "Main file processing is done. Quantum is refreshing the indexes that make the latest archive and dataset output discoverable.";
+    case "writing_outputs":
+      return "Quantum is finalizing output for this run now.";
+    default:
+      return null;
   }
 }
 
@@ -397,6 +429,11 @@ function buildRunningStatusDetail(
     parts.push(update.currentPath.split(/[\\/]/).pop() ?? update.currentPath);
   }
 
+  const expectation = buildRunningExpectation(update);
+  if (expectation) {
+    parts.push(expectation);
+  }
+
   return parts.join(" | ");
 }
 
@@ -425,6 +462,12 @@ function buildRunningNextStepSummary(update: ImportProgressUpdate): string {
       return "Quantum is retrying previously failing work now. Let this finish before deciding whether diagnostics are still needed.";
     case "resuming_interrupted_shard":
       return "Quantum is resuming an interrupted shard from the last safe checkpoint instead of starting the whole file over again.";
+    case "verifying_previous_output":
+      return "Quantum is checking prior output now so it can explain what will be safely reused, resumed, retried, or processed fresh.";
+    case "writing_history":
+      return "Quantum has finished the main import work and is writing the run history that explains what was reused and what was newly processed.";
+    case "writing_indexes":
+      return "Quantum has finished the main import work and is refreshing the indexes that connect the latest archive and dataset output to the rest of the app.";
     case "writing_outputs":
       return "Quantum has finished the main import work and is writing the updated archive, dataset, and related output files now.";
     case "processing_new_file":
@@ -609,6 +652,17 @@ export default function ImportsScreen() {
     updateSettings({ outputRoot: form.outputRoot });
     const result = await submitImportJob(form);
 
+    if (result.stopped) {
+      setRunState("idle");
+      setImportProgress(null);
+      setStatusMessage(result.message);
+      setLogEntries((prev) => [
+        makeLogEntry("warning", result.message),
+        ...prev
+      ]);
+      return;
+    }
+
     if (result.ok) {
       const refreshedHistory = await refreshImportHistory();
       setRunState("success");
@@ -628,6 +682,17 @@ export default function ImportsScreen() {
     setStatusMessage(result.message);
     setLogEntries((prev) => [
       makeLogEntry("error", result.message),
+      ...prev
+    ]);
+  }
+
+  async function handleStopImport() {
+    const result = await stopImportJob();
+    setImportProgress(null);
+    setRunState("idle");
+    setStatusMessage(result.message);
+    setLogEntries((prev) => [
+      makeLogEntry(result.ok ? "warning" : "error", result.message),
       ...prev
     ]);
   }
@@ -828,10 +893,12 @@ export default function ImportsScreen() {
         onOutputRootChange={handleOutputRootChange}
         onRestoreLatestRun={latestRunForNextSteps ? restoreLatestRunContext : undefined}
         onSubmit={handleSubmit}
+        onStopImport={handleStopImport}
         onBrowseSource={handleBrowseSource}
         onBrowseOutput={handleBrowseOutput}
         onInspectSource={() => refreshSourceSummary()}
         disabled={runState === "running"}
+        isRunning={runState === "running"}
       />
 
       <RunStatusPanel
@@ -907,6 +974,11 @@ export default function ImportsScreen() {
             {runState !== "running" && hasDatasetOutputs ? (
               <button className="primary-btn" type="button" onClick={() => setActiveScreen("datasets")}>
                 {runNeedsDiagnostics ? "Open Partial Dataset View" : "Open Dataset View"}
+              </button>
+            ) : null}
+            {runState === "running" ? (
+              <button className="secondary-btn" type="button" onClick={handleStopImport}>
+                Force Stop Import
               </button>
             ) : null}
             {runState === "running" ? (

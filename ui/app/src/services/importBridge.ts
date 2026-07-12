@@ -1,5 +1,5 @@
 import type { ImportJobForm, ImportRunResult, ImportSourceSummary, ImportProgressUpdate } from "../types/imports";
-import { inspectImportPath, pickDesktopFile, pickDesktopFolder, runImportPath, subscribeImportProgress } from "./desktopBridge";
+import { inspectImportPath, pickDesktopFile, pickDesktopFolder, runImportPath, stopImportPath, subscribeImportProgress } from "./desktopBridge";
 
 interface PickResult {
   canceled?: boolean;
@@ -22,13 +22,33 @@ export async function submitImportJob(
   if (!response.ok) {
     return {
       ok: false,
-      message: response.error
+      message: response.error,
+      stopped: /force-stopped|stopped by request/i.test(response.error)
     };
   }
 
   return {
     ok: true,
     message: response.message ?? "Import submitted."
+  };
+}
+
+export async function stopImportJob(): Promise<ImportRunResult> {
+  const response = await stopImportPath({
+    reason: "Stopped by request from the Imports screen."
+  });
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      message: response.error
+    };
+  }
+
+  return {
+    ok: true,
+    message: response.message ?? "Import stop requested.",
+    stopped: true
   };
 }
 

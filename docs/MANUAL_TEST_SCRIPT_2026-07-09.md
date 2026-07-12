@@ -58,6 +58,28 @@ Suggested options:
 - a previously used manual-test root where rerun reuse can be observed clearly
 - a fixture-backed vendor folder only if the goal is limited to navigation and handoff validation
 
+Known current datapoint:
+
+- at least one real large ChatGPT export has now completed fully in roughly 90 minutes
+- treat that as a real baseline during this retest rather than assuming the current heavy path is broken just because it is long
+- if the same class of import still takes a similar duration, evaluate whether the app communicates that honestly enough to support recommendations such as evening or overnight imports
+
+## July 15 Expansion Targets
+
+When the next real-data round is available, extend this script with three explicit lanes:
+
+1. generic-user export lane
+   - a relatively ordinary export with casual questions, quick research, and light creativity
+   - use this to judge whether Quantum still feels understandable when the corpus is less technical and less study-heavy
+
+2. mixed-vendor folder lane
+   - a single folder containing real exports from multiple supported vendors
+   - use this to test vendor detection, companion-file discipline, and whether Quantum stays honest about what it will import versus skip
+
+3. family-consent lane
+   - only for exports that were shared with clear permission
+   - use this to test how ordinary user conversation patterns affect topic labeling, archive readability, and retrieval usefulness
+
 ## What We Are Testing For
 
 This pass is mainly checking:
@@ -103,6 +125,7 @@ Look for:
   - writing outputs
 - does rerun reuse feel like a successful optimization instead of a silent skip?
 - does long-running heavy work still feel active even when no exact ETA is shown?
+- if the run is still long, does the screen make it clear that preserved shards or checkpointed work are already safe?
 
 Record:
 
@@ -113,6 +136,7 @@ Record:
 - rerun wording shown for unchanged files
 - any retry/resume wording that felt strong or weak
 - whether progress counted import-ready files honestly
+- if the run was heavy, roughly how long it stayed in the longest visible state and whether that still felt believable
 
 ### 2. Readable Archive
 
@@ -240,6 +264,7 @@ Today's pass is a success if:
 - the ordinary path works without needing advanced tools
 - rerun reuse is visible and feels intentional
 - retry versus resume wording feels honest enough to trust
+- long heavy work can remain slow without feeling abandoned or misleading
 - Imports -> Archive -> Datasets -> Find Imports still feels connected
 - remaining issues are mostly polish or copy issues rather than flow-break issues
 

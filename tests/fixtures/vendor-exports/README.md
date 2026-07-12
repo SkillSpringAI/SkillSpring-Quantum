@@ -40,6 +40,32 @@ The current curated examples already follow that model:
 - `sample-grok-export.json`
 - generic conversation shape samples
 
+## Versioned Vendor Fixture Recommendation
+
+When a vendor export format changes over time, avoid treating one fixture as if it represents every historical package shape.
+
+Prefer versioned or date-labeled local staging folders such as:
+
+- `tests/fixtures/vendor-exports/chatgpt/2026-03-13/`
+- `tests/fixtures/vendor-exports/chatgpt/2026-07-large-sharded/`
+- `tests/fixtures/vendor-exports/gemini/2026-07-my-activity/`
+
+Then promote only the smallest safe representative samples into tracked fixtures under `tests/fixtures/`, using names that preserve the shape distinction when it matters.
+
+Examples:
+
+- `sample-chatgpt-conversation-2026-03.json`
+- `sample-chatgpt-export-manifest-sharded.json`
+- `sample-chatgpt-chat-html-legacy.html`
+
+This matters because Quantum's import logic can depend on:
+
+- exact package filenames such as `chat.html` or `export_manifest.json`
+- shard naming conventions such as `conversations-000.json`
+- embedded HTML markers such as `var jsonData =`
+
+If the vendor changes those conventions, one generic fixture can give false confidence.
+
 ## Useful Inspection Command
 
 ```powershell

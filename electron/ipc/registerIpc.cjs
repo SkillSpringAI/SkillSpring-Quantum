@@ -40,6 +40,7 @@ let agentStartPromise = null;
 let agentPort = AGENT_DEFAULT_PORT;
 let agentOutputRoot = "organized_output";
 let ollamaStartPromise = null;
+let activeImportRun = null;
 
 function agentScriptPath(root) {
   return path.join(root, "skillspring-quantum-agent", "agent", "main.ts");
@@ -69,6 +70,17 @@ async function runImportTsxWithProgress(webContents, inputPath, outputRoot) {
   const fullScriptPath = path.join(root, "core", "imports", "runImportSource.ts");
 
   return await new Promise((resolve) => {
+    if (activeImportRun?.child && !activeImportRun.child.killed) {
+      resolve({
+        ok: false,
+        code: -1,
+        stdout: "",
+        stderr: "Another import is already running. Force-stop it before starting a different import.",
+        json: null
+      });
+      return;
+    }
+
     const child = spawn(
       nodeCommand(),
       tsxNodeArgs(
@@ -84,6 +96,15 @@ async function runImportTsxWithProgress(webContents, inputPath, outputRoot) {
         windowsHide: true
       }
     );
+
+    const importRunState = {
+      child,
+      webContents,
+      inputPath,
+      outputRoot,
+      stoppedByUser: false
+    };
+    activeImportRun = importRunState;
 
     let stdout = "";
     let stderr = "";
@@ -116,6 +137,9 @@ async function runImportTsxWithProgress(webContents, inputPath, outputRoot) {
     });
 
     child.on("error", (error) => {
+      if (activeImportRun?.child === child) {
+        activeImportRun = null;
+      }
       resolve({
         ok: false,
         code: -1,
@@ -126,16 +150,23 @@ async function runImportTsxWithProgress(webContents, inputPath, outputRoot) {
     });
 
     child.on("close", (code) => {
+      if (activeImportRun?.child === child) {
+        activeImportRun = null;
+      }
+
+      const stoppedByUser = importRunState.stoppedByUser;
       const cleanedStdout = stdout
         .split(/\r?\n/)
         .filter((line) => line && !line.startsWith("__SSQ_PROGRESS__"))
         .join("\n");
 
       resolve({
-        ok: code === 0,
+        ok: code === 0 && !stoppedByUser,
         code,
         stdout: cleanedStdout,
-        stderr,
+        stderr: stoppedByUser
+          ? "Import force-stopped by request from the Imports screen."
+          : stderr,
         json: readJsonOutput(cleanedStdout)
       });
     });
@@ -165,6 +196,16 @@ function fail(result, fallback) {
 
 function formatImportFailure(result, fallback) {
   const stderr = result.stderr || "";
+  if (/force-stopped by request|stopped by request/i.test(stderr)) {
+    return {
+      ok: false,
+      error:
+        "Import force-stopped by request. Quantum stopped the active import before it finished, so this run should not be treated as completed output.",
+      stdout: result.stdout,
+      stderr: result.stderr,
+      code: result.code
+    };
+  }
   if (/heap out of memory|allocation failed - javascript heap out of memory/i.test(stderr)) {
     return {
       ok: false,
@@ -969,6 +1010,40 @@ function registerIpc() {
   ipcMain.handle("imports:run", async (event, payload) => {
     const result = await runImportTsxWithProgress(event.sender, payload.inputPath, payload.outputRoot || "organized_output");
     return result.ok ? ok(result, "Import source processed.") : formatImportFailure(result, "Failed to process import source.");
+  });
+
+  ipcMain.handle("imports:stop", async () => {
+    if (!activeImportRun?.child || activeImportRun.child.killed) {
+      return {
+        ok: false,
+        error: "No active import is running right now."
+      };
+    }
+
+    activeImportRun.stoppedByUser = true;
+    activeImportRun.webContents.send("imports:progress", {
+      stage: "processing_file",
+      message: "Force-stopping the active import now.",
+      percent: 0,
+      filesDiscovered: 0,
+      completedFiles: 0,
+      elapsedMs: 0,
+      processingState: "writing_history"
+    });
+
+    try {
+      activeImportRun.child.kill("SIGTERM");
+    } catch {
+      // Ignore kill errors and let the close handler settle the state.
+    }
+
+    return {
+      ok: true,
+      result: {
+        stopped: true
+      },
+      message: "Import stop requested. Quantum is stopping the active import now."
+    };
   });
 
   ipcMain.handle("imports:history", async (_event, payload = {}) => {

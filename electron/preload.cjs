@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld("skillspringDesktop", {
   imports: {
     inspectSource: (inputPath) => ipcRenderer.invoke("imports:inspect", { inputPath }),
     runSource: (inputPath, outputRoot) => ipcRenderer.invoke("imports:run", { inputPath, outputRoot }),
+    stopSource: (reason) => ipcRenderer.invoke("imports:stop", { reason }),
     onProgress: (listener) => {
       const handler = (_event, payload) => listener(payload);
       ipcRenderer.on("imports:progress", handler);

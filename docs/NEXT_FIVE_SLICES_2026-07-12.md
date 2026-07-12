@@ -167,6 +167,9 @@ Validate that the ordinary Quantum workflow communicates the hardened import beh
   - dataset handoff clarity
   - retrieval continuity from a real import
   - settings output root persistence works across screens
+- version-specific ChatGPT package behavior is written down when legacy html-heavy exports and newer sharded exports behave differently
+  - output-root-scoped reuse is explained clearly enough that changing local workspaces does not look like Quantum forgot earlier imports
+  - an active import can be force-stopped from Imports when the user realizes the wrong path or output root is in play
 
 ### Acceptance criteria
 

@@ -37,6 +37,11 @@ const TEXT_EXTENSIONS = new Set([
 const IMPORT_REUSE_CONFIG_HASH = sha256(JSON.stringify(programManifest));
 const IMPORT_REUSE_PROGRAM_VERSION = programManifest.program_version;
 const IMPORT_REUSE_PIPELINE_VERSION = programManifest.pipeline_version;
+const IMPORT_REUSE_PARSER_SIGNATURE = [
+  programManifest.segmentation_version,
+  programManifest.topic_rules_version,
+  programManifest.redaction_version
+].join("|");
 const CONVERSATION_OUTPUT_SCHEMA_VERSION = programManifest.dataset_version;
 const DOCUMENT_OUTPUT_SCHEMA_VERSION = "source_document.v1";
 
@@ -138,10 +143,13 @@ export interface ImportProgressUpdate {
   elapsedMs: number;
   processingState?:
     | "preparing_files"
+    | "verifying_previous_output"
     | "processing_new_file"
     | "reusing_completed_file"
     | "retrying_failed_file"
     | "resuming_interrupted_shard"
+    | "writing_history"
+    | "writing_indexes"
     | "writing_outputs";
   reusedFiles?: number;
   retriedFiles?: number;
@@ -215,6 +223,7 @@ export interface ReuseValidationRecord {
   sourceContentHash: string;
   programVersion: string;
   pipelineVersion: string;
+  parserSignature: string;
   outputSchemaVersion: string;
   configHash: string;
 }
@@ -373,18 +382,43 @@ export async function runImportSource(
   const files = summary.inputType === "folder"
     ? (await resolveDirectoryImportFiles(summary.inputPath)).files
     : [summary.inputPath];
-  const preparedFiles = await prepareImportFilesForRun(files, successfulSourceLedger, latestRunPathRecords, runAt);
   onProgress?.({
     stage: "source_ready",
     message:
       summary.supportedFiles > 0
-        ? `Found ${summary.supportedFiles} supported file(s). Preparing the import now.`
+        ? `Found ${summary.supportedFiles} supported file(s). Verifying previous output and planning reuse before the main import begins.`
         : "No supported files were found in the selected path.",
+    percent: summary.supportedFiles > 0 ? 8 : 100,
+    filesDiscovered: summary.supportedFiles,
+    completedFiles: 0,
+    elapsedMs: getElapsedMs(progressStartedAtMs),
+    processingState: "verifying_previous_output",
+    reusedFiles,
+    retriedFiles
+  });
+  const preparedFiles = await prepareImportFilesForRun(files, successfulSourceLedger, latestRunPathRecords, runAt);
+  const plannedResumeFiles = await countPreparedResumeFiles(outputRoot, preparedFiles);
+  const plannedReuseFiles = preparedFiles.filter((file) => Boolean(file.previouslyImported)).length;
+  const plannedRetryFiles = preparedFiles.filter(
+    (file) => !file.previouslyImported && file.previousRunStatus === "failed"
+  ).length;
+  const plannedNewFiles = preparedFiles.filter(
+    (file) => !file.previouslyImported && file.previousRunStatus !== "failed"
+  ).length;
+  onProgress?.({
+    stage: "source_ready",
+    message: buildPreparedImportPlanMessage(
+      summary.supportedFiles,
+      plannedReuseFiles,
+      plannedResumeFiles,
+      plannedRetryFiles,
+      plannedNewFiles
+    ),
     percent: summary.supportedFiles > 0 ? 10 : 100,
     filesDiscovered: summary.supportedFiles,
     completedFiles: 0,
     elapsedMs: getElapsedMs(progressStartedAtMs),
-    processingState: "preparing_files",
+    processingState: "verifying_previous_output",
     reusedFiles,
     retriedFiles
   });
@@ -583,13 +617,13 @@ export async function runImportSource(
     stage: "writing_history",
     message:
       reusedFiles > 0
-        ? `Writing import history and output manifests. ${reusedFiles} file(s) were safely reused earlier in this run.`
-        : "Writing import history and output manifests.",
+        ? `Writing import history now. ${reusedFiles} file(s) were safely reused earlier in this run, so Quantum is preserving that output state while it finalizes this run record.`
+        : "Writing import history now.",
     percent: 92,
     filesDiscovered: summary.supportedFiles,
     completedFiles: completedSupportedFiles,
     elapsedMs: getElapsedMs(progressStartedAtMs),
-    processingState: "writing_outputs",
+    processingState: "writing_history",
     reusedFiles,
     retriedFiles
   });
@@ -634,12 +668,15 @@ export async function runImportSource(
   const dbRoot = path.join(outputRoot, "db");
   onProgress?.({
     stage: "writing_indexes",
-    message: "Updating retrieval and DB summary indexes.",
+    message:
+      filesImported > 0
+        ? "Updating retrieval and DB summary indexes now so the latest archive and dataset outputs are discoverable."
+        : "Updating retrieval and DB summary indexes for the reused output state.",
     percent: 97,
     filesDiscovered: summary.supportedFiles,
     completedFiles: completedSupportedFiles,
     elapsedMs: getElapsedMs(progressStartedAtMs),
-    processingState: "writing_outputs",
+    processingState: "writing_indexes",
     reusedFiles,
     retriedFiles
   });
@@ -661,6 +698,48 @@ export async function runImportSource(
   });
 
   return result;
+}
+
+async function countPreparedResumeFiles(
+  outputRoot: string,
+  preparedFiles: PreparedImportFile[]
+): Promise<number> {
+  let resumeFiles = 0;
+
+  for (const file of preparedFiles) {
+    if (file.previouslyImported || file.previousRunStatus !== "failed") {
+      continue;
+    }
+
+    const resumeCheckpointCount = await loadResumeCheckpointCount(outputRoot, file.path);
+    if (resumeCheckpointCount > 0) {
+      resumeFiles += 1;
+    }
+  }
+
+  return resumeFiles;
+}
+
+function buildPreparedImportPlanMessage(
+  supportedFiles: number,
+  plannedReuseFiles: number,
+  plannedResumeFiles: number,
+  plannedRetryFiles: number,
+  plannedNewFiles: number
+): string {
+  if (supportedFiles === 0) {
+    return "No supported files were found in the selected path.";
+  }
+
+  const parts = [
+    `${supportedFiles} supported file(s) checked`,
+    plannedReuseFiles > 0 ? `${plannedReuseFiles} ready to reuse` : "",
+    plannedResumeFiles > 0 ? `${plannedResumeFiles} ready to resume` : "",
+    plannedRetryFiles > plannedResumeFiles ? `${plannedRetryFiles - plannedResumeFiles} full retry` : "",
+    plannedNewFiles > 0 ? `${plannedNewFiles} new work item(s)` : ""
+  ].filter(Boolean);
+
+  return `Import plan ready: ${parts.join(", ")}. Quantum will keep already preserved output and then continue with the remaining work.`;
 }
 
 async function getSourceFileIdentity(filePath: string): Promise<{
@@ -712,6 +791,7 @@ function buildReuseValidationRecord(
     sourceContentHash,
     programVersion: IMPORT_REUSE_PROGRAM_VERSION,
     pipelineVersion: IMPORT_REUSE_PIPELINE_VERSION,
+    parserSignature: IMPORT_REUSE_PARSER_SIGNATURE,
     outputSchemaVersion:
       kind === "json_document" || kind === "text_document" || kind === "pdf_document"
         ? DOCUMENT_OUTPUT_SCHEMA_VERSION
@@ -732,6 +812,7 @@ function isReuseValidationMatch(
     expected.sourceContentHash === actual.sourceContentHash &&
     expected.programVersion === actual.programVersion &&
     expected.pipelineVersion === actual.pipelineVersion &&
+    expected.parserSignature === actual.parserSignature &&
     expected.outputSchemaVersion === actual.outputSchemaVersion &&
     expected.configHash === actual.configHash
   );

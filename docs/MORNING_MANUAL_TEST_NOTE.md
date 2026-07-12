@@ -38,6 +38,13 @@ The next manual pass is no longer mainly asking whether the screens can load at 
 
 It is asking whether the hardened import behavior is visible, believable, and easy to follow in the real desktop workflow.
 
+It should also use the newly confirmed large-import baseline realistically:
+
+- a real large ChatGPT export has now completed end to end
+- that full run took roughly 90 minutes
+- even if the heaviest shard work cannot yet be reduced dramatically, that completion window is still useful product knowledge
+- if heavy imports remain long, Quantum should eventually guide users toward running them at calmer times such as evenings or overnight rather than pretending they are quick
+
 ## Run through these screens
 
 1. Imports
@@ -84,6 +91,7 @@ Also capture import-hardening specifics:
 - whether rerun reuse is acknowledged quickly enough to feel like a success rather than a mysterious skip
 - whether retry versus resume wording is obvious without reading carefully
 - whether long-running heavy work feels active enough when exact ETA is unknown
+- whether the UI communicates preserved work clearly enough that a 60-90 minute heavy import still feels trustworthy rather than frozen
 - whether archive and dataset handoff still feel grounded after a rerun path rather than only after a clean first import
 
 ## Deliverable
@@ -117,3 +125,20 @@ During the next manual pass, explicitly note:
 - whether a heavy failed shard shows clear enough retry state to feel trustworthy
 - whether interrupted heavy-shard retries resume materially deeper into the shard on the next attempt
 - whether elapsed-time wording is enough, or whether an evidence-backed duration range is now the next missing trust cue
+- whether the product should start offering time-of-day guidance for especially large imports if runtime remains in the rough 90-minute range
+
+## July 15 Preparation
+
+The next broader manual pass should explicitly include more ordinary and mixed export shapes, not only the maintainer's heaviest technical corpus.
+
+Prioritize:
+
+1. a relatively generic single-user export with normal consumer-style conversations
+2. a mixed-vendor folder containing real exports from more than one AI system
+3. if permission is granted, a small set of real family-member exports that reflect casual use such as quick research, everyday questions, and creativity
+
+That July 15 pass should help answer:
+
+- whether Quantum still detects vendor shape cleanly when multiple export families share one folder
+- whether normal-user conversations produce understandable topic and retrieval output without technical bias
+- whether the product remains trustworthy when the corpus contains shorter, lighter, more casual threads rather than work-heavy deep-study material

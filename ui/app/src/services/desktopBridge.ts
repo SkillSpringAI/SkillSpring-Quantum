@@ -3,6 +3,7 @@ import type {
   DesktopCommandResponse,
   DesktopCommandName,
   ImportPathPayload,
+  StopImportPayload,
   ReviewDecisionPayload,
   RunFilePayload,
   BatchRunPayload,
@@ -164,6 +165,15 @@ export async function runImportPath(
 ): Promise<DesktopCommandResponse> {
   return invokeDesktopCommand<ImportPathPayload, Record<string, unknown>>({
     command: "imports.run",
+    payload
+  });
+}
+
+export async function stopImportPath(
+  payload: StopImportPayload = {}
+): Promise<DesktopCommandResponse> {
+  return invokeDesktopCommand<StopImportPayload, Record<string, unknown>>({
+    command: "imports.stop",
     payload
   });
 }

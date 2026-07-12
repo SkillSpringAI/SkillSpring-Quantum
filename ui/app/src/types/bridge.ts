@@ -8,6 +8,7 @@ export type DesktopCommandName =
   | "agent.sessions.create"
   | "agent.index"
   | "imports.run"
+  | "imports.stop"
   | "imports.inspect"
   | "imports.history"
   | "imports.historyQuery"
@@ -78,6 +79,10 @@ export interface RunFilePayload {
 export interface ImportPathPayload {
   inputPath: string;
   outputRoot: string;
+}
+
+export interface StopImportPayload {
+  reason?: string;
 }
 
 export interface BatchRunPayload {

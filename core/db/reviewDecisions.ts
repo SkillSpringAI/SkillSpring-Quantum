@@ -1,6 +1,8 @@
 import path from "node:path";
 import { loadReviewDecisionRules } from "../governance/loadRules.js";
 import { ensureDir, fileExists, writeTextFile } from "../utils/fs.js";
+import { readJsonlFileWithRecovery, writeJsonlRecoveryDiagnostic } from "./jsonlRecovery.js";
+import { topicSegmentIdentityKey } from "./topicSegmentIdentity.js";
 import { writeTierRecords } from "./tieredStore.js";
 
 interface TopicSegmentRecord {
@@ -35,21 +37,8 @@ interface ReviewDecisionManifest {
   operator_reason: string;
 }
 
-function parseJsonlLines(raw: string): TopicSegmentRecord[] {
-  return raw
-    .split(/\r?\n/)
-    .map(line => line.trim())
-    .filter(Boolean)
-    .map(line => JSON.parse(line) as TopicSegmentRecord);
-}
-
 function recordKey(record: TopicSegmentRecord): string {
-  return [
-    record.conversation_id,
-    record.topic,
-    record.start_index,
-    record.end_index
-  ].join("|");
+  return topicSegmentIdentityKey(record);
 }
 
 async function overwriteJsonl(filePath: string, records: TopicSegmentRecord[]): Promise<void> {
@@ -118,9 +107,22 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const fs = await import("node:fs/promises");
-  const raw = await fs.readFile(queueFile, "utf-8");
-  const queueRecords = parseJsonlLines(raw);
+  const recovered = await readJsonlFileWithRecovery<TopicSegmentRecord>(queueFile);
+  if (recovered.malformedLines.length > 0) {
+    const diagnosticPath = await writeJsonlRecoveryDiagnostic(
+      dbRoot,
+      "review-decision-jsonl-blocked",
+      queueFile,
+      recovered.malformedLines
+    );
+    console.error(
+      "Review decision blocked because the review queue contains malformed JSONL lines. See diagnostic:",
+      diagnosticPath
+    );
+    process.exit(1);
+  }
+
+  const queueRecords = recovered.records;
 
   const matched = queueRecords.filter(r => recordKey(r) === queueKey);
   if (matched.length === 0) {

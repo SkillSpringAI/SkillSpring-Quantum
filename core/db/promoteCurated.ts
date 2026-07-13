@@ -1,6 +1,8 @@
 import path from "node:path";
 import { loadCurationRules } from "../governance/loadRules.js";
 import { ensureDir, fileExists, writeTextFile } from "../utils/fs.js";
+import { readJsonlFileWithRecovery, writeJsonlRecoveryDiagnostic } from "./jsonlRecovery.js";
+import { topicSegmentIdentityKey } from "./topicSegmentIdentity.js";
 import { writeTierRecords } from "./tieredStore.js";
 
 interface TopicSegmentRecord {
@@ -32,14 +34,9 @@ interface PromotionManifest {
   candidates_rejected: number;
   candidates_skipped_as_duplicates: number;
   rejection_reasons: Record<string, number>;
-}
-
-function parseJsonlLines(raw: string): TopicSegmentRecord[] {
-  return raw
-    .split(/\r?\n/)
-    .map(line => line.trim())
-    .filter(Boolean)
-    .map(line => JSON.parse(line) as TopicSegmentRecord);
+  parse_status?: "clean" | "partial_with_quarantine";
+  malformed_lines?: number;
+  diagnostic_file?: string;
 }
 
 function uniqueByKey(records: TopicSegmentRecord[]): TopicSegmentRecord[] {
@@ -47,13 +44,7 @@ function uniqueByKey(records: TopicSegmentRecord[]): TopicSegmentRecord[] {
   const output: TopicSegmentRecord[] = [];
 
   for (const record of records) {
-    const key = [
-      record.conversation_id,
-      record.topic,
-      record.start_index,
-      record.end_index,
-      record.text
-    ].join("||");
+    const key = topicSegmentIdentityKey(record);
 
     if (seen.has(key)) continue;
     seen.add(key);
@@ -86,9 +77,17 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const fs = await import("node:fs/promises");
-  const raw = await fs.readFile(sourceFile, "utf-8");
-  const sourceRecords = uniqueByKey(parseJsonlLines(raw));
+  const recovered = await readJsonlFileWithRecovery<TopicSegmentRecord>(sourceFile);
+  const sourceRecords = uniqueByKey(recovered.records);
+  const diagnosticPath =
+    recovered.malformedLines.length > 0
+      ? await writeJsonlRecoveryDiagnostic(
+          dbRoot,
+          "promotion-jsonl-recovery",
+          sourceFile,
+          recovered.malformedLines
+        )
+      : undefined;
 
   const promoted: TopicSegmentRecord[] = [];
   const rejectionReasons: Record<string, number> = {};
@@ -140,7 +139,10 @@ async function main(): Promise<void> {
     candidates_promoted: dbWrite.recordsWritten,
     candidates_rejected: sourceRecords.length - uniquePromoted.length,
     candidates_skipped_as_duplicates: dbWrite.recordsSkipped,
-    rejection_reasons: rejectionReasons
+    rejection_reasons: rejectionReasons,
+    parse_status: recovered.malformedLines.length > 0 ? "partial_with_quarantine" : "clean",
+    malformed_lines: recovered.malformedLines.length || undefined,
+    diagnostic_file: diagnosticPath
   };
 
   const manifestName = "curation-promotion-" + new Date().toISOString().replace(/[:.]/g, "-") + ".json";
@@ -160,6 +162,8 @@ async function main(): Promise<void> {
     candidatesPromoted: manifest.candidates_promoted,
     candidatesRejected: manifest.candidates_rejected,
     candidatesSkippedAsDuplicates: manifest.candidates_skipped_as_duplicates,
+    malformedLines: recovered.malformedLines.length,
+    diagnosticPath,
     manifestPath
   });
 }

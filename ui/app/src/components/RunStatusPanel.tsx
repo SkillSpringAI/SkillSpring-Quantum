@@ -6,6 +6,7 @@ interface RunStatusPanelProps {
   detail?: string;
   badges?: string[];
   className?: string;
+  lead?: string;
 }
 
 function formatRunStateLead(state: RunState): string {
@@ -46,7 +47,7 @@ export default function RunStatusPanel(props: RunStatusPanelProps) {
         <span className={"status-pill " + props.state}>{formatRunStateLabel(props.state)}</span>
       </div>
       <div className="detail-box status-summary-card">
-        <strong>{formatRunStateLead(props.state)}</strong>
+        <strong>{props.lead ?? formatRunStateLead(props.state)}</strong>
         <p className="muted">{props.message}</p>
         {props.detail ? <p className="muted">{props.detail}</p> : null}
         {props.badges && props.badges.length > 0 ? (

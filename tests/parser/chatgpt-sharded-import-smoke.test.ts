@@ -96,6 +96,10 @@ try {
     rerunProgress.some((entry) => entry.message.includes("ready to reuse")),
     "Expected rerun planning progress to explain what work can be safely reused before the main import resumes"
   );
+  assert.ok(
+    rerunProgress.every((entry) => !entry.message.includes("new work item(s)")),
+    "Expected package companion files not to inflate rerun planning as new work"
+  );
 
   const ledgerPath = path.join(outputRoot, "imports", "successful-source-ledger.json");
   const latestRunPath = path.join(outputRoot, "imports", "latest-import-run.json");
@@ -152,8 +156,12 @@ try {
     "Expected stale reuse validation metadata not to report already-imported reuse"
   );
   assert.ok(
-    rerunAfterValidationMismatchProgress.some((entry) => entry.processingState === "processing_new_file"),
-    "Expected invalidated rerun progress to fall back to explicit new-file processing"
+    rerunAfterValidationMismatchProgress.some((entry) => entry.processingState === "revalidating_previous_file"),
+    "Expected invalidated rerun progress to explain that previous output is being revalidated before reuse can be trusted"
+  );
+  assert.ok(
+    rerunAfterValidationMismatchProgress.some((entry) => entry.message.includes("need reuse recheck")),
+    "Expected invalidated rerun planning progress to distinguish reuse rechecks from generic new work"
   );
 
   await tamperReuseValidation(ledgerPath, (value) => {

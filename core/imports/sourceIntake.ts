@@ -145,6 +145,7 @@ export interface ImportProgressUpdate {
     | "preparing_files"
     | "verifying_previous_output"
     | "processing_new_file"
+    | "revalidating_previous_file"
     | "reusing_completed_file"
     | "retrying_failed_file"
     | "resuming_interrupted_shard"
@@ -208,8 +209,18 @@ interface PreparedImportFile {
   sourceId: string;
   sourceContentHash?: string;
   previouslyImported?: SuccessfulSourceLedgerRecord;
+  requiresRevalidation?: boolean;
   previousRunStatus?: ImportRunFileResult["status"];
   previousRunMetadata?: ImportFileMetadata;
+}
+
+interface PreparedImportPlan {
+  supportedFiles: number;
+  reuseFiles: number;
+  revalidationFiles: number;
+  resumeFiles: number;
+  retryFiles: number;
+  newFiles: number;
 }
 
 interface LatestImportRunPathRecord {
@@ -382,6 +393,9 @@ export async function runImportSource(
   const files = summary.inputType === "folder"
     ? (await resolveDirectoryImportFiles(summary.inputPath)).files
     : [summary.inputPath];
+  const packageCompanionReasons = summary.inputType === "folder"
+    ? await buildVendorPackageCompanionReasons(files)
+    : new Map<string, string>();
   onProgress?.({
     stage: "source_ready",
     message:
@@ -397,22 +411,15 @@ export async function runImportSource(
     retriedFiles
   });
   const preparedFiles = await prepareImportFilesForRun(files, successfulSourceLedger, latestRunPathRecords, runAt);
-  const plannedResumeFiles = await countPreparedResumeFiles(outputRoot, preparedFiles);
-  const plannedReuseFiles = preparedFiles.filter((file) => Boolean(file.previouslyImported)).length;
-  const plannedRetryFiles = preparedFiles.filter(
-    (file) => !file.previouslyImported && file.previousRunStatus === "failed"
-  ).length;
-  const plannedNewFiles = preparedFiles.filter(
-    (file) => !file.previouslyImported && file.previousRunStatus !== "failed"
-  ).length;
+  const preparedPlan = await summarizePreparedImportPlan(
+    outputRoot,
+    preparedFiles,
+    packageCompanionReasons
+  );
   onProgress?.({
     stage: "source_ready",
     message: buildPreparedImportPlanMessage(
-      summary.supportedFiles,
-      plannedReuseFiles,
-      plannedResumeFiles,
-      plannedRetryFiles,
-      plannedNewFiles
+      preparedPlan
     ),
     percent: summary.supportedFiles > 0 ? 10 : 100,
     filesDiscovered: summary.supportedFiles,
@@ -422,9 +429,6 @@ export async function runImportSource(
     reusedFiles,
     retriedFiles
   });
-  const packageCompanionReasons = summary.inputType === "folder"
-    ? await buildVendorPackageCompanionReasons(files)
-    : new Map<string, string>();
 
   for (const [index, preparedFile] of preparedFiles.entries()) {
     const filePath = preparedFile.path;
@@ -453,6 +457,8 @@ export async function runImportSource(
     const processingState =
       preparedFile.previouslyImported
         ? "reusing_completed_file"
+        : preparedFile.requiresRevalidation
+          ? "revalidating_previous_file"
         : preparedFile.previousRunStatus === "failed"
           ? resumeCheckpointCount > 0
             ? "resuming_interrupted_shard"
@@ -461,6 +467,8 @@ export async function runImportSource(
     const progressMessage =
       processingState === "reusing_completed_file"
         ? `Reusing completed file ${completedSupportedFiles + 1} of ${summary.supportedFiles}: ${path.basename(filePath)}. Quantum verified the previous output and is keeping the existing archive and dataset artifacts.`
+        : processingState === "revalidating_previous_file"
+          ? `Revalidating previously imported file ${completedSupportedFiles + 1} of ${summary.supportedFiles}: ${path.basename(filePath)}. Quantum found older output here, but it needs to refresh verification before it can trust reuse on this run.`
         : processingState === "resuming_interrupted_shard"
           ? `Resuming interrupted shard ${completedSupportedFiles + 1} of ${summary.supportedFiles}: ${path.basename(filePath)}. ${resumeCheckpointCount} conversation(s) were already checkpointed safely.`
           : processingState === "retrying_failed_file"
@@ -720,23 +728,74 @@ async function countPreparedResumeFiles(
   return resumeFiles;
 }
 
+async function summarizePreparedImportPlan(
+  outputRoot: string,
+  preparedFiles: PreparedImportFile[],
+  packageCompanionReasons: Map<string, string>
+): Promise<PreparedImportPlan> {
+  let supportedFiles = 0;
+  let reuseFiles = 0;
+  let revalidationFiles = 0;
+  let resumeFiles = 0;
+  let retryFiles = 0;
+  let newFiles = 0;
+
+  for (const file of preparedFiles) {
+    if (file.previouslyImported) {
+      supportedFiles += 1;
+      reuseFiles += 1;
+      continue;
+    }
+
+    const entry = await classifyImportFile(file.path, packageCompanionReasons);
+    if (!entry.supported) {
+      continue;
+    }
+
+    supportedFiles += 1;
+
+    if (file.requiresRevalidation) {
+      revalidationFiles += 1;
+      continue;
+    }
+
+    if (file.previousRunStatus === "failed") {
+      const resumeCheckpointCount = await loadResumeCheckpointCount(outputRoot, file.path);
+      if (resumeCheckpointCount > 0) {
+        resumeFiles += 1;
+      } else {
+        retryFiles += 1;
+      }
+      continue;
+    }
+
+    newFiles += 1;
+  }
+
+  return {
+    supportedFiles,
+    reuseFiles,
+    revalidationFiles,
+    resumeFiles,
+    retryFiles,
+    newFiles
+  };
+}
+
 function buildPreparedImportPlanMessage(
-  supportedFiles: number,
-  plannedReuseFiles: number,
-  plannedResumeFiles: number,
-  plannedRetryFiles: number,
-  plannedNewFiles: number
+  plan: PreparedImportPlan
 ): string {
-  if (supportedFiles === 0) {
+  if (plan.supportedFiles === 0) {
     return "No supported files were found in the selected path.";
   }
 
   const parts = [
-    `${supportedFiles} supported file(s) checked`,
-    plannedReuseFiles > 0 ? `${plannedReuseFiles} ready to reuse` : "",
-    plannedResumeFiles > 0 ? `${plannedResumeFiles} ready to resume` : "",
-    plannedRetryFiles > plannedResumeFiles ? `${plannedRetryFiles - plannedResumeFiles} full retry` : "",
-    plannedNewFiles > 0 ? `${plannedNewFiles} new work item(s)` : ""
+    `${plan.supportedFiles} supported file(s) checked`,
+    plan.reuseFiles > 0 ? `${plan.reuseFiles} ready to reuse` : "",
+    plan.revalidationFiles > 0 ? `${plan.revalidationFiles} need reuse recheck` : "",
+    plan.resumeFiles > 0 ? `${plan.resumeFiles} ready to resume` : "",
+    plan.retryFiles > 0 ? `${plan.retryFiles} full retry` : "",
+    plan.newFiles > 0 ? `${plan.newFiles} new work item(s)` : ""
   ].filter(Boolean);
 
   return `Import plan ready: ${parts.join(", ")}. Quantum will keep already preserved output and then continue with the remaining work.`;
@@ -911,6 +970,11 @@ async function prepareImportFilesForRun(
         sourceId: sourceIdentity.sourceId,
         sourceContentHash,
         previouslyImported: validatedLedgerRecord ?? historyRecoveredSuccess,
+        requiresRevalidation:
+          !validatedLedgerRecord &&
+          !historyRecoveredSuccess &&
+          Boolean(expectedReuseValidation) &&
+          Boolean(ledgerRecord || latestRunRecord?.status === "imported"),
         previousRunStatus: latestRunRecord?.status,
         previousRunMetadata: latestRunRecord?.metadata
       } satisfies PreparedImportFile;

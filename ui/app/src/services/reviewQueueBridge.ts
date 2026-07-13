@@ -3,6 +3,7 @@ import type {
   ReviewDecisionResult,
   ReviewQueueRecord
 } from "../types/review";
+import { topicSegmentIdentityKey } from "../../../../core/db/topicSegmentIdentity.js";
 import {
   buildReviewQueue,
   decideReviewQueueRecord,
@@ -48,12 +49,7 @@ export async function rebuildReviewQueue(outputRoot = "organized_output"): Promi
 }
 
 export function buildQueueKey(record: ReviewQueueRecord): string {
-  return [
-    record.conversation_id,
-    record.topic,
-    record.start_index,
-    record.end_index
-  ].join("|");
+  return topicSegmentIdentityKey(record);
 }
 
 export async function submitReviewDecision(

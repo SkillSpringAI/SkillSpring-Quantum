@@ -77,6 +77,7 @@ export interface ImportProgressUpdate {
     | "preparing_files"
     | "verifying_previous_output"
     | "processing_new_file"
+    | "revalidating_previous_file"
     | "reusing_completed_file"
     | "retrying_failed_file"
     | "resuming_interrupted_shard"

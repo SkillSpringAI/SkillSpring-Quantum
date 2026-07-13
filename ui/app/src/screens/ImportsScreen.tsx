@@ -44,6 +44,7 @@ import {
 } from "../utils/importTrust";
 
 const IMPORT_FORM_DRAFT_KEY = "skillspring-quantum-import-form-draft";
+const LEGACY_IMPORT_FORM_DRAFT_KEY = "skillspring-quantum-import-form-draft";
 
 function makeLogEntry(
   level: RunLogEntry["level"],
@@ -339,6 +340,8 @@ function formatProgressStateLabel(update: ImportProgressUpdate): string {
       return "verifying previous output";
     case "processing_new_file":
       return "processing new file";
+    case "revalidating_previous_file":
+      return "rechecking previous output";
     case "reusing_completed_file":
       return "reusing completed file";
     case "retrying_failed_file":
@@ -364,6 +367,8 @@ function buildRunningExpectation(update: ImportProgressUpdate): string | null {
       return update.currentKind === "chatgpt_export" || update.currentKind === "conversation_json" || update.currentKind === "gemini_activity_html"
         ? "Large conversation files can stay on one step for a while. Elapsed time is more trustworthy here than a guessed finish time."
         : "Quantum is doing fresh work on this file now.";
+    case "revalidating_previous_file":
+      return "Quantum found older output for this file, but it is refreshing verification before it trusts reuse on this run.";
     case "retrying_failed_file":
       return "This can be the longest step on a heavy rerun. Exact ETA is unknown, but previously preserved output stays intact while Quantum retries the remaining file.";
     case "resuming_interrupted_shard":
@@ -456,6 +461,8 @@ function buildRunningStatusBadges(
 
 function buildRunningNextStepSummary(update: ImportProgressUpdate): string {
   switch (update.processingState) {
+    case "revalidating_previous_file":
+      return "Quantum is refreshing trust on a previously imported file before it decides whether the old output can stand for this run.";
     case "reusing_completed_file":
       return "Quantum is reusing output it already verified for unchanged files, so this rerun should move faster than a cold import.";
     case "retrying_failed_file":
@@ -500,6 +507,7 @@ export default function ImportsScreen() {
   const [selectedRun, setSelectedRun] = useState<ImportRunSummary | null>(null);
   const [historyMode, setHistoryMode] = useState<"recent" | "query">("recent");
   const [historySearchBusy, setHistorySearchBusy] = useState(false);
+  const [interactionMode, setInteractionMode] = useState<"idle" | "checked" | "import_succeeded" | "import_failed">("idle");
 
   async function refreshArchiveNotifications() {
     const result = await loadArchiveNotifications(form.outputRoot, 5);
@@ -596,6 +604,7 @@ export default function ImportsScreen() {
       setSourceSummary(result);
 
       if (result) {
+        setInteractionMode("checked");
         if (!options?.preserveStatusMessage) {
           setStatusMessage("Source path checked.");
         }
@@ -653,6 +662,7 @@ export default function ImportsScreen() {
     const result = await submitImportJob(form);
 
     if (result.stopped) {
+      setInteractionMode(sourceSummary ? "checked" : "idle");
       setRunState("idle");
       setImportProgress(null);
       setStatusMessage(result.message);
@@ -665,6 +675,7 @@ export default function ImportsScreen() {
 
     if (result.ok) {
       const refreshedHistory = await refreshImportHistory();
+      setInteractionMode("import_succeeded");
       setRunState("success");
       setImportProgress(null);
       setStatusMessage(buildPostRunStatusMessage(refreshedHistory.latest, result.message));
@@ -677,6 +688,7 @@ export default function ImportsScreen() {
       return;
     }
 
+    setInteractionMode("import_failed");
     setRunState("failed");
     setImportProgress(null);
     setStatusMessage(result.message);
@@ -689,6 +701,7 @@ export default function ImportsScreen() {
   async function handleStopImport() {
     const result = await stopImportJob();
     setImportProgress(null);
+    setInteractionMode(sourceSummary ? "checked" : "idle");
     setRunState("idle");
     setStatusMessage(result.message);
     setLogEntries((prev) => [
@@ -718,6 +731,7 @@ export default function ImportsScreen() {
 
     setForm(buildFormFromLatestRun(form, latestRunForNextSteps));
     setSourceSummary(null);
+    setInteractionMode("idle");
     setStatusMessage("Latest import path restored. Re-check it if you want to confirm the export again before rerunning.");
     setLogEntries((prev) => [
       makeLogEntry("info", "Restored the latest import path into Start Here."),
@@ -768,19 +782,57 @@ export default function ImportsScreen() {
   const validationCard = buildValidationCard(sourceSummary, form.expectedVendor);
   const showSourceResults = sourceSummary !== null;
   const showFirstUseResultsPlaceholder = !showSourceResults && !showHistoryPanel && !showArchivePanel;
-  const effectiveRunState = deriveVisibleRunState(runState, latestRunForNextSteps ?? null);
+  const showCurrentCheckStatus = runState !== "running" && interactionMode === "checked" && sourceSummary !== null;
+  const showCurrentFailureStatus = runState === "failed" && interactionMode === "import_failed";
+  const showHistoricalRunContinuation =
+    Boolean(latestRunForNextSteps) &&
+    interactionMode !== "checked" &&
+    interactionMode !== "import_failed";
+  const effectiveRunState =
+    showCurrentCheckStatus
+      ? "idle"
+      : showCurrentFailureStatus
+      ? "failed"
+      : deriveVisibleRunState(runState, latestRunForNextSteps ?? null);
+  const statusLead =
+    showCurrentCheckStatus
+      ? "This checked path is the current working context. If it is the export you meant to use, import from this same path."
+      : showCurrentFailureStatus
+      ? "The current import attempt needs attention before you rely on the output or retry the same path."
+      : undefined;
   const effectiveStatusMessage =
-    runState === "idle" && latestRunForNextSteps
+    showCurrentCheckStatus
+      ? buildValidationOutcomeLead(sourceSummary, form.expectedVendor)
+      : showCurrentFailureStatus
+      ? statusMessage
+      : runState === "idle" && latestRunForNextSteps
       ? buildPostRunStatusMessage(latestRunForNextSteps, statusMessage)
       : statusMessage;
   const statusDetail =
-    runState === "running" && importProgress
+    showCurrentCheckStatus
+      ? `Checked path: ${activeImportPath(form)} | output ${describeOutputRoot(form.outputRoot)}`
+      : showCurrentFailureStatus
+      ? `Attempted path: ${activeImportPath(form)} | output ${describeOutputRoot(form.outputRoot)}`
+      : runState === "running" && importProgress
       ? buildRunningStatusDetail(importProgress, sourceSummary, latestRunForNextSteps ?? null)
       : latestRunForNextSteps && runState !== "running"
       ? `Latest run: ${new Date(latestRunForNextSteps.runAt).toLocaleString()} | output ${describeOutputRoot(latestRunForNextSteps.outputRoot)}`
       : undefined;
   const statusBadges =
-    runState === "running" && importProgress
+    showCurrentCheckStatus
+      ? [
+          validationCard.badge,
+          `${sourceSummary.supportedFiles} import-ready`,
+          sourceSummary.unsupportedFiles > 0 ? `${sourceSummary.unsupportedFiles} not used` : "",
+          `vendor ${formatExpectedVendorLabel(form.expectedVendor)}`
+        ].filter(Boolean)
+      : showCurrentFailureStatus
+      ? [
+          `vendor ${formatExpectedVendorLabel(form.expectedVendor)}`,
+          `mode ${form.mode === "batch" ? "folder" : "file"}`,
+          `output ${describeOutputRoot(form.outputRoot)}`
+        ]
+      : runState === "running" && importProgress
       ? buildRunningStatusBadges(importProgress, sourceSummary, latestRunForNextSteps ?? null)
       : latestRunForNextSteps && runState !== "running"
       ? [
@@ -802,14 +854,6 @@ export default function ImportsScreen() {
         modeLabel: inferImportModeFromRun(latestRunForNextSteps) === "batch" ? "folder flow" : "file flow"
       }
     : null;
-
-  useEffect(() => {
-    if (!shouldHydrateFormFromLatestRun(form, latestRunForNextSteps ?? null, sourceSummary)) {
-      return;
-    }
-
-    setForm(buildFormFromLatestRun(form, latestRunForNextSteps!));
-  }, [form, latestRunForNextSteps, sourceSummary]);
 
   function nextStepSummary(run: ImportRunSummary): string {
     const previouslyImported = countPreviouslyImportedSkips(run);
@@ -904,12 +948,41 @@ export default function ImportsScreen() {
       <RunStatusPanel
         className="workspace-anchor-panel"
         state={effectiveRunState}
+        lead={statusLead}
         message={effectiveStatusMessage}
         detail={statusDetail}
         badges={statusBadges}
       />
 
-      {latestRunForNextSteps ? (
+      <div className="panel">
+        <h2>Before You Import</h2>
+        <p className="muted">
+          Start with the export you actually downloaded. Check the path first, then import from that same path.
+        </p>
+        <div className="detail-box flow-summary-card">
+          <strong>{buildValidationChecklistLead(sourceSummary, form.expectedVendor)}</strong>
+          <div className="signal-badge-row">
+            <span className="signal-badge">vendor {formatExpectedVendorLabel(form.expectedVendor)}</span>
+            <span className="signal-badge">mode {form.mode === "batch" ? "folder" : "file"}</span>
+            <span className="signal-badge">output {describeOutputRoot(form.outputRoot)}</span>
+          </div>
+        </div>
+        <div className="action-bar">
+          <button className="secondary-btn" type="button" onClick={() => setShowImportHelp((value) => !value)}>
+            {showImportHelp ? "Hide Steps" : "Show Steps"}
+          </button>
+        </div>
+        {showImportHelp ? (
+          <ul>
+            <li>Pick the vendor first so Quantum knows which export shape to look for.</li>
+            <li>Use the downloaded folder when the export came as a package, not just a single file.</li>
+            <li>Run the check first. If it looks good, import from the same path without changing anything.</li>
+            <li>After import, start in Readable Archive. Open Datasets only when you want the structured version.</li>
+          </ul>
+        ) : null}
+      </div>
+
+      {showHistoricalRunContinuation && latestRunForNextSteps ? (
         <div className="panel workspace-anchor-panel">
           <h2>{runState === "running" ? "Current Import" : "Next Step"}</h2>
           <div className="detail-box follow-up-card">
@@ -1021,34 +1094,6 @@ export default function ImportsScreen() {
       )}
 
       <div className="panel">
-        <h2>Before You Import</h2>
-        <p className="muted">
-          Start with the export you actually downloaded. Check the path first, then import from that same path.
-        </p>
-        <div className="detail-box flow-summary-card">
-          <strong>{buildValidationChecklistLead(sourceSummary, form.expectedVendor)}</strong>
-          <div className="signal-badge-row">
-            <span className="signal-badge">vendor {formatExpectedVendorLabel(form.expectedVendor)}</span>
-            <span className="signal-badge">mode {form.mode === "batch" ? "folder" : "file"}</span>
-            <span className="signal-badge">output {describeOutputRoot(form.outputRoot)}</span>
-          </div>
-        </div>
-        <div className="action-bar">
-          <button className="secondary-btn" type="button" onClick={() => setShowImportHelp((value) => !value)}>
-            {showImportHelp ? "Hide Steps" : "Show Steps"}
-          </button>
-        </div>
-        {showImportHelp ? (
-          <ul>
-            <li>Pick the vendor first so Quantum knows which export shape to look for.</li>
-            <li>Use the downloaded folder when the export came as a package, not just a single file.</li>
-            <li>Run the check first. If it looks good, import from the same path without changing anything.</li>
-            <li>After import, start in Readable Archive. Open Datasets only when you want the structured version.</li>
-          </ul>
-        ) : null}
-      </div>
-
-      <div className="panel">
         <h2>Export Check</h2>
         {!sourceSummary ? (
           <div className="detail-box validation-summary-card idle">
@@ -1114,7 +1159,7 @@ export default function ImportsScreen() {
         )}
       </div>
 
-      {latestRunForNextSteps && recoveryGuidance.length > 0 ? (
+      {showHistoricalRunContinuation && latestRunForNextSteps && recoveryGuidance.length > 0 ? (
         <div className="panel">
         <h2>Check Before You Move On</h2>
         <p className="muted">
@@ -1631,7 +1676,7 @@ function describeOutputRoot(outputRoot: string): string {
 
 function loadImportFormDraft(outputRoot: string): ImportJobForm {
   try {
-    const raw = localStorage.getItem(IMPORT_FORM_DRAFT_KEY);
+    const raw = sessionStorage.getItem(IMPORT_FORM_DRAFT_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<ImportJobForm>;
       return {
@@ -1646,6 +1691,12 @@ function loadImportFormDraft(outputRoot: string): ImportJobForm {
     // ignore saved draft errors
   }
 
+  try {
+    localStorage.removeItem(LEGACY_IMPORT_FORM_DRAFT_KEY);
+  } catch {
+    // ignore legacy draft cleanup errors
+  }
+
   return {
     mode: "single_file",
     expectedVendor: "auto_detect",
@@ -1657,9 +1708,10 @@ function loadImportFormDraft(outputRoot: string): ImportJobForm {
 
 function saveImportFormDraft(form: ImportJobForm) {
   try {
-    localStorage.setItem(IMPORT_FORM_DRAFT_KEY, JSON.stringify(form));
+    sessionStorage.setItem(IMPORT_FORM_DRAFT_KEY, JSON.stringify(form));
+    localStorage.removeItem(LEGACY_IMPORT_FORM_DRAFT_KEY);
   } catch {
-    // ignore localStorage errors
+    // ignore storage errors
   }
 }
 
@@ -1688,30 +1740,6 @@ function deriveVisibleRunState(runState: RunState, latestRun: ImportRunSummary |
   }
 
   return "failed";
-}
-
-function shouldHydrateFormFromLatestRun(
-  form: ImportJobForm,
-  latestRun: ImportRunSummary | null,
-  sourceSummary: ImportSourceSummary | null
-): boolean {
-  if (!latestRun || sourceSummary) {
-    return false;
-  }
-
-  if (form.outputRoot !== latestRun.outputRoot) {
-    return false;
-  }
-
-  if (activeImportPath(form) === latestRun.inputPath) {
-    return false;
-  }
-
-  return (
-    form.expectedVendor === "auto_detect" &&
-    form.mode === "single_file" &&
-    !form.inputFolder.trim()
-  );
 }
 
 function buildFormFromLatestRun(currentForm: ImportJobForm, latestRun: ImportRunSummary): ImportJobForm {

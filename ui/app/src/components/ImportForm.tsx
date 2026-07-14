@@ -60,7 +60,7 @@ export default function ImportForm(props: ImportFormProps) {
 
       {props.latestRunSummary ? (
         <div className="detail-box follow-up-card">
-          <strong>Latest import still available</strong>
+          <strong>Latest import still available in this output folder</strong>
           <p className="muted">
             {new Date(props.latestRunSummary.runAt).toLocaleString()} | {props.latestRunSummary.vendorLabel} | {props.latestRunSummary.modeLabel}
           </p>
@@ -69,6 +69,9 @@ export default function ImportForm(props: ImportFormProps) {
           </p>
           <p className="muted">
             Output: {props.latestRunSummary.outputLabel}
+          </p>
+          <p className="muted">
+            This latest-run shortcut belongs to the current workspace only. If you switch output roots, Quantum will show that folder's own history instead.
           </p>
           {props.onRestoreLatestRun ? (
             <div className="action-bar">
@@ -168,7 +171,7 @@ export default function ImportForm(props: ImportFormProps) {
           </div>
         </label>
       <p className="muted">
-        Import history, reuse checks, and already-imported acknowledgement follow this output root. If you switch folders, Quantum treats that as a different local workspace until it has its own import history.
+        Import history, reuse checks, and already-imported acknowledgement follow this output root. If you switch folders, Quantum treats that as a different local workspace until that folder builds its own import history.
       </p>
 
       <div className="detail-box follow-up-card">

@@ -94,9 +94,18 @@ try {
     1,
     "Expected legacy ChatGPT HTML package to keep chat.html as the single importable entry"
   );
+  assert.equal(
+    legacyHtmlSummary.sampleFiles[0]?.displayLabel,
+    "ChatGPT legacy chat bundle",
+    "Expected legacy ChatGPT HTML package to surface a distinct legacy bundle label"
+  );
   assert.ok(
-    legacyHtmlSummary.notes.some((note) => note.includes("chat bundle directly instead of flooding review")),
+    legacyHtmlSummary.notes.some((note) => note.includes("Legacy ChatGPT chat bundle detected")),
     "Expected legacy ChatGPT HTML package note to explain the attachment-sparing import path"
+  );
+  assert.ok(
+    legacyHtmlSummary.notes.some((note) => note.includes("stop here and switch paths before starting a long import")),
+    "Expected legacy ChatGPT HTML package note to warn when the older chat.html lane may be the wrong heavy path"
   );
   assert.equal(legacyHtmlSummary.vendorSummaries[0]?.vendor, "chatgpt");
   assert.equal(legacyHtmlSummary.vendorSummaries[0]?.detectedFiles, 1);

@@ -274,7 +274,7 @@ function buildRecoveryGuidance(run: ImportRunSummary | null): string[] {
 
   if (run.filesImported === 0) {
     if (previouslyImported > 0) {
-      steps.push("Quantum recognized files that were already imported successfully here, so you can keep using the existing archive and dataset outputs instead of rerunning the same export unchanged.");
+      steps.push("Quantum recognized files that were already imported successfully in this output folder, so you can keep using the existing archive and dataset outputs here instead of rerunning the same export unchanged.");
       return steps;
     }
     steps.push("Do not keep rerunning the same path unchanged. Inspect it first, then either clean the export package up or switch to the vendor’s main export file.");
@@ -305,7 +305,7 @@ function buildPostRunStatusMessage(run: ImportRunSummary | null, fallbackMessage
 
   if (run.filesImported === 0) {
     if (previouslyImported > 0) {
-      return "Import finished quickly. Quantum recognized files that were already imported successfully here, so it reused the existing archive and dataset outputs instead of processing them again.";
+      return "Import finished quickly. Quantum recognized files that were already imported successfully in this output folder, so it reused the existing archive and dataset outputs here instead of processing them again.";
     }
     return "Import finished without usable outputs. Re-inspect the source path and open diagnostics before retrying.";
   }
@@ -325,6 +325,43 @@ function buildPostRunStatusMessage(run: ImportRunSummary | null, fallbackMessage
   return "Import finished cleanly. Open Readable Archive first, then use Datasets when you want the structured version.";
 }
 
+function buildOutputRootScopeHint(outputRoot: string): string {
+  const outputLabel = describeOutputRoot(outputRoot);
+  return `Import history, reuse checks, and already-imported acknowledgement are scoped to output ${outputLabel}. If you switch output roots, Quantum treats that as a different local workspace until that folder builds its own history.`;
+}
+
+function sourceSummaryHasLegacyChatGptBundle(sourceSummary: ImportSourceSummary | null): boolean {
+  if (!sourceSummary) {
+    return false;
+  }
+
+  return sourceSummary.notes.some((note) => note.toLowerCase().includes("legacy chatgpt chat bundle"));
+}
+
+function buildLegacyChatGptLaneHint(sourceSummary: ImportSourceSummary | null, runState: RunState): string | null {
+  if (!sourceSummaryHasLegacyChatGptBundle(sourceSummary)) {
+    return null;
+  }
+
+  if (runState === "running") {
+    return "Quantum is currently on the older ChatGPT chat.html lane. If you realize this is the wrong export path, use Force Stop Import, switch paths, and re-check before starting again.";
+  }
+
+  return "This path uses the older ChatGPT chat.html lane. If that is not the export you meant to use, switch paths now instead of starting a heavier import by accident.";
+}
+
+function buildWorkspaceAvailabilityHint(
+  outputRoot: string,
+  latestRun: ImportRunSummary | null
+): string {
+  const outputLabel = describeOutputRoot(outputRoot);
+  if (!latestRun) {
+    return `Output ${outputLabel} does not have import history yet. If you just switched output roots, that is expected until this workspace has its own runs.`;
+  }
+
+  return `Output ${outputLabel} already has import history available, so rerun reuse and latest-run follow-up will be based on this workspace.`;
+}
+
 function formatProgressElapsed(elapsedMs: number): string {
   const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
   const minutes = Math.floor(totalSeconds / 60);
@@ -341,13 +378,13 @@ function formatProgressStateLabel(update: ImportProgressUpdate): string {
     case "processing_new_file":
       return "processing new file";
     case "revalidating_previous_file":
-      return "rechecking previous output";
+      return "rechecking older output";
     case "reusing_completed_file":
       return "reusing completed file";
     case "retrying_failed_file":
-      return "retrying failed file";
+      return "retrying remaining file";
     case "resuming_interrupted_shard":
-      return "resuming from checkpoint";
+      return "resuming saved checkpoint";
     case "writing_history":
       return "writing import history";
     case "writing_indexes":
@@ -362,17 +399,17 @@ function formatProgressStateLabel(update: ImportProgressUpdate): string {
 function buildRunningExpectation(update: ImportProgressUpdate): string | null {
   switch (update.processingState) {
     case "verifying_previous_output":
-      return "ETA unknown while Quantum checks what can be safely reused, retried, or resumed before the heavy work starts.";
+      return "ETA is still unknown here because Quantum is deciding what can be safely reused, retried, or resumed before the heaviest work begins.";
     case "processing_new_file":
       return update.currentKind === "chatgpt_export" || update.currentKind === "conversation_json" || update.currentKind === "gemini_activity_html"
         ? "Large conversation files can stay on one step for a while. Elapsed time is more trustworthy here than a guessed finish time."
         : "Quantum is doing fresh work on this file now.";
     case "revalidating_previous_file":
-      return "Quantum found older output for this file, but it is refreshing verification before it trusts reuse on this run.";
+      return "Quantum found older output for this file, but it is refreshing verification before it trusts reuse on this run. Previously preserved output stays in place during this check.";
     case "retrying_failed_file":
-      return "This can be the longest step on a heavy rerun. Exact ETA is unknown, but previously preserved output stays intact while Quantum retries the remaining file.";
+      return "This can be the longest step on a heavy rerun. Exact ETA is unknown, but previously preserved output stays intact while Quantum retries only the remaining file.";
     case "resuming_interrupted_shard":
-      return "Checkpointed conversations are already preserved. Quantum is only finishing the remaining shard work, so elapsed time matters more than any guessed ETA.";
+      return "Checkpointed conversations are already preserved. Quantum is continuing from the last saved checkpoint instead of starting the shard over, so elapsed time matters more than any guessed ETA.";
     case "reusing_completed_file":
       return "This part should move faster than a cold import because Quantum already verified the preserved output.";
     case "writing_history":
@@ -426,6 +463,15 @@ function buildRunningStatusDetail(
     parts.push(`${update.retriedFiles} retried`);
   }
 
+  if (
+    update.processingState === "retrying_failed_file" ||
+    update.processingState === "resuming_interrupted_shard" ||
+    update.processingState === "revalidating_previous_file" ||
+    (typeof update.reusedFiles === "number" && update.reusedFiles > 0)
+  ) {
+    parts.push("preserved output safe");
+  }
+
   if (update.resumeCheckpointCount && update.resumeCheckpointCount > 0) {
     parts.push(`${update.resumeCheckpointCount} checkpointed conversation(s)`);
   }
@@ -453,6 +499,12 @@ function buildRunningStatusBadges(
     `${update.completedFiles}/${knownTotal} file(s)`,
     update.currentKind ? update.currentKind.replace(/_/g, " ") : "",
     update.reusedFiles ? `${update.reusedFiles} reused` : "",
+    update.retriedFiles ? `${update.retriedFiles} retried` : "",
+    update.processingState === "retrying_failed_file" ||
+    update.processingState === "resuming_interrupted_shard" ||
+    update.processingState === "revalidating_previous_file"
+      ? "preserved output safe"
+      : "",
     update.processingState === "resuming_interrupted_shard" && update.resumeCheckpointCount
       ? `${update.resumeCheckpointCount} checkpointed`
       : ""
@@ -462,11 +514,11 @@ function buildRunningStatusBadges(
 function buildRunningNextStepSummary(update: ImportProgressUpdate): string {
   switch (update.processingState) {
     case "revalidating_previous_file":
-      return "Quantum is refreshing trust on a previously imported file before it decides whether the old output can stand for this run.";
+      return "Quantum is refreshing trust on a previously imported file before it decides whether the old output can stand for this run. Previously preserved output stays available while that check finishes.";
     case "reusing_completed_file":
       return "Quantum is reusing output it already verified for unchanged files, so this rerun should move faster than a cold import.";
     case "retrying_failed_file":
-      return "Quantum is retrying previously failing work now. Let this finish before deciding whether diagnostics are still needed.";
+      return "Quantum is retrying the remaining file now, not discarding the work it already preserved earlier in the run. Let this finish before deciding whether diagnostics are still needed.";
     case "resuming_interrupted_shard":
       return "Quantum is resuming an interrupted shard from the last safe checkpoint instead of starting the whole file over again.";
     case "verifying_previous_output":
@@ -722,6 +774,12 @@ export default function ImportsScreen() {
   function handleOutputRootChange(nextOutputRoot: string) {
     setForm((prev) => ({ ...prev, outputRoot: nextOutputRoot }));
     updateSettings({ outputRoot: nextOutputRoot });
+    setInteractionMode("idle");
+    setStatusMessage(`Switched to output ${describeOutputRoot(nextOutputRoot)}. Quantum is loading that workspace's import history now.`);
+    setLogEntries((prev) => [
+      makeLogEntry("info", `Switched output root to ${nextOutputRoot}. Quantum will now use that workspace's history and reuse state.`),
+      ...prev
+    ]);
   }
 
   function restoreLatestRunContext() {
@@ -732,9 +790,9 @@ export default function ImportsScreen() {
     setForm(buildFormFromLatestRun(form, latestRunForNextSteps));
     setSourceSummary(null);
     setInteractionMode("idle");
-    setStatusMessage("Latest import path restored. Re-check it if you want to confirm the export again before rerunning.");
+    setStatusMessage(`Latest import path restored for output ${describeOutputRoot(latestRunForNextSteps.outputRoot)}. Re-check it if you want to confirm the export again before rerunning.`);
     setLogEntries((prev) => [
-      makeLogEntry("info", "Restored the latest import path into Start Here."),
+      makeLogEntry("info", `Restored the latest import path for output ${latestRunForNextSteps.outputRoot} into Start Here.`),
       ...prev
     ]);
   }
@@ -796,7 +854,7 @@ export default function ImportsScreen() {
       : deriveVisibleRunState(runState, latestRunForNextSteps ?? null);
   const statusLead =
     showCurrentCheckStatus
-      ? "This checked path is the current working context. If it is the export you meant to use, import from this same path."
+      ? "This checked path is the current working context for the selected output folder. If it is the export you meant to use, import from this same path."
       : showCurrentFailureStatus
       ? "The current import attempt needs attention before you rely on the output or retry the same path."
       : undefined;
@@ -859,7 +917,7 @@ export default function ImportsScreen() {
     const previouslyImported = countPreviouslyImportedSkips(run);
     if (run.filesImported === 0) {
       if (previouslyImported > 0) {
-        return "This export was already imported successfully before. Quantum reused the existing outputs instead of processing the same files all over again.";
+        return "This export was already imported successfully in the current output folder. Quantum reused the existing outputs there instead of processing the same files all over again.";
       }
       return "This run did not produce imported files. Check the source summary and diagnostics before trying again.";
     }
@@ -954,6 +1012,15 @@ export default function ImportsScreen() {
         badges={statusBadges}
       />
 
+      <div className="panel workspace-anchor-panel">
+        <h2>Current Workspace</h2>
+        <div className="detail-box follow-up-card">
+          <strong>Output {describeOutputRoot(form.outputRoot)}</strong>
+          <p className="muted">{buildOutputRootScopeHint(form.outputRoot)}</p>
+          <p className="muted">{buildWorkspaceAvailabilityHint(form.outputRoot, latestRunForNextSteps ?? null)}</p>
+        </div>
+      </div>
+
       <div className="panel">
         <h2>Before You Import</h2>
         <p className="muted">
@@ -994,7 +1061,7 @@ export default function ImportsScreen() {
             <p className="muted">
               {runState === "running" && importProgress
                 ? buildRunningStatusDetail(importProgress, sourceSummary, latestRunForNextSteps ?? null)
-                : `Latest run: ${new Date(latestRunForNextSteps.runAt).toLocaleString()} | ${latestRunOutcomeSummary}`}
+                : `Latest run in output ${describeOutputRoot(latestRunForNextSteps.outputRoot)}: ${new Date(latestRunForNextSteps.runAt).toLocaleString()} | ${latestRunOutcomeSummary}`}
             </p>
             <div className="signal-badge-row">
               <span
@@ -1155,6 +1222,9 @@ export default function ImportsScreen() {
                 </button>
               ) : null}
             </div>
+            {buildLegacyChatGptLaneHint(sourceSummary, runState) ? (
+              <p className="muted">{buildLegacyChatGptLaneHint(sourceSummary, runState)}</p>
+            ) : null}
           </>
         )}
       </div>
@@ -1490,6 +1560,9 @@ function buildExpectedVendorMessage(
   }
 
   if (match.supportTier === "mvp_first_class") {
+    if (expectedVendor === "chatgpt" && sourceSummaryHasLegacyChatGptBundle(sourceSummary)) {
+      return "This path looks like a legacy ChatGPT chat bundle. It is still importable, but it may take the heavier chat.html route instead of the newer shard-first lane.";
+    }
     return `This path looks like a ${EXPECTED_VENDOR_LABELS[expectedVendor]} export and is ready for the normal import path.`;
   }
 
@@ -1628,6 +1701,9 @@ function buildValidationNextStep(
   }
 
   if (match.supportTier === "mvp_first_class") {
+    if (expectedVendor === "chatgpt" && sourceSummaryHasLegacyChatGptBundle(sourceSummary)) {
+      return "This looks like the older ChatGPT chat.html bundle. If this is the export you meant to use, import it from this path. If not, switch paths now before committing to the heavier legacy lane.";
+    }
     return "This looks good. If this is the export you meant to use, import from this same path.";
   }
 
@@ -1639,6 +1715,10 @@ function buildValidationNextStep(
 }
 
 function buildSourceSummaryLead(sourceSummary: ImportSourceSummary): string {
+  if (sourceSummaryHasLegacyChatGptBundle(sourceSummary)) {
+    return "Quantum found a legacy ChatGPT chat bundle here. It can still import this export, but this older chat.html lane may be heavier than newer shard-first packages.";
+  }
+
   if (sourceSummary.supportedFiles === 0) {
     return "Quantum did not find a usable main export in this path yet.";
   }

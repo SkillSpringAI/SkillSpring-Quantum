@@ -744,8 +744,8 @@ export default function ImportHistoryPanel({
       <div className="history-query-toolbar">
         <span className="muted">
           {searchMode === "query"
-            ? "Showing matching results from your full import history."
-            : "Showing recent runs with quick filtering."}
+            ? "Showing matching results from the full import history for this output folder."
+            : "Showing recent runs for this output folder with quick filtering."}
         </span>
         <div className="action-bar">
           {onSearch ? (
@@ -762,7 +762,7 @@ export default function ImportHistoryPanel({
       </div>
 
       {!history || history.runs.length === 0 ? (
-        <p className="muted">No import history has been recorded for this output folder yet.</p>
+        <p className="muted">No import history has been recorded for this output folder yet. If you recently switched output roots, that is expected until this workspace has its own runs.</p>
       ) : filteredRuns.length === 0 ? (
         <p className="muted">No import runs match the current filters.</p>
       ) : (
@@ -796,6 +796,7 @@ export default function ImportHistoryPanel({
                   <strong>Run Summary</strong>
                   <p className="muted">Imported from: {runForDetail.inputPath}</p>
                   <p className="muted">Saved to: {runForDetail.outputRoot}</p>
+                  <p className="muted">This history view is scoped to the current output folder, so switching output roots shows a different workspace history.</p>
                   <p className="muted">
                     Imported {runForDetail.filesImported} of {runForDetail.filesDiscovered} file(s) | {summarizeRunOutcomeCounts(runForDetail)}
                   </p>

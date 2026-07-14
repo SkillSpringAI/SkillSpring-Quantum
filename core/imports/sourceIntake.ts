@@ -468,11 +468,11 @@ export async function runImportSource(
       processingState === "reusing_completed_file"
         ? `Reusing completed file ${completedSupportedFiles + 1} of ${summary.supportedFiles}: ${path.basename(filePath)}. Quantum verified the previous output and is keeping the existing archive and dataset artifacts.`
         : processingState === "revalidating_previous_file"
-          ? `Revalidating previously imported file ${completedSupportedFiles + 1} of ${summary.supportedFiles}: ${path.basename(filePath)}. Quantum found older output here, but it needs to refresh verification before it can trust reuse on this run.`
+          ? `Revalidating previously imported file ${completedSupportedFiles + 1} of ${summary.supportedFiles}: ${path.basename(filePath)}. Quantum found older output here, but it needs to refresh verification before it can trust reuse on this run. Previously preserved output stays in place while this trust check runs.`
         : processingState === "resuming_interrupted_shard"
-          ? `Resuming interrupted shard ${completedSupportedFiles + 1} of ${summary.supportedFiles}: ${path.basename(filePath)}. ${resumeCheckpointCount} conversation(s) were already checkpointed safely.`
+          ? `Resuming interrupted shard ${completedSupportedFiles + 1} of ${summary.supportedFiles}: ${path.basename(filePath)}. ${resumeCheckpointCount} conversation(s) were already checkpointed safely, so Quantum is continuing from the last saved point instead of restarting the whole file.`
           : processingState === "retrying_failed_file"
-            ? `Retrying failed file ${completedSupportedFiles + 1} of ${summary.supportedFiles}: ${path.basename(filePath)}. Quantum is rerunning this file because the earlier attempt did not finish cleanly.`
+            ? `Retrying failed file ${completedSupportedFiles + 1} of ${summary.supportedFiles}: ${path.basename(filePath)}. Quantum is rerunning the remaining file because the earlier attempt did not finish cleanly, while any already preserved output from this run stays intact.`
             : `Processing new file ${completedSupportedFiles + 1} of ${summary.supportedFiles}: ${path.basename(filePath)}.`;
     onProgress?.({
       stage: "processing_file",
@@ -798,7 +798,7 @@ function buildPreparedImportPlanMessage(
     plan.newFiles > 0 ? `${plan.newFiles} new work item(s)` : ""
   ].filter(Boolean);
 
-  return `Import plan ready: ${parts.join(", ")}. Quantum will keep already preserved output and then continue with the remaining work.`;
+  return `Import plan ready: ${parts.join(", ")}. Quantum now knows which output can stay untouched before any heavy retry or resume work begins.`;
 }
 
 async function getSourceFileIdentity(filePath: string): Promise<{
@@ -1679,10 +1679,10 @@ async function classifyImportFile(
       return {
         path: filePath,
         kind: "chatgpt_export",
-        displayLabel: "ChatGPT export",
+        displayLabel: "ChatGPT legacy chat bundle",
         supported: true,
         supportTier: "mvp_first_class",
-        reason: "Recognized as a ChatGPT export bundle and will be imported as conversations."
+        reason: "Recognized as a legacy ChatGPT chat bundle and will be imported as conversations through the heavier chat.html path."
       };
     }
 
@@ -2140,7 +2140,8 @@ async function resolveDirectoryImportFiles(
     return {
       files,
       notes: [
-        "Large ChatGPT export bundle detected. Quantum will inspect the exported chat bundle directly instead of flooding review with every package attachment file."
+        "Legacy ChatGPT chat bundle detected. Quantum will inspect chat.html directly instead of flooding review with every package attachment file.",
+        "This legacy chat.html path can feel heavier than newer shard-first ChatGPT exports. If this is not the export you meant to use, stop here and switch paths before starting a long import."
       ]
     };
   }

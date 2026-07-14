@@ -97,6 +97,10 @@ try {
     "Expected rerun planning progress to explain what work can be safely reused before the main import resumes"
   );
   assert.ok(
+    rerunProgress.some((entry) => entry.message.includes("can stay untouched before any heavy retry or resume work begins")),
+    "Expected rerun planning progress to explain that preserved output is already known before heavy work starts"
+  );
+  assert.ok(
     rerunProgress.every((entry) => !entry.message.includes("new work item(s)")),
     "Expected package companion files not to inflate rerun planning as new work"
   );
@@ -162,6 +166,10 @@ try {
   assert.ok(
     rerunAfterValidationMismatchProgress.some((entry) => entry.message.includes("need reuse recheck")),
     "Expected invalidated rerun planning progress to distinguish reuse rechecks from generic new work"
+  );
+  assert.ok(
+    rerunAfterValidationMismatchProgress.some((entry) => entry.message.includes("Previously preserved output stays in place while this trust check runs")),
+    "Expected invalidated rerun progress to explain that preserved output remains safe during revalidation"
   );
 
   await tamperReuseValidation(ledgerPath, (value) => {

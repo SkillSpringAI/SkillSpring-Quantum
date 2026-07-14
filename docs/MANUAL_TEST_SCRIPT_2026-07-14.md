@@ -8,6 +8,23 @@ It is designed around one specific rule:
 
 Instead, use a fresh output root that is not tied to the repository workspace so Quantum experiences the run the way an ordinary user would.
 
+## July 14 Interim Walkthrough Note
+
+One partial walkthrough has already been performed using:
+
+- export path: `C:\Users\Laptop\Desktop\chatgpt july export`
+- output root: `C:\Users\Laptop\Desktop\average workflow test`
+
+That pass was intentionally stopped before the full import completed, but it still surfaced useful findings:
+
+- the first three source files completed and were written into the success ledger
+- progress had already checkpointed deep into `conversations-003.json` before the stop
+- archive and dataset outputs were valuable to inspect while the import was still running
+- navigating away from Imports made the live run feel visually reset, which weakened trust
+- the activity log felt reassuring enough that it should stay accessible across screens
+
+Treat that run as evidence, not the final Gate 2 walkthrough. The next full pass should still use a brand-new output root so we get a true fresh-workspace comparison.
+
 ## Goal
 
 Run a full fresh Electron walkthrough using:
@@ -119,6 +136,7 @@ Capture these items exactly:
 6. whether the first successful run populated Import History in a believable way
 7. whether Archive, Datasets, and Find Imports still felt connected to the same run
 8. whether returning to Imports preserved the same story
+9. whether Activity History remained easy to reach while reviewing Archive or Datasets
 
 ## Specific trust checks
 
@@ -175,6 +193,7 @@ This walkthrough succeeds if:
 - that fresh-workspace state does not feel like missing memory
 - the first import populates history and downstream screens coherently
 - the ordinary user path remains understandable without maintainer context
+- users can keep checking activity history without feeling trapped on the Imports screen
 
 ## Deliverable
 

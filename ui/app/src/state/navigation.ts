@@ -1,6 +1,7 @@
 export type ScreenId =
   | "dashboard"
   | "imports"
+  | "activity-log"
   | "retrieval"
   | "organized-output"
   | "datasets"
@@ -18,6 +19,7 @@ export interface NavItem {
 export const SCREEN_LABELS: Record<ScreenId, string> = {
   dashboard: "Dashboard",
   imports: "Imports",
+  "activity-log": "Activity History",
   retrieval: "Find Imports",
   "organized-output": "Readable Archive",
   datasets: "Datasets",
@@ -31,6 +33,7 @@ export const SCREEN_LABELS: Record<ScreenId, string> = {
 export const NAV_ITEMS: NavItem[] = [
   { id: "dashboard", label: SCREEN_LABELS.dashboard },
   { id: "imports", label: SCREEN_LABELS.imports },
+  { id: "activity-log", label: SCREEN_LABELS["activity-log"] },
   { id: "retrieval", label: SCREEN_LABELS.retrieval },
   { id: "organized-output", label: SCREEN_LABELS["organized-output"] },
   { id: "datasets", label: SCREEN_LABELS.datasets },
@@ -44,6 +47,7 @@ export const NAV_ITEMS: NavItem[] = [
 export const PRIMARY_NAV_ITEMS: NavItem[] = [
   { id: "dashboard", label: "Dashboard" },
   { id: "imports", label: "Imports" },
+  { id: "activity-log", label: "Activity History" },
   { id: "retrieval", label: "Find Imports" },
   { id: "organized-output", label: "Readable Archive" },
   { id: "datasets", label: "Datasets" }

@@ -24,6 +24,18 @@ As of July 14, 2026, the priority picture has shifted again:
 
 This means the repo should not spend today's main momentum re-litigating already-closed integrity work unless new evidence appears.
 
+## Post-Walkthrough Update From July 14
+
+The late-day manual walkthrough added a few concrete product signals that should shape the next pass:
+
+- the import flow created visible value even before completion because archive and dataset outputs were already inspectable while the long import continued
+- moving away from the Imports screen caused the live import view to feel reset back toward its launched state, which weakened continuity and trust
+- the Activity History view felt reassuring enough that it should remain reachable across screens instead of reading like a failure-only lane
+- the test output root used for this pass was `C:\Users\Laptop\Desktop\average workflow test`
+- the run artifacts confirmed three completed source files plus checkpointed progress into the fourth shard before the stop
+
+The staged UI follow-up for this checkpoint addresses the continuity issue by persisting import activity state across screens and promoting the activity log into a first-class navigation destination.
+
 ## What Changed Since The July 12 Slice Order
 
 The July 12 queue still placed two items very high:
@@ -154,6 +166,7 @@ Prevent users from mistaking output-root changes for lost history or broken reus
 - output-root scope is visible enough that reuse behavior feels explainable
 - switching output roots no longer creates an ambiguous “forgot my work” moment
 - rerun and history language stays grounded in the current local workspace
+- import continuity survives screen changes so users do not feel like active work disappeared when they navigate away
 
 ## Slice 3: Legacy ChatGPT Package Handling And Wrong-Lane Safety
 
@@ -179,6 +192,7 @@ Handle older `chat.html`-heavy ChatGPT exports more intentionally and let users 
 - users can tell when they are importing a legacy ChatGPT package rather than a newer shard-first package
 - the heavier path is explained before it feels like unexplained slowness or failure
 - the wrong-lane stop/retry story is safe and understandable
+- activity history remains available as a confidence surface even while users inspect archive or dataset outputs during long imports
 
 ## Slice 4: Full Gate 2 Electron Walkthrough
 
@@ -244,6 +258,16 @@ Reason:
 - those capabilities are real, but they belong to deliberate advanced access
 - they do not outrank the core import -> archive -> dataset -> retrieval beta path
 - the scope-lock and revised roadmap both point toward launchability and ordinary-flow trust first
+
+## Beta Readability Follow-Up
+
+Before closed beta testing with general users, the main `README.md` should be simplified substantially.
+
+Reason:
+
+- the current README density is tolerable for maintainers but heavier than we want for broad first-time testers
+- closed beta onboarding will benefit from a clearer quick-start path, lighter terminology load, and a shorter explanation of what Quantum actually does first
+- this should happen after the current import-trust and walkthrough-readiness slices unless the README becomes an immediate blocker for tester setup
 
 ## Guardrails Across These Five Slices
 

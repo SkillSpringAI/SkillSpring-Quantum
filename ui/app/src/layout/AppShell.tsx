@@ -3,6 +3,7 @@ import Topbar from "../components/Topbar";
 import ScreenErrorBoundary from "../components/ScreenErrorBoundary";
 import DashboardScreen from "../screens/DashboardScreen";
 import ImportsScreen from "../screens/ImportsScreen";
+import ActivityLogScreen from "../screens/ActivityLogScreen";
 import RetrievalScreen from "../screens/RetrievalScreen";
 import DiagnosticsScreen from "../screens/DiagnosticsScreen";
 import ReviewQueueScreen from "../screens/ReviewQueueScreen";
@@ -22,6 +23,8 @@ function ScreenRouter() {
       return <DashboardScreen />;
     case "imports":
       return <ImportsScreen />;
+    case "activity-log":
+      return <ActivityLogScreen />;
     case "retrieval":
       return <RetrievalScreen />;
     case "organized-output":

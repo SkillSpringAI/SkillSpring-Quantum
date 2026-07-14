@@ -11,7 +11,6 @@ import type {
   ImportSourceSummary,
   ImportSourceVendorSummary,
   ImportVendorChoice,
-  RunLogEntry,
   RunState,
   ImportSupportTier
 } from "../types/imports";
@@ -22,7 +21,6 @@ import {
   chooseImportFile,
   inspectSourcePath,
   stopImportJob,
-  subscribeToImportProgress,
   submitImportJob,
   updateActiveImportPath
 } from "../services/importBridge";
@@ -34,6 +32,7 @@ import type { ImportHistoryFilters, ImportHistoryResult, ImportRunSummary } from
 import { useNavigation } from "../state/navigationContext";
 import { useAgentContext } from "../state/agentContext";
 import { useSettings } from "../state/settingsContext";
+import { useImportActivity } from "../state/importActivityContext";
 import {
   countPackageCompanionSkips,
   countPreviouslyImportedSkips,
@@ -45,18 +44,7 @@ import {
 
 const IMPORT_FORM_DRAFT_KEY = "skillspring-quantum-import-form-draft";
 const LEGACY_IMPORT_FORM_DRAFT_KEY = "skillspring-quantum-import-form-draft";
-
-function makeLogEntry(
-  level: RunLogEntry["level"],
-  message: string
-): RunLogEntry {
-  return {
-    id: crypto.randomUUID(),
-    level,
-    message,
-    timestamp: new Date().toLocaleTimeString()
-  };
-}
+const SOURCE_SUMMARY_DRAFT_KEY = "skillspring-quantum-source-summary-draft";
 
 function formatSourceEntryKindLabel(entry: ImportSourceSummary["sampleFiles"][number]): string {
   if (entry.displayLabel?.trim()) {
@@ -540,6 +528,16 @@ export default function ImportsScreen() {
   const { openRetrievalInvestigation, setActiveScreen } = useNavigation();
   const { setCurrentArtifact } = useAgentContext();
   const { settings, updateSettings, reopenOnboarding } = useSettings();
+  const {
+    runState,
+    setRunState,
+    statusMessage,
+    setStatusMessage,
+    importProgress,
+    setImportProgress,
+    logEntries,
+    appendLogEntry
+  } = useImportActivity();
   const [showImportHelp, setShowImportHelp] = useState(false);
   const [showSourceDetails, setShowSourceDetails] = useState(false);
   const [showRecoveryGuidance, setShowRecoveryGuidance] = useState(false);
@@ -547,14 +545,9 @@ export default function ImportsScreen() {
   const [showCheckResults, setShowCheckResults] = useState(false);
   const [showRunLog, setShowRunLog] = useState(false);
   const [form, setForm] = useState<ImportJobForm>(() => loadImportFormDraft(settings.outputRoot));
-
-  const [runState, setRunState] = useState<RunState>("idle");
-  const [statusMessage, setStatusMessage] = useState("Ready to inspect or import.");
-  const [importProgress, setImportProgress] = useState<ImportProgressUpdate | null>(null);
-  const [logEntries, setLogEntries] = useState<RunLogEntry[]>([]);
   const [latestArchive, setLatestArchive] = useState<ArchiveNotification | null>(null);
   const [archiveEvents, setArchiveEvents] = useState<ArchiveNotification[]>([]);
-  const [sourceSummary, setSourceSummary] = useState<ImportSourceSummary | null>(null);
+  const [sourceSummary, setSourceSummary] = useState<ImportSourceSummary | null>(() => loadSourceSummaryDraft());
   const [importHistory, setImportHistory] = useState<ImportHistoryResult | null>(null);
   const [selectedRun, setSelectedRun] = useState<ImportRunSummary | null>(null);
   const [historyMode, setHistoryMode] = useState<"recent" | "query">("recent");
@@ -587,10 +580,7 @@ export default function ImportsScreen() {
       setImportHistory(result);
       setHistoryMode("query");
       setSelectedRun(result.latest);
-      setLogEntries((prev) => [
-        makeLogEntry("info", "History search completed: " + result.runs.length + " matching run(s)."),
-        ...prev
-      ]);
+      appendLogEntry("info", "History search completed: " + result.runs.length + " matching run(s).");
     } finally {
       setHistorySearchBusy(false);
     }
@@ -660,13 +650,10 @@ export default function ImportsScreen() {
         if (!options?.preserveStatusMessage) {
           setStatusMessage("Source path checked.");
         }
-        setLogEntries((prev) => [
-          makeLogEntry(
-            "info",
-            "Inspected source path: " + result.supportedFiles + " supported file(s), " + result.unsupportedFiles + " unsupported."
-          ),
-          ...prev
-        ]);
+        appendLogEntry(
+          "info",
+          "Inspected source path: " + result.supportedFiles + " supported file(s), " + result.unsupportedFiles + " unsupported."
+        );
       }
     } catch (error) {
       const message = error instanceof Error
@@ -675,10 +662,7 @@ export default function ImportsScreen() {
       setSourceSummary(null);
       setRunState("failed");
       setStatusMessage(message);
-      setLogEntries((prev) => [
-        makeLogEntry("error", message),
-        ...prev
-      ]);
+      appendLogEntry("error", message);
     }
   }
 
@@ -705,10 +689,7 @@ export default function ImportsScreen() {
     setRunState("running");
     setStatusMessage("Running import...");
     setImportProgress(null);
-    setLogEntries((prev) => [
-      makeLogEntry("info", "Import job submitted from UI scaffold."),
-      ...prev
-    ]);
+    appendLogEntry("info", "Import job submitted from UI scaffold.");
 
     updateSettings({ outputRoot: form.outputRoot });
     const result = await submitImportJob(form);
@@ -718,10 +699,7 @@ export default function ImportsScreen() {
       setRunState("idle");
       setImportProgress(null);
       setStatusMessage(result.message);
-      setLogEntries((prev) => [
-        makeLogEntry("warning", result.message),
-        ...prev
-      ]);
+      appendLogEntry("warning", result.message);
       return;
     }
 
@@ -731,10 +709,7 @@ export default function ImportsScreen() {
       setRunState("success");
       setImportProgress(null);
       setStatusMessage(buildPostRunStatusMessage(refreshedHistory.latest, result.message));
-      setLogEntries((prev) => [
-        makeLogEntry("success", buildPostRunStatusMessage(refreshedHistory.latest, result.message)),
-        ...prev
-      ]);
+      appendLogEntry("success", buildPostRunStatusMessage(refreshedHistory.latest, result.message));
       await refreshArchiveNotifications();
       await refreshSourceSummary(undefined, { preserveStatusMessage: true });
       return;
@@ -744,10 +719,7 @@ export default function ImportsScreen() {
     setRunState("failed");
     setImportProgress(null);
     setStatusMessage(result.message);
-    setLogEntries((prev) => [
-      makeLogEntry("error", result.message),
-      ...prev
-    ]);
+    appendLogEntry("error", result.message);
   }
 
   async function handleStopImport() {
@@ -756,10 +728,7 @@ export default function ImportsScreen() {
     setInteractionMode(sourceSummary ? "checked" : "idle");
     setRunState("idle");
     setStatusMessage(result.message);
-    setLogEntries((prev) => [
-      makeLogEntry(result.ok ? "warning" : "error", result.message),
-      ...prev
-    ]);
+    appendLogEntry(result.ok ? "warning" : "error", result.message);
   }
 
   useEffect(() => {
@@ -771,15 +740,22 @@ export default function ImportsScreen() {
     saveImportFormDraft(form);
   }, [form]);
 
+  useEffect(() => {
+    saveSourceSummaryDraft(sourceSummary);
+  }, [sourceSummary]);
+
+  useEffect(() => {
+    if (runState === "running" && logEntries.length > 0) {
+      setShowRunLog(true);
+    }
+  }, [runState, logEntries.length]);
+
   function handleOutputRootChange(nextOutputRoot: string) {
     setForm((prev) => ({ ...prev, outputRoot: nextOutputRoot }));
     updateSettings({ outputRoot: nextOutputRoot });
     setInteractionMode("idle");
     setStatusMessage(`Switched to output ${describeOutputRoot(nextOutputRoot)}. Quantum is loading that workspace's import history now.`);
-    setLogEntries((prev) => [
-      makeLogEntry("info", `Switched output root to ${nextOutputRoot}. Quantum will now use that workspace's history and reuse state.`),
-      ...prev
-    ]);
+    appendLogEntry("info", `Switched output root to ${nextOutputRoot}. Quantum will now use that workspace's history and reuse state.`);
   }
 
   function restoreLatestRunContext() {
@@ -791,38 +767,16 @@ export default function ImportsScreen() {
     setSourceSummary(null);
     setInteractionMode("idle");
     setStatusMessage(`Latest import path restored for output ${describeOutputRoot(latestRunForNextSteps.outputRoot)}. Re-check it if you want to confirm the export again before rerunning.`);
-    setLogEntries((prev) => [
-      makeLogEntry("info", `Restored the latest import path for output ${latestRunForNextSteps.outputRoot} into Start Here.`),
-      ...prev
-    ]);
+    appendLogEntry("info", `Restored the latest import path for output ${latestRunForNextSteps.outputRoot} into Start Here.`);
   }
 
   useEffect(() => {
     if (!desktopBridgeAvailable()) {
       const message = "Desktop bridge unavailable. Relaunch SkillSpring Quantum through Electron so real file inspection and imports can run.";
       setStatusMessage(message);
-      setLogEntries((prev) => [makeLogEntry("error", message), ...prev]);
+      appendLogEntry("error", message);
     }
-  }, []);
-
-  useEffect(() => {
-    return subscribeToImportProgress((update) => {
-      setImportProgress(update);
-
-      if (runState !== "running") {
-        setRunState("running");
-      }
-
-      setStatusMessage(update.message);
-      setLogEntries((prev) => {
-        if (prev[0]?.message === update.message) {
-          return prev;
-        }
-
-        return [makeLogEntry("info", update.message), ...prev];
-      });
-    });
-  }, [runState]);
+  }, [appendLogEntry, setStatusMessage]);
 
   const latestRunForNextSteps = importHistory?.latest;
   const latestArchiveArtifactPath = findLatestArchiveArtifactPath(latestRunForNextSteps ?? null);
@@ -1471,11 +1425,14 @@ export default function ImportsScreen() {
       <div className="panel large">
         <h2>Activity Log</h2>
         <p className="muted">
-          Open this only when a check or import went wrong and you want the step-by-step details.
+          Use this to verify what Quantum has been doing step by step, especially during long imports, stop requests, or follow-up checks.
         </p>
         <div className="action-bar">
           <button className="secondary-btn" type="button" onClick={() => setShowRunLog((value) => !value)}>
             {showRunLog ? "Hide Activity Log" : "Show Activity Log"}
+          </button>
+          <button className="secondary-btn" type="button" onClick={() => setActiveScreen("activity-log")}>
+            Open Activity History Screen
           </button>
         </div>
         {showRunLog ? <RunLogPanel entries={logEntries} /> : null}
@@ -1784,6 +1741,32 @@ function loadImportFormDraft(outputRoot: string): ImportJobForm {
     inputFolder: "",
     outputRoot
   };
+}
+
+function loadSourceSummaryDraft(): ImportSourceSummary | null {
+  try {
+    const raw = sessionStorage.getItem(SOURCE_SUMMARY_DRAFT_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    return JSON.parse(raw) as ImportSourceSummary;
+  } catch {
+    return null;
+  }
+}
+
+function saveSourceSummaryDraft(sourceSummary: ImportSourceSummary | null) {
+  try {
+    if (!sourceSummary) {
+      sessionStorage.removeItem(SOURCE_SUMMARY_DRAFT_KEY);
+      return;
+    }
+
+    sessionStorage.setItem(SOURCE_SUMMARY_DRAFT_KEY, JSON.stringify(sourceSummary));
+  } catch {
+    // ignore storage errors
+  }
 }
 
 function saveImportFormDraft(form: ImportJobForm) {

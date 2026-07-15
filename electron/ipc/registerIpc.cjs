@@ -7,11 +7,23 @@ const { runCommand } = require("../lib/runCommand.cjs");
 const { readJsonOutput } = require("../lib/readJsonOutput.cjs");
 
 function runtimeRoot() {
+  if (isPackagedRuntime()) {
+    return app.getAppPath();
+  }
+
   return path.resolve(__dirname, "..", "..");
 }
 
 function isPackagedRuntime() {
   return app.isPackaged;
+}
+
+function runtimeCwd() {
+  if (isPackagedRuntime()) {
+    return process.resourcesPath || path.dirname(process.execPath);
+  }
+
+  return runtimeRoot();
 }
 
 function tsxCli(root) {
@@ -79,12 +91,11 @@ function agentScriptPath() {
 }
 
 async function runRuntimeScript(scriptPath, args = [], options = {}) {
-  const root = runtimeRoot();
   const result = await runCommand(
     runtimeCommand(),
     runtimeScriptArgs(scriptPath, args, options),
     {
-      cwd: root,
+      cwd: runtimeCwd(),
       shell: false,
       env: runtimeEnv(options.env || {})
     }
@@ -97,7 +108,6 @@ async function runRuntimeScript(scriptPath, args = [], options = {}) {
 }
 
 async function runImportWithProgress(webContents, inputPath, outputRoot) {
-  const root = runtimeRoot();
   return await new Promise((resolve) => {
     if (activeImportRun?.child && !activeImportRun.child.killed) {
       resolve({
@@ -118,7 +128,7 @@ async function runImportWithProgress(webContents, inputPath, outputRoot) {
         { largeHeap: true }
       ),
       {
-        cwd: root,
+        cwd: runtimeCwd(),
         env: runtimeEnv(),
         shell: false,
         windowsHide: true
@@ -315,7 +325,7 @@ function resolveOllamaExecutable() {
 }
 
 function currentDriveRoot() {
-  return path.parse(runtimeRoot()).root || process.cwd();
+  return path.parse(runtimeCwd()).root || process.cwd();
 }
 
 function bytesToGb(bytes) {
@@ -425,7 +435,7 @@ async function tryStartOllamaRuntime() {
   ollamaStartPromise = new Promise((resolve) => {
     try {
       const child = spawn(executable, ["serve"], {
-        cwd: runtimeRoot(),
+        cwd: runtimeCwd(),
         shell: false,
         detached: true,
         windowsHide: true,
@@ -517,7 +527,7 @@ async function runAgentHealthProbe(outputRoot) {
     runtimeCommand(),
     runtimeScriptArgs(agentScriptPath(), ["--health-json", "--output", outputRoot || "organized_output"]),
     {
-      cwd: runtimeRoot(),
+      cwd: runtimeCwd(),
       shell: false,
       env: runtimeEnv({
         NODE_NO_WARNINGS: "1"
@@ -568,7 +578,7 @@ async function installOllamaModel(model) {
   }
 
   return await runCommand(executable, ["pull", model], {
-    cwd: runtimeRoot(),
+    cwd: runtimeCwd(),
     shell: false,
     env: runtimeEnv({
       NODE_NO_WARNINGS: "1"
@@ -645,7 +655,7 @@ async function ensureAgentServer(outputRoot, port = AGENT_DEFAULT_PORT) {
         ]
       ),
       {
-        cwd: runtimeRoot(),
+        cwd: runtimeCwd(),
         shell: false,
         windowsHide: true,
         env: runtimeEnv({
@@ -918,7 +928,7 @@ function registerIpc() {
           ]
         ),
         {
-          cwd: runtimeRoot(),
+          cwd: runtimeCwd(),
           shell: false,
           env: runtimeEnv()
         }

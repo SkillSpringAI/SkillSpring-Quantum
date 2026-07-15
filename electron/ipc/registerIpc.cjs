@@ -2,20 +2,28 @@ const path = require("node:path");
 const fs = require("node:fs");
 const os = require("node:os");
 const { spawn } = require("node:child_process");
-const { ipcMain, dialog, shell } = require("electron");
+const { app, ipcMain, dialog, shell } = require("electron");
 const { runCommand } = require("../lib/runCommand.cjs");
 const { readJsonOutput } = require("../lib/readJsonOutput.cjs");
 
-function tsxCli(repoRoot) {
-  return path.join(repoRoot, "node_modules", "tsx", "dist", "cli.mjs");
-}
-
-function repoRoot() {
+function runtimeRoot() {
   return path.resolve(__dirname, "..", "..");
 }
 
-function nodeCommand() {
-  return process.env.npm_node_execpath || "node";
+function isPackagedRuntime() {
+  return app.isPackaged;
+}
+
+function tsxCli(root) {
+  return path.join(root, "node_modules", "tsx", "dist", "cli.mjs");
+}
+
+function runtimeCommand() {
+  if (isPackagedRuntime()) {
+    return process.execPath;
+  }
+
+  return process.env.npm_node_execpath || process.execPath || "node";
 }
 
 function recommendedImportHeapMb() {
@@ -25,13 +33,37 @@ function recommendedImportHeapMb() {
   return Math.floor(clamped / 256) * 256;
 }
 
-function tsxNodeArgs(root, scriptPath, args = [], options = {}) {
-  const nodeArgs = [];
-  if (options.largeHeap) {
-    nodeArgs.push(`--max-old-space-size=${recommendedImportHeapMb()}`);
+function runtimeScriptPath(relativeScriptPath) {
+  const root = runtimeRoot();
+  if (!isPackagedRuntime()) {
+    return path.join(root, relativeScriptPath);
   }
 
-  return [...nodeArgs, tsxCli(root), scriptPath, ...args];
+  const normalized = relativeScriptPath.replace(/\.ts$/, ".js");
+  return path.join(root, "dist", normalized);
+}
+
+function runtimeEnv(extraEnv = {}) {
+  return {
+    ...process.env,
+    ...(isPackagedRuntime() ? { ELECTRON_RUN_AS_NODE: "1" } : {}),
+    ...extraEnv
+  };
+}
+
+function runtimeScriptArgs(relativeScriptPath, args = [], options = {}) {
+  const commandArgs = [];
+  if (options.largeHeap) {
+    commandArgs.push(`--max-old-space-size=${recommendedImportHeapMb()}`);
+  }
+
+  const scriptPath = runtimeScriptPath(relativeScriptPath);
+
+  if (isPackagedRuntime()) {
+    return [...commandArgs, scriptPath, ...args];
+  }
+
+  return [...commandArgs, tsxCli(runtimeRoot()), scriptPath, ...args];
 }
 
 const AGENT_DEFAULT_PORT = 5678;
@@ -42,20 +74,19 @@ let agentOutputRoot = "organized_output";
 let ollamaStartPromise = null;
 let activeImportRun = null;
 
-function agentScriptPath(root) {
-  return path.join(root, "skillspring-quantum-agent", "agent", "main.ts");
+function agentScriptPath() {
+  return "skillspring-quantum-agent/agent/main.ts";
 }
 
-async function runTsx(scriptPath, args = []) {
-  const root = repoRoot();
-  const fullScriptPath = path.join(root, scriptPath);
-
+async function runRuntimeScript(scriptPath, args = [], options = {}) {
+  const root = runtimeRoot();
   const result = await runCommand(
-    nodeCommand(),
-    tsxNodeArgs(root, fullScriptPath, args),
+    runtimeCommand(),
+    runtimeScriptArgs(scriptPath, args, options),
     {
       cwd: root,
-      shell: false
+      shell: false,
+      env: runtimeEnv(options.env || {})
     }
   );
 
@@ -65,10 +96,8 @@ async function runTsx(scriptPath, args = []) {
   };
 }
 
-async function runImportTsxWithProgress(webContents, inputPath, outputRoot) {
-  const root = repoRoot();
-  const fullScriptPath = path.join(root, "core", "imports", "runImportSource.ts");
-
+async function runImportWithProgress(webContents, inputPath, outputRoot) {
+  const root = runtimeRoot();
   return await new Promise((resolve) => {
     if (activeImportRun?.child && !activeImportRun.child.killed) {
       resolve({
@@ -82,16 +111,15 @@ async function runImportTsxWithProgress(webContents, inputPath, outputRoot) {
     }
 
     const child = spawn(
-      nodeCommand(),
-      tsxNodeArgs(
-        root,
-        fullScriptPath,
+      runtimeCommand(),
+      runtimeScriptArgs(
+        "core/imports/runImportSource.ts",
         [inputPath, outputRoot || "organized_output", "--progress"],
         { largeHeap: true }
       ),
       {
         cwd: root,
-        env: { ...process.env },
+        env: runtimeEnv(),
         shell: false,
         windowsHide: true
       }
@@ -287,7 +315,7 @@ function resolveOllamaExecutable() {
 }
 
 function currentDriveRoot() {
-  return path.parse(repoRoot()).root || process.cwd();
+  return path.parse(runtimeRoot()).root || process.cwd();
 }
 
 function bytesToGb(bytes) {
@@ -397,15 +425,14 @@ async function tryStartOllamaRuntime() {
   ollamaStartPromise = new Promise((resolve) => {
     try {
       const child = spawn(executable, ["serve"], {
-        cwd: repoRoot(),
+        cwd: runtimeRoot(),
         shell: false,
         detached: true,
         windowsHide: true,
         stdio: "ignore",
-        env: {
-          ...process.env,
+        env: runtimeEnv({
           NODE_NO_WARNINGS: "1"
-        }
+        })
       });
 
       child.unref();
@@ -486,17 +513,15 @@ function buildPrerequisiteSummary(parsed, stderr) {
 async function runAgentHealthProbe(outputRoot) {
   await tryStartOllamaRuntime();
 
-  const root = repoRoot();
   const result = await runCommand(
-    nodeCommand(),
-    [tsxCli(root), agentScriptPath(root), "--health-json", "--output", outputRoot || "organized_output"],
+    runtimeCommand(),
+    runtimeScriptArgs(agentScriptPath(), ["--health-json", "--output", outputRoot || "organized_output"]),
     {
-      cwd: root,
+      cwd: runtimeRoot(),
       shell: false,
-      env: {
-        ...process.env,
+      env: runtimeEnv({
         NODE_NO_WARNINGS: "1"
-      }
+      })
     }
   );
 
@@ -543,12 +568,11 @@ async function installOllamaModel(model) {
   }
 
   return await runCommand(executable, ["pull", model], {
-    cwd: repoRoot(),
+    cwd: runtimeRoot(),
     shell: false,
-    env: {
-      ...process.env,
+    env: runtimeEnv({
       NODE_NO_WARNINGS: "1"
-    }
+    })
   });
 }
 
@@ -604,32 +628,31 @@ async function ensureAgentServer(outputRoot, port = AGENT_DEFAULT_PORT) {
     return await agentStartPromise;
   }
 
-  const root = repoRoot();
   agentPort = port;
   agentOutputRoot = desiredOutputRoot;
 
   agentStartPromise = new Promise((resolve, reject) => {
     const child = require("node:child_process").spawn(
-      nodeCommand(),
-      [
-        tsxCli(root),
-        agentScriptPath(root),
+      runtimeCommand(),
+      runtimeScriptArgs(
+        agentScriptPath(),
+        [
         "--server",
         "--port",
         String(port),
         "--output",
         desiredOutputRoot
-      ],
+        ]
+      ),
       {
-        cwd: root,
+        cwd: runtimeRoot(),
         shell: false,
         windowsHide: true,
-        env: {
-          ...process.env,
+        env: runtimeEnv({
           NODE_NO_WARNINGS: "1",
           AGENT_PORT: String(port),
           SKILLSPRING_OUTPUT: desiredOutputRoot
-        }
+        })
       }
     );
 
@@ -875,8 +898,6 @@ function registerIpc() {
 
   ipcMain.handle("agent:index", async (_event, payload = {}) => {
     try {
-      const root = repoRoot();
-
       if (agentProcess) {
         const response = await requestAgent("/index", { method: "POST" });
         return {
@@ -887,17 +908,19 @@ function registerIpc() {
       }
 
       const result = await runCommand(
-        nodeCommand(),
-        [
-          tsxCli(root),
-          agentScriptPath(root),
+        runtimeCommand(),
+        runtimeScriptArgs(
+          agentScriptPath(),
+          [
           "--index",
           "--output",
           payload.outputRoot || "organized_output"
-        ],
+          ]
+        ),
         {
-          cwd: root,
-          shell: false
+          cwd: runtimeRoot(),
+          shell: false,
+          env: runtimeEnv()
         }
       );
 
@@ -1003,12 +1026,12 @@ function registerIpc() {
   });
 
   ipcMain.handle("imports:inspect", async (_event, payload) => {
-    const result = await runTsx("core/imports/inspectImportSource.ts", [payload.inputPath]);
+    const result = await runRuntimeScript("core/imports/inspectImportSource.ts", [payload.inputPath]);
     return result.ok ? ok(result, "Import source inspected.") : fail(result, "Failed to inspect import source.");
   });
 
   ipcMain.handle("imports:run", async (event, payload) => {
-    const result = await runImportTsxWithProgress(event.sender, payload.inputPath, payload.outputRoot || "organized_output");
+    const result = await runImportWithProgress(event.sender, payload.inputPath, payload.outputRoot || "organized_output");
     return result.ok ? ok(result, "Import source processed.") : formatImportFailure(result, "Failed to process import source.");
   });
 
@@ -1047,7 +1070,7 @@ function registerIpc() {
   });
 
   ipcMain.handle("imports:history", async (_event, payload = {}) => {
-    const result = await runTsx("core/imports/readImportHistory.ts", [
+    const result = await runRuntimeScript("core/imports/readImportHistory.ts", [
       payload.outputRoot || "organized_output",
       String(payload.limit || 10)
     ]);
@@ -1065,26 +1088,26 @@ function registerIpc() {
     if (filters.to) args.push("--to", filters.to);
     if (filters.status && filters.status !== "all") args.push("--status", filters.status);
 
-    const result = await runTsx("core/imports/queryImportHistory.ts", args);
+    const result = await runRuntimeScript("core/imports/queryImportHistory.ts", args);
     return result.ok ? ok(result, "Import history query loaded.") : fail(result, "Failed to query import history.");
   });
 
   ipcMain.handle("imports:retrievalIndex", async (_event, payload = {}) => {
-    const result = await runTsx("core/imports/readImportRetrievalIndex.ts", [
+    const result = await runRuntimeScript("core/imports/readImportRetrievalIndex.ts", [
       payload.outputRoot || "organized_output"
     ]);
     return result.ok ? ok(result, "Import retrieval index loaded.") : fail(result, "Failed to load import retrieval index.");
   });
 
   ipcMain.handle("retrieval:savedViews:read", async (_event, payload = {}) => {
-    const result = await runTsx("core/retrieval/readSavedViews.ts", [
+    const result = await runRuntimeScript("core/retrieval/readSavedViews.ts", [
       payload.outputRoot || "organized_output"
     ]);
     return result.ok ? ok(result, "Saved retrieval views loaded.") : fail(result, "Failed to load saved retrieval views.");
   });
 
   ipcMain.handle("retrieval:savedViews:save", async (_event, payload = {}) => {
-    const result = await runTsx("core/retrieval/saveSavedView.ts", [
+    const result = await runRuntimeScript("core/retrieval/saveSavedView.ts", [
       payload.outputRoot || "organized_output",
       payload.name || "",
       JSON.stringify(payload.filters || {}),
@@ -1095,7 +1118,7 @@ function registerIpc() {
   });
 
   ipcMain.handle("retrieval:savedViews:delete", async (_event, payload = {}) => {
-    const result = await runTsx("core/retrieval/deleteSavedView.ts", [
+    const result = await runRuntimeScript("core/retrieval/deleteSavedView.ts", [
       payload.outputRoot || "organized_output",
       payload.id || ""
     ]);
@@ -1103,7 +1126,7 @@ function registerIpc() {
   });
 
   ipcMain.handle("datasets:latestRun", async (_event, payload = {}) => {
-    const result = await runTsx("core/pipeline/readLatestDatasetRun.ts", [
+    const result = await runRuntimeScript("core/pipeline/readLatestDatasetRun.ts", [
       payload.outputRoot || "organized_output",
       String(payload.limit || 8)
     ]);
@@ -1111,7 +1134,7 @@ function registerIpc() {
   });
 
   ipcMain.handle("datasets:preview", async (_event, payload = {}) => {
-    const result = await runTsx("core/pipeline/readDatasetPreview.ts", [
+    const result = await runRuntimeScript("core/pipeline/readDatasetPreview.ts", [
       payload.outputRoot || "organized_output",
       payload.runId || "",
       payload.kind || "topic_segments",
@@ -1122,28 +1145,29 @@ function registerIpc() {
   });
 
   ipcMain.handle("datasets:segmentRetrievalIndex", async (_event, payload = {}) => {
-    const result = await runTsx("core/pipeline/readSegmentRetrievalIndex.ts", [
+    const result = await runRuntimeScript("core/pipeline/readSegmentRetrievalIndex.ts", [
       payload.outputRoot || "organized_output"
     ]);
     return result.ok ? ok(result, "Segment retrieval index loaded.") : fail(result, "Failed to load segment retrieval index.");
   });
 
   ipcMain.handle("governance:listRules", async () => {
-    const result = await runTsx("core/governance/listRules.ts");
+    const result = await runRuntimeScript("core/governance/listRules.ts");
     return result.ok ? ok(result, "Governance rules listed.") : fail(result, "Failed to list governance rules.");
   });
 
   ipcMain.handle("governance:readRule", async (_event, payload) => {
-    const result = await runTsx("core/governance/readRule.ts", [payload.filePath]);
+    const result = await runRuntimeScript("core/governance/readRule.ts", [payload.filePath]);
     return result.ok ? ok(result, "Governance rule loaded.") : fail(result, "Failed to read governance rule.");
   });
 
   ipcMain.handle("governance:writeRule", async (_event, payload) => {
-    const tempPath = path.join(repoRoot(), ".electron-temp-rule.json");
+    const tempPath = path.join(app.getPath("userData"), ".electron-temp-rule.json");
     const fs = require("node:fs/promises");
+    await fs.mkdir(path.dirname(tempPath), { recursive: true });
     await fs.writeFile(tempPath, payload.rawText, "utf-8");
 
-    const result = await runTsx("core/governance/writeRule.ts", [
+    const result = await runRuntimeScript("core/governance/writeRule.ts", [
       payload.filePath,
       "--from-file",
       tempPath
@@ -1155,12 +1179,12 @@ function registerIpc() {
   });
 
   ipcMain.handle("db:listCollections", async (_event, payload = {}) => {
-    const result = await runTsx("core/db/listCollections.ts", [payload.outputRoot || "organized_output"]);
+    const result = await runRuntimeScript("core/db/listCollections.ts", [payload.outputRoot || "organized_output"]);
     return result.ok ? ok(result, "DB collections listed.") : fail(result, "Failed to list DB collections.");
   });
 
   ipcMain.handle("db:readCollection", async (_event, payload) => {
-    const result = await runTsx("core/db/readCollection.ts", [
+    const result = await runRuntimeScript("core/db/readCollection.ts", [
       payload.outputRoot,
       payload.tier,
       payload.collection,
@@ -1172,12 +1196,12 @@ function registerIpc() {
   });
 
   ipcMain.handle("diagnostics:run", async () => {
-    const result = await runTsx("core/diagnostics/diagRunner.ts", ["organized_output"]);
+    const result = await runRuntimeScript("core/diagnostics/diagRunner.ts", ["organized_output"]);
     return result.ok ? ok(result, "Diagnostics completed.") : fail(result, "Failed to run diagnostics.");
   });
 
   ipcMain.handle("pipeline:runFile", async (_event, payload) => {
-    const result = await runTsx("core/pipeline/pipeline.ts", [
+    const result = await runRuntimeScript("core/pipeline/pipeline.ts", [
       payload.inputFile,
       payload.outputRoot
     ]);
@@ -1190,22 +1214,22 @@ function registerIpc() {
     if (payload.inputFolder) args.push(payload.inputFolder);
     if (payload.outputRoot) args.push(payload.outputRoot);
 
-    const result = await runTsx("core/batch/runBatch.ts", args);
+    const result = await runRuntimeScript("core/batch/runBatch.ts", args);
     return result.ok ? ok(result, "Batch run completed.") : fail(result, "Failed to run batch.");
   });
 
   ipcMain.handle("batch:diag", async () => {
-    const result = await runTsx("core/batch/buildBatchDiagnostics.ts", ["organized_output"]);
+    const result = await runRuntimeScript("core/batch/buildBatchDiagnostics.ts", ["organized_output"]);
     return result.ok ? ok(result, "Batch diagnostics completed.") : fail(result, "Failed to build batch diagnostics.");
   });
 
   ipcMain.handle("batch:delta", async () => {
-    const result = await runTsx("core/batch/buildBatchDelta.ts", ["organized_output"]);
+    const result = await runRuntimeScript("core/batch/buildBatchDelta.ts", ["organized_output"]);
     return result.ok ? ok(result, "Batch delta completed.") : fail(result, "Failed to build batch delta.");
   });
 
   ipcMain.handle("notifications:archive", async (_event, payload = {}) => {
-    const result = await runTsx("core/notifications/readArchiveNotifications.ts", [
+    const result = await runRuntimeScript("core/notifications/readArchiveNotifications.ts", [
       payload.outputRoot || "organized_output",
       String(payload.limit || 20)
     ]);
@@ -1225,17 +1249,17 @@ function registerIpc() {
       args.push("--skip-topics");
     }
 
-    const result = await runTsx("core/notifications/readMarkdownArchive.ts", args);
+    const result = await runRuntimeScript("core/notifications/readMarkdownArchive.ts", args);
     return result.ok ? ok(result, "Markdown archive loaded.") : fail(result, "Failed to load markdown archive.");
   });
 
   ipcMain.handle("db:review:buildQueue", async (_event, payload = {}) => {
-    const result = await runTsx("core/db/buildReviewQueue.ts", [payload.outputRoot || "organized_output"]);
+    const result = await runRuntimeScript("core/db/buildReviewQueue.ts", [payload.outputRoot || "organized_output"]);
     return result.ok ? ok(result, "Review queue built.") : fail(result, "Failed to build review queue.");
   });
 
   ipcMain.handle("db:review:decide", async (_event, payload) => {
-    const result = await runTsx("core/db/reviewDecisions.ts", [
+    const result = await runRuntimeScript("core/db/reviewDecisions.ts", [
       payload.outputRoot || "organized_output",
       payload.decision,
       payload.queueKey,
@@ -1246,17 +1270,17 @@ function registerIpc() {
   });
 
   ipcMain.handle("db:promote", async (_event, payload = {}) => {
-    const result = await runTsx("core/db/promoteCurated.ts", [payload.outputRoot || "organized_output"]);
+    const result = await runRuntimeScript("core/db/promoteCurated.ts", [payload.outputRoot || "organized_output"]);
     return result.ok ? ok(result, "Curated records promoted.") : fail(result, "Failed to promote curated records.");
   });
 
   ipcMain.handle("folders:merge", async (_event, payload = {}) => {
-    const result = await runTsx("core/pipeline/mergeTopicFolders.ts", [payload.outputRoot || "organized_output"]);
+    const result = await runRuntimeScript("core/pipeline/mergeTopicFolders.ts", [payload.outputRoot || "organized_output"]);
     return result.ok ? ok(result, "Topic folders merged.") : fail(result, "Failed to merge topic folders.");
   });
 
   ipcMain.handle("purge:restore", async (_event, payload) => {
-    const result = await runTsx("core/pipeline/restorePurged.ts", [
+    const result = await runRuntimeScript("core/pipeline/restorePurged.ts", [
       payload.sourceFile,
       payload.outputRoot || "organized_output"
     ]);

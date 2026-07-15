@@ -1,10 +1,13 @@
 {
   "name": "skillspring-quantum",
   "version": "0.1.0",
+  "description": "Electron desktop workflow for importing AI exports into readable local archives and structured datasets.",
+  "author": "SkillSpring",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
     "build": "tsc",
+    "build:desktop": "tsc --outDir dist-package && npm run renderer:build",
     "start": "node dist/core/pipeline/pipeline.js",
     "dev": "tsx core/pipeline/pipeline.ts",
     "agent": "tsx skillspring-quantum-agent/agent/main.ts",
@@ -30,8 +33,10 @@
     "governance:list": "tsx core/governance/listRules.ts",
     "governance:read": "tsx core/governance/readRule.ts",
     "governance:write": "tsx core/governance/writeRule.ts",
-    "renderer:build": "vite build --config ui/app/vite.config.ts",
+    "renderer:build": "vite build --config vite.desktop.config.ts",
     "electron:dev": "npm run renderer:build && electron .",
+    "package:dir": "npm run build:desktop && electron-builder --dir --publish never",
+    "package:win": "npm run build:desktop && electron-builder --win nsis --publish never",
     "test:parser": "tsx tests/parser/chatgpt-parser.test.ts",
     "test:parser:coverage": "tsx tests/parser/chatgpt-parser.test.ts && tsx tests/parser/claude-parser.test.ts && tsx tests/parser/gemini-parser.test.ts && tsx tests/parser/copilot-parser.test.ts && tsx tests/parser/generic-conversation-parser.test.ts && tsx tests/parser/conversation-export-detection.test.ts && tsx tests/parser/gemini-activity-html-parser.test.ts && tsx tests/parser/copilot-activity-csv-parser.test.ts && tsx tests/parser/preflight-copilot-csv.test.ts && tsx tests/parser/import-result-messages.test.ts && tsx tests/parser/dataset-intent.test.ts && tsx tests/parser/dataset-intent-match.test.ts",
     "test:import:intake": "tsx tests/parser/chatgpt-source-intake.test.ts && tsx tests/parser/chatgpt-html-source-intake.test.ts && tsx tests/parser/claude-source-intake.test.ts && tsx tests/parser/copilot-source-intake.test.ts && tsx tests/parser/vendor-package-source-intake.test.ts",
@@ -71,11 +76,51 @@
     "test:ci": "npm run test:parser:coverage && npm run test:imports && npm run test:smoke:vendors && npm run test:retrieval && npm run test:pipeline && npm run test:assistant && npm run test:governance",
     "test:all": "npm run test:ci"
   },
+  "build": {
+    "appId": "ai.skillspring.quantum",
+    "productName": "SkillSpring Quantum",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**/*",
+      "package.json",
+      {
+        "from": "dist-package",
+        "to": "dist",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "ui/app/dist",
+        "to": "ui/app/dist",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "extraMetadata": {
+      "main": "electron/main.cjs"
+    },
+    "asar": true,
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "SkillSpring-Quantum-${version}-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "electron": "^40.0.0",
+    "electron-builder": "^26.15.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tsx": "^4.19.0",

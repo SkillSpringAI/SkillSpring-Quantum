@@ -2,7 +2,10 @@ node_modules/
 
 # Build output
 dist/
+dist-package/
 ui/app/dist/
+ui/app/dist-package/
+release/
 
 # Local processing output and exports
 organized_output/

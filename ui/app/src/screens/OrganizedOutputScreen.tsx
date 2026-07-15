@@ -12,11 +12,13 @@ import { loadMarkdownArchive } from "../services/markdownArchiveBridge";
 import { revealDesktopPath } from "../services/pathBridge";
 import { useNavigation } from "../state/navigationContext";
 import { useAgentContext } from "../state/agentContext";
+import { useImportActivity } from "../state/importActivityContext";
 import { useSettings } from "../state/settingsContext";
 
 export default function OrganizedOutputScreen() {
   const { setActiveScreen } = useNavigation();
   const { setCurrentArtifact } = useAgentContext();
+  const { recordWorkspaceEvent } = useImportActivity();
   const { settings } = useSettings();
   const [loadingArchiveState, setLoadingArchiveState] = useState(true);
   const [loadingSelectedContent, setLoadingSelectedContent] = useState(false);
@@ -160,6 +162,37 @@ export default function OrganizedOutputScreen() {
     archiveFileCount,
     topics.length
   );
+
+  useEffect(() => {
+    recordWorkspaceEvent(`Opened Readable Archive for ${describeOutputRoot(settings.outputRoot)}.`);
+  }, [settings.outputRoot, recordWorkspaceEvent]);
+
+  useEffect(() => {
+    if (loadingArchiveState || archiveLoadError || topics.length === 0) {
+      return;
+    }
+
+    recordWorkspaceEvent(
+      `Readable archive loaded for ${describeOutputRoot(settings.outputRoot)}: ${archiveConversationCount} conversation(s), ${archiveFileCount} readable slice(s), ${topics.length} topic group(s).`
+    );
+  }, [
+    loadingArchiveState,
+    archiveLoadError,
+    topics.length,
+    archiveConversationCount,
+    archiveFileCount,
+    settings.outputRoot,
+    recordWorkspaceEvent
+  ]);
+
+  useEffect(() => {
+    if (!selectedFile) {
+      return;
+    }
+
+    const label = selectedFile.title || selectedFile.path.split(/[\\/]/).pop() || "selected archive file";
+    recordWorkspaceEvent(`Opened archive file: ${label}.`);
+  }, [selectedFile?.path, selectedFile?.title, recordWorkspaceEvent]);
 
   useEffect(() => {
     if (selectedFile) {

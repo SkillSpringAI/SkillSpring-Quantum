@@ -2101,6 +2101,7 @@ async function resolveDirectoryImportFiles(
     await areChatGptConversationShardFiles(chatGptConversationShardFiles)
   ) {
     const companionNames = new Set([
+      "ads.json",
       "chat.html",
       "conversation_asset_file_names.json",
       "export_manifest.json",

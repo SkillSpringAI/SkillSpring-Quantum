@@ -29,7 +29,7 @@ export default function ActivityLogScreen() {
         ].filter(Boolean)}
         lead={
           runState === "running"
-            ? "Quantum keeps recording import activity even while you move across other screens."
+            ? "Quantum keeps recording workspace activity even while you move across other screens."
             : "Use Activity History to verify what Quantum has been doing step by step, not only when something goes wrong."
         }
       />
@@ -37,7 +37,7 @@ export default function ActivityLogScreen() {
       <div className="panel">
         <h2>Why This Helps</h2>
         <p className="muted">
-          This screen is here so you can sanity-check what Quantum has been doing without losing context when you leave Imports.
+          This screen is here so you can sanity-check what Quantum has been doing without losing context when you move between Imports, Archive, Datasets, and follow-up review screens.
         </p>
         <div className="action-bar">
           <button className="primary-btn" type="button" onClick={() => setActiveScreen("imports")}>
@@ -52,7 +52,7 @@ export default function ActivityLogScreen() {
       <div className="panel large">
         <h2>Activity History</h2>
         <p className="muted">
-          Check this whenever you want to verify the actions Quantum has been taking during source inspection, import progress, stop requests, or follow-up checks.
+          Check this whenever you want to verify the actions Quantum has been taking during source inspection, import progress, archive loading, dataset review, stop requests, or follow-up checks.
         </p>
         <RunLogPanel entries={logEntries} />
       </div>

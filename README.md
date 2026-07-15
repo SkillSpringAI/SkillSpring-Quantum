@@ -265,22 +265,25 @@ npm run folders:merge
 - Implementation/status reference: [docs/SKILLSPRING_QUANTUM_REFERENCE.md](docs/SKILLSPRING_QUANTUM_REFERENCE.md)
 - Anti-drift scope lock: [docs/SKILLSPRING_MVP_SCOPE_LOCK.md](docs/SKILLSPRING_MVP_SCOPE_LOCK.md)
 - Checkable MVP roadmap: [docs/SKILLSPRING_QUANTUM_MVP_ROADMAP.md](docs/SKILLSPRING_QUANTUM_MVP_ROADMAP.md)
-- Future-scope PIE boundary: [docs/SKILLSPRING_PIE_FUTURE_SCOPE.md](docs/SKILLSPRING_PIE_FUTURE_SCOPE.md)
-- Next implementation note: [docs/NEXT_FIVE_SLICES_2026-07-09.md](docs/NEXT_FIVE_SLICES_2026-07-09.md)
-- Morning manual walkthrough note: [docs/MORNING_MANUAL_TEST_NOTE.md](docs/MORNING_MANUAL_TEST_NOTE.md)
+- Project history: [docs/PROJECT_HISTORY.md](docs/PROJECT_HISTORY.md)
+- Current walkthrough script: [docs/testing/MANUAL_TEST_CURRENT.md](docs/testing/MANUAL_TEST_CURRENT.md)
+- Walkthrough history: [docs/testing/WALKTHROUGH_HISTORY.md](docs/testing/WALKTHROUGH_HISTORY.md)
+- Future-scope boundary: [docs/architecture/FUTURE_SCOPE.md](docs/architecture/FUTURE_SCOPE.md)
+- Local AI boundary: [docs/architecture/LOCAL_AI_INTEGRATION.md](docs/architecture/LOCAL_AI_INTEGRATION.md)
+- Private beta plan: [docs/beta/PRIVATE_BETA_PLAN.md](docs/beta/PRIVATE_BETA_PLAN.md)
 - Changelog: [CHANGELOG.md](CHANGELOG.md)
 
 ## Next Priority Slices
 
-See [docs/NEXT_FIVE_SLICES_2026-07-09.md](docs/NEXT_FIVE_SLICES_2026-07-09.md) for the detailed July 9 sequence.
+See [docs/SKILLSPRING_QUANTUM_MVP_ROADMAP.md](docs/SKILLSPRING_QUANTUM_MVP_ROADMAP.md) for the current active gates.
 
-The immediate next five slices are:
+The immediate priorities are:
 
-1. **Cache correctness and reuse invalidation hardening** — stronger reuse metadata so reruns do not silently trust stale outputs
-2. **Heavy-import progress trust and retry explanation** — clearer per-step wording and honest retry/resume states
-3. **Complete regression-gate coverage** — ensure `test:ci` exercises the import-hardening work that matters most
-4. **Focused Electron manual retest** — validate the ordinary workflow communicates improvements clearly
-5. **Reusable first-run onboarding and walkthrough path** — prepare a stable walkthrough for outside beta sessions
+1. **Documentation cleanup and beta-facing repo clarity** — keep the active documentation small, current, and easy to navigate
+2. **Reproducible Windows packaging** — make the app launchable for testers outside the development repo
+3. **Tester support artifacts** — finalize guide, known limitations, and structured feedback capture
+4. **Activity History follow-through** — keep broadening workspace activity visibility where it helps trust
+5. **Observe rather than over-polish** — let private beta feedback shape the next non-blocking workflow hardening
 
 ## Use Cases the Project Currently Fits Best
 

@@ -4,7 +4,7 @@ This document is the working product-direction reference for SkillSpring Quantum
 
 Use it to keep implementation focused on the smallest version of Quantum that general users could realistically use and prefer over stitching together multiple existing tools.
 
-For the higher-level reasoning behind these boundaries, also see `docs/SKILLSPRING_QUANTUM_PRODUCT_PHILOSOPHY.md`.
+The guiding idea behind these boundaries is simple: Quantum should first succeed as a product people can understand before it expands into a broader platform.
 
 ## Product test
 
@@ -226,4 +226,4 @@ When choosing the next task, prefer work that improves one of these areas:
 
 If a task does not clearly improve one of those, it is probably not the next MVP task.
 
-For future expansion planning around richer parsing and intent analysis, see `docs/SKILLSPRING_PIE_FUTURE_SCOPE.md`. Treat that document as a future-scope reference, not as permission to widen the current MVP boundary.
+For future expansion planning beyond the current MVP boundary, see `docs/architecture/FUTURE_SCOPE.md`. Treat that document as future-scope reference, not as permission to widen the current MVP boundary early.

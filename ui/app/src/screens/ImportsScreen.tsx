@@ -1267,8 +1267,9 @@ export default function ImportsScreen() {
             <div className="stat-card accent-card">
               <span className="label">Main Export Files</span>
               <strong>
-                {sourceSummary.countsByKind.chatgpt_export + sourceSummary.countsByKind.conversation_json}
-                  + sourceSummary.countsByKind.gemini_activity_html
+                {sourceSummary.countsByKind.chatgpt_export +
+                  sourceSummary.countsByKind.conversation_json +
+                  sourceSummary.countsByKind.gemini_activity_html}
               </strong>
               <p className="muted">Recognized conversation export files in this path.</p>
             </div>

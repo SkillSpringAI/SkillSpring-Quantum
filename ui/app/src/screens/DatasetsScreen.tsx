@@ -13,6 +13,7 @@ import type {
 import type { DbRecord } from "../types/db";
 import { useNavigation } from "../state/navigationContext";
 import { useAgentContext } from "../state/agentContext";
+import { useImportActivity } from "../state/importActivityContext";
 import { useSettings } from "../state/settingsContext";
 import {
   findMatchingDatasetRunDetails,
@@ -45,6 +46,7 @@ export default function DatasetsScreen() {
     clearDatasetIntent
   } = useNavigation();
   const { setCurrentArtifact } = useAgentContext();
+  const { recordWorkspaceEvent } = useImportActivity();
   const { settings } = useSettings();
   const [loadingDatasetState, setLoadingDatasetState] = useState(true);
   const [datasetLoadError, setDatasetLoadError] = useState<string | null>(null);
@@ -262,6 +264,44 @@ export default function DatasetsScreen() {
   const visibleDatasetOutputCards = showAllDatasetOutputCards
     ? datasetOutputCards
     : datasetOutputCards.slice(0, 2);
+
+  useEffect(() => {
+    recordWorkspaceEvent(`Opened Datasets for ${describeOutputRoot(settings.outputRoot)}.`);
+  }, [settings.outputRoot, recordWorkspaceEvent]);
+
+  useEffect(() => {
+    if (!selectedRun || loadingDatasetState || datasetLoadError) {
+      return;
+    }
+
+    recordWorkspaceEvent(
+      `Dataset run ready for review: ${selectedRun.run_id} | ${previewConfig.label} active | ${selectedRun.topic_segments} topic segments, ${selectedRun.prompt_response_pairs} prompt/response pairs, ${selectedRun.micro_segments} micro segments.`
+    );
+  }, [
+    selectedRun?.run_id,
+    loadingDatasetState,
+    datasetLoadError,
+    previewConfig.label,
+    recordWorkspaceEvent
+  ]);
+
+  useEffect(() => {
+    if (!archiveHandoffSummary || !selectedRun?.run_id) {
+      return;
+    }
+
+    const archiveLabel = archiveHandoffSummary.archiveTitle || "archive handoff";
+    recordWorkspaceEvent(
+      archiveHandoffSummary.matchedRunId === selectedRun.run_id
+        ? `Dataset review is following archive handoff from "${archiveLabel}" into run ${selectedRun.run_id}.`
+        : `Dataset review opened after archive handoff from "${archiveLabel}". Current run in focus: ${selectedRun.run_id}.`
+    );
+  }, [
+    archiveHandoffSummary?.archiveTitle,
+    archiveHandoffSummary?.matchedRunId,
+    selectedRun?.run_id,
+    recordWorkspaceEvent
+  ]);
 
   useEffect(() => {
     if (selectedRun) {

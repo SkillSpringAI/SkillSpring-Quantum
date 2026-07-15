@@ -1,219 +1,221 @@
 # SkillSpring Quantum MVP Roadmap
 
-This roadmap is the short operational companion to the scope lock and reference docs.
+This is the living execution roadmap for the first private beta.
 
-It should track the next few slices that move the ordinary user workflow forward without letting governance become the main product surface.
+It replaces chronological accumulation with a small number of current gates. Completed work belongs in the reference docs and changelog, not in the active queue.
 
-## Current MVP state
+## Private beta target
 
-The core MVP loop is now:
+**Target:** begin a small private beta no later than **15 August 2026**.
 
-1. inspect a recognizable AI export
-2. import it locally
-3. read the archive output
-4. review the privacy-aware dataset output
-5. understand trust, fallback handling, and failures in plain English
+Initial tester lanes:
 
-The current first-class vendor set is:
+1. **General-use lane** - family or friends with ordinary AI exports containing casual questions, research, planning, creativity, and personal administration.
+2. **Professional-context lane** - a trusted tester whose procurement or structured-work background can test whether archive structure, retrieval, source context, and dataset explanations remain useful under more formal work patterns.
+3. **Mixed-vendor lane** - a tester or controlled dataset covering more than one supported vendor where practical.
 
-- ChatGPT / OpenAI export folders and JSON shards
-- Claude export JSON
-- Gemini export JSON
-- Grok export manifest JSON
-- Microsoft Copilot activity CSV for the proven tested export shape
+Professional testing must not require confidential employer, supplier, procurement, or personally sensitive material. Use personal exports, sanitized samples, or material the tester is clearly authorized to use.
 
-Gemini My Activity HTML remains a narrower fallback route.
+## Product promise being tested
 
-## Current Beta-Hardening Status
+> Import major AI conversation exports, turn them into readable local archives and privacy-aware datasets, and make the results understandable and searchable without uploading the source material to a third-party service.
 
-The July 5, 2026 slice sequence is now substantially complete:
+The beta is not testing whether Quantum can satisfy every future product idea. It is testing whether another person can:
 
-1. visible import progress
-2. vendor smoke-test suite
-3. corpus-agnostic parser hardening
-4. retrieval quality and evidence-grounded labeling
-5. narrow natural-language command bridge v1
+1. install or launch the app
+2. choose the correct export
+3. understand the preflight result
+4. complete or safely stop an import
+5. find and read the archive
+6. inspect the related dataset output
+7. search prior imported material
+8. understand failures, partial results, reuse, retry, and recovery
 
-Why this matters:
+## Current verified baseline
 
-- import work now feels alive instead of frozen
-- parser changes have a faster regression net across current first-class vendors
-- topic and segment quality are less dependent on the maintainer's own conversation habits
-- retrieval can explain both why something matched and where the user should go next
-- `Ask Quantum` now helps with supported workflow actions without bypassing deterministic execution
+As of 15 July 2026:
 
-Since that July 5 sequence completed, the repo has also landed a first assistant-runtime follow-through pass:
+- first-class support exists for ChatGPT, Claude, Gemini, Grok, and the proven Microsoft Copilot CSV shape
+- the deterministic import -> archive -> dataset -> retrieval workflow is implemented in Electron
+- output-root settings persist across the main screens
+- archive filters, attachment visibility, archive auto-selection, dataset run synchronization, and contextual review-queue states are implemented
+- large ChatGPT imports have visible progress, retry/resume handling, checkpointing, and reusable completed output
+- reuse validation includes stronger source, parser, pipeline, schema, and configuration identity
+- a real large ChatGPT export completed in roughly 90 minutes and an unchanged rerun completed in under 30 seconds
+- a fresh-workspace walkthrough using a newly downloaded free-account ChatGPT export completed through import, archive, and dataset review with no major workflow blocker
+- activity history now survives navigation and remains visible across Imports, Archive, and Datasets
+- the local assistant remains optional and subordinate to deterministic execution
 
-- local Ollama model compatibility detection for chat and embeddings
-- clearer assistant prerequisite summaries instead of raw model-not-found failures
-- in-app install guidance for missing recommended local models
-- drawer-state fixes so a running local assistant is reflected honestly instead of appearing stopped
+These items are complete unless a regression or outside-user observation proves otherwise. Do not repeatedly reopen them as roadmap work merely because an older note once listed them.
 
-This does not change the core priority order.
+## Work classification rule
 
-It means the assistant is now a more realistic secondary explainer surface, while parser trust, retrieval trust, and first-run clarity remain the next MVP-facing priorities.
+Every proposed task must be placed in one of four buckets.
 
-By end of day on July 6, 2026, the first two items in that next priority chain are also materially in place:
+### A. Pre-beta blocker
 
-- parser/classifier behavior is now more corpus-agnostic across unfamiliar user phrasing, especially personal-admin, consumer, household, and mixed-topic language
-- retrieval now explains match evidence more clearly at both import and segment level and preserves a better handoff into dataset review
+Fix before inviting testers when evidence shows:
 
-That leaves the next morning queue centered on:
+- possible silent data loss or corruption
+- an unrecoverable crash in the ordinary workflow
+- incorrect reuse of stale output
+- inability to install, launch, import, or locate results
+- a security or privacy defect
+- misleading status that causes users to make a harmful choice
 
-1. first-run beta onboarding and reusable walkthrough path
-2. assistant source-grounding and deterministic-boundary hardening
-3. assistant install/runtime completion pass
+### B. Pre-beta readiness
 
-The July 8, 2026 import-hardening pass also landed a meaningful reliability improvement for large ChatGPT export retries:
+Complete before beta when it directly improves:
 
-- already imported shard files can now be reused quickly during reruns instead of being processed like a fresh folder
-- missing success-ledger state can now be recovered from recent import history rather than silently losing reuse knowledge
-- import progress now counts against supported import-ready files more honestly
-- interrupted streaming ChatGPT shards now persist per-conversation resume checkpoints
-- failed shard retries are now ordered more deliberately so lighter failed shards can run before the heaviest retry candidate
+- reproducible installation or launch
+- first-run understanding
+- the ordinary import -> archive -> dataset -> retrieval handoff
+- tester consent, instructions, feedback capture, or support
 
-This does not mean the large-import experience is finished.
+### C. Observe during beta
 
-It means the bottleneck has moved from whole-folder rerun waste toward the remaining heavy failed shards themselves.
+Do not fix pre-emptively when the concern is mainly:
 
-## Near-term priorities
+- explanation density
+- screen hierarchy or terminology preferences
+- advanced-control discoverability
+- model recommendations
+- optional AI setup friction
+- uncommon recovery controls
+- performance that is slow but still safe and understandable
 
-## Continue Tomorrow
+Promote these to active work only when observation shows repeated user difficulty or meaningful risk.
 
-The app is now materially more stable, the major card-collision regression from the July 2, 2026 internal pass was resolved, and the ordinary four-screen workflow is holding together better after a real import.
+### D. Deferred
 
-That changes the immediate goal.
+Keep outside the beta path unless evidence changes:
 
-The next milestone is no longer "repair obvious screen breakage."
+- new vendor expansion
+- marketed general document ingestion
+- Rust or Tauri rewrites
+- app-managed Ollama installation
+- broad governance expansion
+- advanced promotion, purge, or folder-merge workflows without demonstrated tester need
 
-The next milestone is "make the current MVP surface legible and trustworthy enough for a small outside beta pass."
+## Gate 1: Verify narrow data-integrity concerns
 
-The next beta-leaning slices should continue from these explicit UX targets:
+**Status:** complete unless regression evidence appears.
 
-- keep pushing the vendor-first import flow so users start from `ChatGPT`, `Claude`, `Grok`, `Gemini`, `Copilot`, or `Auto Detect` instead of reasoning about file mode first
-- make export-schema match results more visual and decisive, especially for mismatch, recovery-path, and ready-now states
-- collapse or defer secondary guidance panels until they are backed by real data from an actual import
-- simplify archive and dataset empty states further so they feel like result screens, not instructions manuals
-- trim or restructure source-summary, import-history, and dataset explanation density so a first-time user can act without studying the product
-- keep reducing dead-end output buttons by only surfacing raw file actions when the path exists and the action helps the current step
-- continue calming the visual hierarchy so primary actions stand out and secondary actions stop competing with them
-- keep diagnostics, governance, and other advanced surfaces subordinate and contextual
-- do a dedicated follow-up polish pass on Imports, Find Imports, and Datasets for minor spacing, alignment, and loaded-state clarity issues that are better handled in the UI's next evolution stage
+Verified outcomes:
 
-### Beta-readiness next three slices
+- canonical topic-segment identity is now shared through one structured browser-safe helper used by review queue, promotion, manual review decision matching, and the UI bridge
+- delimiter-collision regression coverage is in place
+- authoritative review and promotion JSONL readers now use recovery with explicit diagnostics and partial-result manifest status when malformed lines are quarantined
+- manual review decisions now block on malformed queue JSONL instead of acting on a partial authoritative queue
+- authoritative text-file writes now go through same-directory atomic replacement, covering manifests, governance rule writes, fingerprint indexes, and full-file queue rewrites
+- atomic-write regression coverage is in place for clean replacement and fresh-file creation
 
-1. **Heavy-import progress trust**
-   - Make long shard retries feel explainable rather than frozen.
-   - Add clearer per-step wording and introduce estimated-time or duration-range guidance where it can be honest.
-   - Distinguish preparation, retry, resume, and active processing states more plainly.
+Reopen only if new evidence shows a regression.
 
-2. **First-run beta onboarding**
-   - Keep the current guided import framing, but plan a short walkthrough or tutorial video that demonstrates the ordinary import -> archive -> dataset -> find-imports path with a real example.
-   - Use onboarding to reduce perceived complexity instead of adding more static explanation copy.
-   - Keep advanced/operator surfaces hidden unless directly useful.
-   - Prepare one stable walkthrough path that can be reused in outside beta sessions.
+## Gate 2: Complete the real Electron walkthrough
 
-3. **Assistant source-grounding and deterministic boundary hardening**
-   - Keep `Ask Quantum` attached to the existing workflow instead of letting it drift into a parallel product surface.
-   - Require stronger evidence pointers, narrower supported-action behavior, and better refusal/clarification for ambiguous requests.
-   - Make trust drift the main thing being reduced, not raw assistant breadth.
+**Status:** substantially complete for the current ordinary flow, with one worthwhile follow-up.
 
-### Outside-test implementation notes
+Verified lanes:
 
-One early outside test session also produced a useful "minor implementation" backlog covering progress reporting, smoke tests, type-safety tightening, cached filesystem checks, controlled concurrency, streaming large imports, and resume-oriented hardening.
+- fresh output-root import with a real newly downloaded ChatGPT export
+- output-root continuity and fresh-workspace framing
+- activity history across navigation
+- readable archive load and review
+- dataset load and review
+- extra-care review follow-through
 
-Those notes should be treated as supporting slices for the same beta-readiness goal rather than as a separate roadmap.
+Current follow-up:
 
-Working note: `docs/EXTERNAL_TEST_IMPLEMENTATION_NOTES_2026-07-04.md`
+- expand Activity History from import-only emphasis into a broader workspace action log so Archive and Datasets explain not only what Quantum imported, but how the current screen state was reached
 
-Concrete execution note: `docs/NEXT_FIVE_SLICES_2026-07-05.md`
-Updated continuation note: `docs/NEXT_FIVE_SLICES_2026-07-06.md`
+Observed classification:
 
-### Local agent incorporation rule
+- no major blocker visible in the 15 July walkthrough
+- one small rendering bug in Export Check was fixed
+- broader activity-history context is a readiness improvement, not a blocker
 
-The newly added local-agent package should be integrated in a way that simplifies the current product, not one that adds another product surface to learn.
+## Gate 3: Produce a reproducible private-beta build
 
-Near-term rule:
+**Target window:** 20-31 July
 
-- use the agent as a contextual explainer and retrieval helper attached to the existing four-screen workflow
-- do not add it as a competing first-class screen before the core parser/retrieval hardening work is stronger
-- prefer `Ask Quantum`-style contextual help over long static explanatory panels
-- require source-grounded answers that point back to imports, archive files, dataset previews, or retrieval results
+Required work:
 
-Current implementation note:
+- define a repeatable Windows build and packaging command
+- ensure the packaged app can launch outside the development workspace
+- decide where settings, logs, output roots, and temporary files live
+- verify that no development-only paths are required
+- include a version identifier visible to testers and in diagnostics
+- provide a clean uninstall or removal explanation
+- ensure optional local-AI absence does not block the deterministic workflow
 
-- the first assistant slice now follows this rule by trying a validated command catalog before falling back to general explanation
-- that boundary is intentional because outside beta trust depends more on predictable action routing than on open-ended assistant behavior
-- a follow-through runtime pass now also handles local-model compatibility checks, install guidance, and more honest running-state reflection in the drawer
-- the next assistant work should therefore focus less on basic startup plumbing and more on source-grounding, deterministic boundary hardening, and finishing the install/runtime experience cleanly
+Cross-platform packaging is not required for the first private beta unless a chosen tester cannot use Windows.
 
-Working note: `docs/LOCAL_AGENT_INTEGRATION_PLAN_2026-07-04.md`
-Broader action plan: `docs/LOCAL_AI_INTEGRATION_ACTION_PLAN_2026-07-05.md`
+### Exit criteria
 
-### Priority 1: Archive usability
+- a tester can receive one build and launch it without cloning the repository or using PowerShell
+- failures produce enough local evidence for the maintainer to diagnose them
+- the beta build does not require Ollama for the primary workflow
 
-Continue making the readable archive something users actively work from instead of merely inspect.
+## Gate 4: Prepare first-run and tester support
 
-Current focus:
+**Target window:** 25 July-7 August
 
-- file-level attachment trust inside archive review
-- direct open actions for preserved attachments referenced by a selected archive file
-- stronger archive search and review affordances tied to real trust evidence
-- lighter archive empty states and less always-visible explanation text
+Required artifacts:
 
-Likely next slices:
+- one-page tester guide
+- supported-export instructions for each beta vendor used
+- privacy and consent note
+- known limitations
+- feedback form or structured feedback template
+- instructions for finding diagnostic artifacts without exposing source content unnecessarily
+- one stable walkthrough of import -> archive -> dataset -> retrieval
 
-- continue reducing explanatory overload in archive empty and first-use states
-- make the selected-file pane feel more like a guided review flow than a technical detail dump
-- tighten archive-to-dataset handoff language around exact file context
+Do not build a large onboarding wizard before observing testers.
 
-### Priority 2: Dataset usability
+### Exit criteria
 
-Keep strengthening the dataset side of the same workflow rather than branching into adjacent product surfaces.
+- testers know what data is safe to use
+- testers can begin without a live training call
+- feedback distinguishes defects, confusion, missing value, and feature requests
 
-Current focus:
+## Gate 5: Internal release rehearsal
 
-- historical-run dataset preview
-- source-context trust carried into dataset review
-- clearer redaction and trust explanation
-- lighter dataset guidance with optional deeper explanation instead of mandatory reading
+**Target window:** 1-7 August
 
-Likely next slices:
+Minimum rehearsal:
 
-- continue reducing first-read density across dataset notes, outputs, and preview framing
-- preserve strong trust explanation while moving secondary teaching content behind optional reveals
-- tighten archive-selected context inside dataset previews
+- clean-machine or clean-user-profile launch where possible
+- one ordinary general-use export
+- one large export
+- one rerun
+- one intentionally wrong or unsupported source
+- one stopped import
+- full archive, dataset, and retrieval handoff
+- diagnostic collection
 
-### Priority 3: Trust hardening
+### Exit criteria
 
-Now that the MVP vendor set is largely first-class, the next trust work should harden behavior and explanation, not just add more parser labels.
+- no P0 data-integrity or launch defect remains
+- all known beta limitations are written down
+- the installer/build and tester guide match actual behavior
 
-Focus:
+## Gate 6: Private beta launch
 
-- attachment preservation traceability
-- partial-package clarity
-- failure and retry guidance
-- exact export-shape honesty in UI and docs
-- schema-match clarity inside the vendor-first import flow
-- parser and retrieval behavior that stays stable across unfamiliar user corpora rather than only the maintainer's own exports
-- large-shard retry behavior that can resume work safely and explain how long a retry is likely to take
+**Target window:** 8-15 August
 
-## Advanced surface rule
+Start with a small cohort rather than inviting everyone at once.
 
-These remain real product capabilities, but should stay behind deliberate Extra Tools access or contextual troubleshooting:
+Suggested order:
 
-- diagnostics
-- governance
-- tiered DB inspection
-- review queue
-- promotion and assurance workflows
+1. one cooperative general-use tester with an ordinary export
+2. one tester with a different conversation style or vendor
+3. one more formal professional-context tester after the first support issues are understood
 
-If a task makes those systems more prominent than the main import -> archive -> dataset loop, it is probably not the next MVP slice.
+## Current active priorities
 
-## Deferred after MVP loop hardening
-
-- broader AI vendor expansion beyond the current first-class set
-- marketed generic document ingestion
-- enterprise/support-platform imports
-- governance expansion without direct user workflow benefit
-- assistant interpretation layers that outrun the standalone product
+1. finish the documentation consolidation so the repo communicates the current product clearly
+2. prepare the reproducible Windows packaging path
+3. create the beta support artifacts under `docs/beta/`
+4. keep Activity History broad enough to explain the user-visible workspace journey, not only import progress
+5. observe remaining workflow preferences during private beta instead of pre-fixing every speculative concern

@@ -149,6 +149,7 @@ try {
     ].join(""),
     "utf-8"
   );
+  await fs.writeFile(path.join(shardedExportFolder, "ads.json"), JSON.stringify({ campaigns: [] }, null, 2), "utf-8");
   await fs.writeFile(path.join(shardedExportFolder, "library_files.json"), JSON.stringify([], null, 2), "utf-8");
   await fs.writeFile(path.join(shardedExportFolder, "user.json"), JSON.stringify({ id: "user_1" }, null, 2), "utf-8");
 
@@ -169,9 +170,16 @@ try {
     htmlCompanionEntry?.reason.includes("conversation shard files as the main import source"),
     "Expected chat.html companion reason to explain the shard-first package path"
   );
+  const adsCompanionEntry = shardedSummary.sampleFiles.find((entry) => path.basename(entry.path) === "ads.json");
+  assert.ok(adsCompanionEntry, "Expected ads.json to show as a companion entry in the sharded package");
+  assert.equal(adsCompanionEntry?.supported, false, "Expected ads.json to be skipped when conversation shards are present");
+  assert.ok(
+    adsCompanionEntry?.reason.includes("Companion file for ChatGPT export"),
+    "Expected ads.json companion reason to explain package handling"
+  );
   assert.equal(shardedSummary.vendorSummaries[0]?.vendor, "chatgpt");
   assert.equal(shardedSummary.vendorSummaries[0]?.detectedFiles, 2);
-  assert.ok((shardedSummary.vendorSummaries[0]?.companionFiles ?? 0) >= 3);
+  assert.ok((shardedSummary.vendorSummaries[0]?.companionFiles ?? 0) >= 4);
 } finally {
   await fs.rm(tempRoot, { recursive: true, force: true });
 }

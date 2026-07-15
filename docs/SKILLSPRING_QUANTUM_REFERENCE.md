@@ -100,8 +100,8 @@ This is narrower than the full internal parser and document-ingestion surface al
 - diagnostic artifacts structured for future local-assistant interpretation
 - user-facing scope should stay narrower than experimental internal parser coverage
 - MVP direction and anti-drift reference: see `docs/SKILLSPRING_QUANTUM_MVP_DIRECTION.md`
-- future-scope intent-engine reference: see `docs/SKILLSPRING_PIE_FUTURE_SCOPE.md`
-- contributor philosophy reference: see `docs/SKILLSPRING_QUANTUM_PRODUCT_PHILOSOPHY.md`
+- future-scope boundary: see `docs/architecture/FUTURE_SCOPE.md`
+- local AI boundary: see `docs/architecture/LOCAL_AI_INTEGRATION.md`
 
 ## Current Gaps / Next Build Targets
 
@@ -147,8 +147,6 @@ Several of the highest-value items from that backlog are now implemented:
 - rerun-aware source reuse for already imported files
 - interrupted heavy-shard resume checkpoints for streaming ChatGPT imports
 
-Working note: `docs/EXTERNAL_TEST_IMPLEMENTATION_NOTES_2026-07-04.md`
-
 The July 6, 2026 end-of-day parser and retrieval trust pass also clarified the next stop point:
 
 - corpus-agnostic parser hardening is now far less dependent on maintainer-specific vocabulary
@@ -185,8 +183,6 @@ It is also now reflected in the runtime path by:
 - detecting installed local Ollama models before treating a missing configured model as a user-facing failure
 - surfacing guided assistant setup feedback in the drawer instead of leaving model compatibility as an invisible backend detail
 - keeping the assistant optional while still attempting local startup or reconnection when assistant features are invoked
-
-Working note: `docs/LOCAL_AI_INTEGRATION_ACTION_PLAN_2026-07-05.md`
 
 ## Internal Coverage Beyond MVP
 
@@ -250,7 +246,7 @@ Quantum should maintain three distinct surfaces:
 
 The general-user surface is the MVP priority. The advanced surface remains real product capability but should not dominate ordinary navigation. The assistant surface is a future integration contract, not a reason to delay the standalone product.
 
-The newly added local-agent package should be treated as the first serious implementation candidate for that assistant surface. The working integration note is: `docs/LOCAL_AGENT_INTEGRATION_PLAN_2026-07-04.md`.
+The newly added local-agent package should be treated as the first serious implementation candidate for that assistant surface. The stable integration boundary is documented in `docs/architecture/LOCAL_AI_INTEGRATION.md`.
 
 ## Adjacent Project Signals
 

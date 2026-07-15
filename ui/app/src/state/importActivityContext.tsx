@@ -11,6 +11,7 @@ interface ImportActivityContextValue {
   setImportProgress: React.Dispatch<React.SetStateAction<ImportProgressUpdate | null>>;
   logEntries: RunLogEntry[];
   appendLogEntry: (level: RunLogEntry["level"], message: string) => void;
+  recordWorkspaceEvent: (message: string) => void;
 }
 
 const ImportActivityContext = createContext<ImportActivityContextValue | null>(null);
@@ -37,6 +38,16 @@ export function ImportActivityProvider(props: { children: React.ReactNode }) {
     setLogEntries((prev) => [makeLogEntry(level, message), ...prev]);
   }, []);
 
+  const recordWorkspaceEvent = useCallback((message: string) => {
+    setLogEntries((prev) => {
+      if (prev[0]?.message === message) {
+        return prev;
+      }
+
+      return [makeLogEntry("info", message), ...prev];
+    });
+  }, []);
+
   useEffect(() => {
     return subscribeToImportProgress((update) => {
       setImportProgress(update);
@@ -61,9 +72,10 @@ export function ImportActivityProvider(props: { children: React.ReactNode }) {
       importProgress,
       setImportProgress,
       logEntries,
-      appendLogEntry
+      appendLogEntry,
+      recordWorkspaceEvent
     }),
-    [runState, statusMessage, importProgress, logEntries, appendLogEntry]
+    [runState, statusMessage, importProgress, logEntries, appendLogEntry, recordWorkspaceEvent]
   );
 
   return (

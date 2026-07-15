@@ -55,6 +55,18 @@ Observed result:
 - the fresh-workspace flow remained understandable
 - the most valuable next improvement was broader Activity History coverage across Archive and Datasets
 
+### Installed-build follow-up
+
+The same export and output root were then used to validate the Windows packaged build and installer.
+
+Observed result:
+
+- the unpacked packaged app completed a full import and walkthrough cleanly
+- the installed build recognized the same output root as an existing workspace
+- rerunning the same import triggered expected reuse instead of acting like a fresh import
+- Activity History explained the reuse path clearly, including file-by-file reuse and reused archive/dataset state
+- Archive, Datasets, and Find Imports all remained coherent after installer-based reuse
+
 ## What to record
 
 Capture these items:
@@ -68,6 +80,7 @@ Capture these items:
 7. whether Activity History stayed useful after leaving Imports
 8. whether Archive, Datasets, and Find Imports still felt connected to the same run
 9. whether any issue is a blocker, readiness issue, observe-in-beta item, or cosmetic preference
+10. whether the installed build behaves the same as the unpacked packaged app when pointed at an existing output root
 
 ## Success condition
 
@@ -77,4 +90,3 @@ This walkthrough succeeds if:
 - that fresh-workspace state does not feel like missing memory
 - the first import populates history, archive, and datasets coherently
 - Activity History helps explain what Quantum has done even after the user navigates across screens
-

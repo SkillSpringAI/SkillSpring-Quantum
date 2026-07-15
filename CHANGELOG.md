@@ -27,6 +27,23 @@ It is intentionally lightweight.
 - Imports now makes output-root scope more explicit so already-imported reuse is easier to understand when users switch local workspaces
 - active imports can now be force-stopped from the Imports screen instead of only waiting for completion or failure
 
+## 2026-07-15
+
+### Changed
+
+- prepared and validated the Windows Electron packaging pipeline for SkillSpring Quantum
+- packaged child-process execution now works cleanly from unpacked and installed builds instead of assuming a dev-only working directory
+- the packaged app now preserves the same output-root continuity, reuse behavior, archive loading, dataset loading, and activity-history context as the dev build
+
+### Fixed
+
+- a packaged-only import failure where child processes tried to launch from an invalid packaged working directory
+
+### Validated
+
+- a full packaged-app walkthrough completed successfully against a fresh output root with a newly downloaded free-account ChatGPT export
+- an installed-build rerun against the same output root correctly recognized an already valid workspace and reused prior outputs instead of reprocessing them
+
 ## 2026-07-09
 
 ### Added

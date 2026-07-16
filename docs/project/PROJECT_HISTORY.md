@@ -1,4 +1,8 @@
-# SkillSpring Quantum Project History
+# Project History
+
+## Audience
+
+This document is for contributors, maintainers, and evaluators who want the short chronological context.
 
 ## June 2026: MVP scope lock
 

@@ -1,4 +1,8 @@
-# SkillSpring Quantum MVP Scope Lock
+# MVP Scope Lock
+
+## Audience
+
+This document is for contributors, developers, and maintainers guarding against scope drift.
 
 This note exists to stop scope drift during implementation.
 

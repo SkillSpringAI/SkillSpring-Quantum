@@ -1,4 +1,8 @@
-# Local AI Integration
+# Local AI
+
+## Audience
+
+This document is for contributors, developers, and maintainers.
 
 This document records the current architectural boundary for Quantum's optional local AI layer.
 
@@ -53,4 +57,3 @@ Local AI is useful as an explainer and lightweight control surface, but it remai
 - archive and dataset review
 - retrieval clarity
 - beta launch readiness
-

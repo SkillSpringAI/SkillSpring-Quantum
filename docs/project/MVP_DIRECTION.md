@@ -1,4 +1,8 @@
-# SkillSpring Quantum MVP Direction
+# MVP Direction
+
+## Audience
+
+This document is for contributors, developers, and maintainers making scope decisions.
 
 This document is the working product-direction reference for SkillSpring Quantum.
 

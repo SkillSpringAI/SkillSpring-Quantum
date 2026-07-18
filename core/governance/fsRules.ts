@@ -6,12 +6,35 @@ function stripBom(text: string): string {
   return text.replace(/^\uFEFF/, "");
 }
 
+function configuredGovernanceRoot(): string | undefined {
+  const root = process.env.SSQ_GOVERNANCE_ROOT?.trim();
+  return root ? root : undefined;
+}
+
+function configuredGovernanceLogRoot(): string | undefined {
+  const root = process.env.SSQ_GOVERNANCE_LOG_ROOT?.trim();
+  return root ? root : undefined;
+}
+
 export function governanceRulesRoot(): string {
-  return path.resolve("governance", "rules");
+  const root = configuredGovernanceRoot();
+  return root
+    ? path.resolve(root)
+    : path.resolve("governance", "rules");
 }
 
 export function governanceBackupRoot(): string {
-  return path.resolve("governance", "logs", "backups");
+  const logRoot = configuredGovernanceLogRoot();
+  return logRoot
+    ? path.join(path.resolve(logRoot), "backups")
+    : path.resolve("governance", "logs", "backups");
+}
+
+export function governanceWriteReportRoot(): string {
+  const logRoot = configuredGovernanceLogRoot();
+  return logRoot
+    ? path.join(path.resolve(logRoot), "writes")
+    : path.resolve("governance", "logs", "writes");
 }
 
 export function ensureInsideGovernanceRules(inputPath: string): string {

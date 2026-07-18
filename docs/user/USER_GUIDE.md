@@ -40,14 +40,47 @@ Fallback support:
 
 - Gemini My Activity HTML
 
+For export-specific instructions, see the [Export Guides](exports/README.md).
+
+## Before you export
+
+The vendor workflows are not all alike.
+
+- ChatGPT and Claude may send the export later rather than downloading immediately
+- Gemini is more confusing because Google splits export selection across more than one category
+- Grok should be treated separately from X archive export unless the Grok guide says otherwise
+- Microsoft Copilot currently has a validated CSV path, but that does not mean every Microsoft export format is supported
+
+If you are unsure which file to choose after downloading, start with the relevant vendor guide and then use `Export Check` in Quantum before running a full import.
+
 ## Main screens
 
 - `Dashboard`: quick view of recent activity and workflow entry points
 - `Imports`: inspect an export and start an import
-- `Archive`: browse readable local output
+- `Archive`: browse readable local output by topic group, date, and conversation slice before moving into structured datasets
 - `Search / Retrieval`: revisit prior imports by text, topic, vendor, date, and status
 - `Datasets`: inspect structured outputs generated from imported material
 - `Activity History`: review what Quantum did and where the workflow went next
+
+## How to read the Archive screen
+
+Start in `Archive` after import.
+
+This screen is designed to help you recognize the right conversation again before you switch into more structured views.
+
+Useful cues on this screen:
+
+- topic groups help jog memory
+- dates help place a conversation in time
+- filenames and preview snippets help confirm you opened the right slice
+
+Longer conversations can appear more than once because Quantum breaks them into readable review windows instead of one oversized file.
+
+The normal path is:
+
+1. use topic and date clues to find the right conversation
+2. open the readable markdown slice
+3. move to `Datasets` only when you want the structured version of what you just reviewed
 
 ## What to expect after import
 
@@ -70,3 +103,4 @@ After a successful import, Quantum can produce:
 - [FAQ](FAQ.md)
 - [Known Limitations](KNOWN_LIMITATIONS.md)
 - [Beta Guide](BETA_GUIDE.md)
+- [Export Guides](exports/README.md)

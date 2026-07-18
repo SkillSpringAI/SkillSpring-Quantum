@@ -115,6 +115,63 @@ function buildReviewQueueRule(input: GovernanceComposerInput): GovernanceCompose
   };
 }
 
+function buildRedactionRule(input: GovernanceComposerInput): GovernanceComposerResult {
+  const base = tryParseCurrentJson(input.currentJson);
+  const next: Record<string, unknown> = {
+    version: typeof base.version === "string" ? base.version : "redaction-rules.v1",
+    hard_private_patterns: Array.isArray(base.hard_private_patterns) ? base.hard_private_patterns : [],
+    redaction_targets: Array.isArray(base.redaction_targets) ? base.redaction_targets : ["email", "phone", "url", "address"],
+    private_review_triggers: typeof base.private_review_triggers === "object" && base.private_review_triggers !== null
+      ? base.private_review_triggers
+      : {
+          redaction_count_min: 2,
+          strong_flags: ["email", "phone", "address"]
+        }
+  };
+
+  const lower = input.instruction.toLowerCase();
+  const quoted = extractQuotedList(input.instruction);
+  const existingPatterns = Array.isArray(next.hard_private_patterns) ? next.hard_private_patterns as string[] : [];
+
+  if (
+    lower.includes("redact") ||
+    lower.includes("private pattern") ||
+    lower.includes("sensitive phrase") ||
+    lower.includes("mentions of")
+  ) {
+    next.hard_private_patterns = [...new Set([...existingPatterns, ...quoted])];
+  }
+
+  const targetMatches = detectTopicsAfterKeyword(input.instruction, "redaction targets");
+  if (targetMatches.length > 0) {
+    next.redaction_targets = targetMatches;
+  }
+
+  const countMatch = lower.match(/redaction count min(?:imum)?\s+(\d+)/);
+  if (countMatch) {
+    next.private_review_triggers = {
+      ...(next.private_review_triggers as Record<string, unknown>),
+      redaction_count_min: Number(countMatch[1])
+    };
+  }
+
+  const strongFlags = detectTopicsAfterKeyword(input.instruction, "strong flags");
+  if (strongFlags.length > 0) {
+    next.private_review_triggers = {
+      ...(next.private_review_triggers as Record<string, unknown>),
+      strong_flags: strongFlags
+    };
+  }
+
+  return {
+    ok: true,
+    message: quoted.length > 0
+      ? "Structured redaction draft generated with quoted phrases added to hard private patterns."
+      : "Structured redaction draft generated.",
+    generatedJson: JSON.stringify(next, null, 2)
+  };
+}
+
 export function generateGovernanceDraft(
   input: GovernanceComposerInput
 ): GovernanceComposerResult {
@@ -126,6 +183,10 @@ export function generateGovernanceDraft(
 
   if (file === "review-queue-rules.json") {
     return buildReviewQueueRule(input);
+  }
+
+  if (file === "redaction-rules.json") {
+    return buildRedactionRule(input);
   }
 
   return {

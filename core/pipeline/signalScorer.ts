@@ -1,4 +1,5 @@
 import type { ConversationSegment } from "./segmenter.js";
+import { loadRedactionRules } from "../governance/loadRules.js";
 
 export type SignalTier = "high_signal" | "low_signal" | "private_review";
 
@@ -19,16 +20,20 @@ const LOW_SIGNAL_PATTERNS = [
   /\bhi\b/i
 ];
 
-const PRIVATE_REVIEW_PATTERNS = [
-  /\bpassword\b/i,
-  /\bbank\b/i,
-  /\baccount number\b/i,
-  /\bpassport\b/i,
-  /\bdriver(?:'s)? license\b/i,
-  /\bsocial security\b/i,
-  /\bssn\b/i,
-  /\bcredit card\b/i
-];
+const REDACTION_RULES = loadRedactionRules();
+
+function escapeRegExp(input: string): string {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function buildPrivateReviewPatterns(): RegExp[] {
+  return REDACTION_RULES.hard_private_patterns
+    .map((pattern) => pattern.trim())
+    .filter(Boolean)
+    .map((pattern) => new RegExp(escapeRegExp(pattern), "i"));
+}
+
+const PRIVATE_REVIEW_PATTERNS = buildPrivateReviewPatterns();
 
 export function assessSegmentSignal(
   segment: ConversationSegment,
@@ -72,13 +77,18 @@ export function assessSegmentSignal(
     reasons.push("short low-signal phrasing");
   }
 
-  const hardPrivateHit = PRIVATE_REVIEW_PATTERNS.some((pattern) => pattern.test(joined));
-  const strongRedactionSignal =
-    redactionFlags.includes("email") ||
-    redactionFlags.includes("phone") ||
-    redactionFlags.includes("address");
+  const hardPrivateHit =
+    redactionFlags.includes("hard_private_pattern") ||
+    PRIVATE_REVIEW_PATTERNS.some((pattern) => pattern.test(joined));
+  const strongRedactionSignal = redactionFlags.some((flag) =>
+    REDACTION_RULES.private_review_triggers.strong_flags.includes(flag)
+  );
 
-  if (hardPrivateHit || strongRedactionSignal || redactionCount >= 2) {
+  if (
+    hardPrivateHit ||
+    strongRedactionSignal ||
+    redactionCount >= REDACTION_RULES.private_review_triggers.redaction_count_min
+  ) {
     reasons.push("private review trigger");
     return {
       score,

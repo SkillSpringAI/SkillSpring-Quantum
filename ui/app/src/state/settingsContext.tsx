@@ -4,6 +4,7 @@ const SETTINGS_KEY = "skillspring-quantum-settings";
 
 export interface AppSettings {
   outputRoot: string;
+  outputRootConfirmed: boolean;
   onboardingDismissed: boolean;
 }
 
@@ -15,7 +16,8 @@ interface SettingsContextValue {
 }
 
 const defaultSettings: AppSettings = {
-  outputRoot: "organized_output",
+  outputRoot: "",
+  outputRootConfirmed: false,
   onboardingDismissed: false
 };
 
@@ -24,8 +26,15 @@ function loadSettings(): AppSettings {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<AppSettings>;
+      const parsedOutputRoot =
+        typeof parsed.outputRoot === "string" ? parsed.outputRoot : defaultSettings.outputRoot;
+      const parsedOutputRootConfirmed =
+        typeof parsed.outputRootConfirmed === "boolean"
+          ? parsed.outputRootConfirmed
+          : Boolean(parsedOutputRoot && parsedOutputRoot !== "organized_output");
       return {
-        outputRoot: parsed.outputRoot ?? defaultSettings.outputRoot,
+        outputRoot: parsedOutputRoot,
+        outputRootConfirmed: parsedOutputRootConfirmed,
         onboardingDismissed: parsed.onboardingDismissed ?? defaultSettings.onboardingDismissed
       };
     }

@@ -12,6 +12,14 @@ interface Props {
 
 export default function GovernanceComposer(props: Props) {
   const canEdit = !!props.fileName;
+  const placeholder =
+    !canEdit
+      ? "Select a rule file first, then draft in common language."
+      : props.fileName === "redaction-rules.json"
+        ? 'Example: Redact all mentions of "internal codename", "private client name", and "confidential workflow phrase"'
+        : props.fileName === "review-queue-rules.json"
+          ? "Example: Enable review queue and set minimum signal score 3 and maximum signal score 4"
+          : 'Example: Exclude general by default and include "ai", "governance", "finance"';
 
   return (
     <div className="panel">
@@ -28,11 +36,7 @@ export default function GovernanceComposer(props: Props) {
         className="text-area"
         value={props.instruction}
         onChange={(e) => props.onInstructionChange(e.target.value)}
-        placeholder={
-          canEdit
-            ? 'Example: Exclude general by default and include "ai", "governance", "finance"'
-            : "Select a rule file first, then draft in common language."
-        }
+        placeholder={placeholder}
         disabled={!canEdit}
       />
 

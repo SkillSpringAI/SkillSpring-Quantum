@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigation } from "../state/navigationContext";
 import { useSettings } from "../state/settingsContext";
+import { chooseFolder } from "../services/importBridge";
 
 type WalkthroughStep = {
   id: string;
@@ -52,15 +53,32 @@ const WALKTHROUGH_STEPS: WalkthroughStep[] = [
 ];
 
 export default function FirstRunGuide() {
-  const { settings, dismissOnboarding } = useSettings();
+  const { settings, dismissOnboarding, updateSettings } = useSettings();
   const { activeScreen, setActiveScreen } = useNavigation();
   const [showExample, setShowExample] = useState(false);
+  const [outputRootStatus, setOutputRootStatus] = useState("");
 
   if (settings.onboardingDismissed) {
     return null;
   }
 
+  async function handleChooseOutputRoot() {
+    const nextPath = await chooseFolder();
+    if (!nextPath) return;
+
+    updateSettings({
+      outputRoot: nextPath,
+      outputRootConfirmed: true
+    });
+    setOutputRootStatus("Output folder selected: " + nextPath);
+  }
+
   function openWalkthroughStep(step: WalkthroughStep) {
+    if (!settings.outputRootConfirmed || !settings.outputRoot.trim()) {
+      setOutputRootStatus("Choose an output folder first so Quantum knows where to write archives, datasets, diagnostics, and history.");
+      return;
+    }
+
     setActiveScreen(step.screen);
     dismissOnboarding();
   }
@@ -76,6 +94,23 @@ export default function FirstRunGuide() {
             </p>
           </div>
           <span className="status-pill idle">First use</span>
+        </div>
+
+        <div className="detail-box">
+          <strong>Choose your output folder first</strong>
+          <p className="muted">
+            Quantum stores archives, datasets, diagnostics, and history in one local workspace folder that you choose.
+          </p>
+          <p className="muted">
+            Recommended: create or choose a folder such as <code>Documents\Quantum outputs</code>, then keep using that same workspace for follow-up imports and review.
+          </p>
+          <p><code>{settings.outputRoot || "No output folder selected yet."}</code></p>
+          <div className="action-bar">
+            <button className="primary-btn" type="button" onClick={handleChooseOutputRoot}>
+              Choose Output Folder
+            </button>
+          </div>
+          {outputRootStatus ? <p className="muted">{outputRootStatus}</p> : null}
         </div>
 
         <div className="detail-box">
@@ -110,6 +145,7 @@ export default function FirstRunGuide() {
             className="primary-btn"
             type="button"
             onClick={() => openWalkthroughStep(WALKTHROUGH_STEPS[0])}
+            disabled={!settings.outputRootConfirmed || !settings.outputRoot.trim()}
           >
             Start Guided Import
           </button>
@@ -120,7 +156,12 @@ export default function FirstRunGuide() {
           >
             {showExample ? "Hide Walkthrough Notes" : "See Walkthrough Notes"}
           </button>
-          <button className="secondary-btn" type="button" onClick={dismissOnboarding}>
+          <button
+            className="secondary-btn"
+            type="button"
+            onClick={dismissOnboarding}
+            disabled={!settings.outputRootConfirmed || !settings.outputRoot.trim()}
+          >
             Skip For Now
           </button>
         </div>

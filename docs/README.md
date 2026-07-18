@@ -7,6 +7,7 @@ Use this page to find the right document for the right audience.
 ## User docs
 
 - [User Guide](user/USER_GUIDE.md)
+- [Export Guides](user/exports/README.md)
 - [FAQ](user/FAQ.md)
 - [Known Limitations](user/KNOWN_LIMITATIONS.md)
 - [Beta Guide](user/BETA_GUIDE.md)
@@ -17,6 +18,10 @@ Use this page to find the right document for the right audience.
 - [Project History](project/PROJECT_HISTORY.md)
 - [MVP Direction](project/MVP_DIRECTION.md)
 - [MVP Scope Lock](project/MVP_SCOPE_LOCK.md)
+
+## Implementation docs
+
+- [Beta Documentation & Onboarding Implementation](implementation/BETA_DOCUMENTATION_AND_ONBOARDING.md)
 
 ## Reference
 

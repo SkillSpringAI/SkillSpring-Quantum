@@ -55,10 +55,57 @@ function runtimeScriptPath(relativeScriptPath) {
   return path.join(root, "dist", normalized);
 }
 
+function governanceRuntimePaths() {
+  if (!isPackagedRuntime()) {
+    return null;
+  }
+
+  const governanceRoot = path.join(app.getPath("userData"), "governance");
+  return {
+    governanceRoot,
+    rulesRoot: path.join(governanceRoot, "rules"),
+    logsRoot: path.join(governanceRoot, "logs"),
+    bundledRulesRoot: path.join(runtimeRoot(), "dist", "governance", "rules")
+  };
+}
+
+function ensurePackagedGovernanceWorkspace() {
+  const governancePaths = governanceRuntimePaths();
+  if (!governancePaths) {
+    return;
+  }
+
+  fs.mkdirSync(governancePaths.rulesRoot, { recursive: true });
+  fs.mkdirSync(path.join(governancePaths.logsRoot, "backups"), { recursive: true });
+  fs.mkdirSync(path.join(governancePaths.logsRoot, "writes"), { recursive: true });
+
+  if (!fs.existsSync(governancePaths.bundledRulesRoot)) {
+    return;
+  }
+
+  const entries = fs.readdirSync(governancePaths.bundledRulesRoot, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isFile() || !entry.name.toLowerCase().endsWith(".json")) {
+      continue;
+    }
+
+    const sourcePath = path.join(governancePaths.bundledRulesRoot, entry.name);
+    const destinationPath = path.join(governancePaths.rulesRoot, entry.name);
+    if (!fs.existsSync(destinationPath)) {
+      fs.copyFileSync(sourcePath, destinationPath);
+    }
+  }
+}
+
 function runtimeEnv(extraEnv = {}) {
+  const governancePaths = governanceRuntimePaths();
   return {
     ...process.env,
     ...(isPackagedRuntime() ? { ELECTRON_RUN_AS_NODE: "1" } : {}),
+    ...(governancePaths ? {
+      SSQ_GOVERNANCE_ROOT: governancePaths.rulesRoot,
+      SSQ_GOVERNANCE_LOG_ROOT: governancePaths.logsRoot
+    } : {}),
     ...extraEnv
   };
 }
@@ -731,6 +778,8 @@ async function ensureAgentServer(outputRoot, port = AGENT_DEFAULT_PORT) {
 }
 
 function registerIpc() {
+  ensurePackagedGovernanceWorkspace();
+
   ipcMain.handle("app:ping", async () => {
     return { ok: true, message: "electron-main-ready" };
   });
@@ -1205,8 +1254,8 @@ function registerIpc() {
     return result.ok ? ok(result, "DB collection loaded.") : fail(result, "Failed to read DB collection.");
   });
 
-  ipcMain.handle("diagnostics:run", async () => {
-    const result = await runRuntimeScript("core/diagnostics/diagRunner.ts", ["organized_output"]);
+  ipcMain.handle("diagnostics:run", async (_event, payload = {}) => {
+    const result = await runRuntimeScript("core/diagnostics/diagRunner.ts", [payload.outputRoot || "organized_output"]);
     return result.ok ? ok(result, "Diagnostics completed.") : fail(result, "Failed to run diagnostics.");
   });
 
@@ -1228,13 +1277,13 @@ function registerIpc() {
     return result.ok ? ok(result, "Batch run completed.") : fail(result, "Failed to run batch.");
   });
 
-  ipcMain.handle("batch:diag", async () => {
-    const result = await runRuntimeScript("core/batch/buildBatchDiagnostics.ts", ["organized_output"]);
+  ipcMain.handle("batch:diag", async (_event, payload = {}) => {
+    const result = await runRuntimeScript("core/batch/buildBatchDiagnostics.ts", [payload.outputRoot || "organized_output"]);
     return result.ok ? ok(result, "Batch diagnostics completed.") : fail(result, "Failed to build batch diagnostics.");
   });
 
-  ipcMain.handle("batch:delta", async () => {
-    const result = await runRuntimeScript("core/batch/buildBatchDelta.ts", ["organized_output"]);
+  ipcMain.handle("batch:delta", async (_event, payload = {}) => {
+    const result = await runRuntimeScript("core/batch/buildBatchDelta.ts", [payload.outputRoot || "organized_output"]);
     return result.ok ? ok(result, "Batch delta completed.") : fail(result, "Failed to build batch delta.");
   });
 

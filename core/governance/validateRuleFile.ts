@@ -117,6 +117,16 @@ function validateReviewDecisionRules(obj: JsonObject): void {
   requireBoolean(collections["review_queue.topic_segments"], 'collections["review_queue.topic_segments"]');
 }
 
+function validateRedactionRules(obj: JsonObject): void {
+  requireString(obj.version, "version");
+  requireStringArray(obj.hard_private_patterns, "hard_private_patterns");
+  requireStringArray(obj.redaction_targets, "redaction_targets");
+
+  const triggers = requireObject(obj.private_review_triggers, "private_review_triggers");
+  requireNumber(triggers.redaction_count_min, "private_review_triggers.redaction_count_min");
+  requireStringArray(triggers.strong_flags, "private_review_triggers.strong_flags");
+}
+
 function validateBatchPolicy(obj: JsonObject): void {
   requireString(obj.version, "version");
   requireString(obj.input_pattern, "input_pattern");
@@ -167,6 +177,10 @@ export function validateGovernanceRuleFile(filePath: string, rawText: string): v
 
     case "review-decision-rules.json":
       validateReviewDecisionRules(obj);
+      return;
+
+    case "redaction-rules.json":
+      validateRedactionRules(obj);
       return;
 
     case "batch-policy.json":

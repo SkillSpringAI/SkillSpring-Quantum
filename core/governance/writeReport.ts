@@ -1,5 +1,6 @@
 import path from "node:path";
 import { promises as fs } from "node:fs";
+import { governanceWriteReportRoot } from "./fsRules.js";
 
 export interface GovernanceWriteReport {
   written_at: string;
@@ -10,7 +11,7 @@ export interface GovernanceWriteReport {
 }
 
 function reportsDir(): string {
-  return path.resolve("governance", "logs", "writes");
+  return governanceWriteReportRoot();
 }
 
 export async function writeGovernanceWriteReport(

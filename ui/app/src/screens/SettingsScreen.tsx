@@ -9,13 +9,13 @@ export default function SettingsScreen() {
   async function handleBrowseOutput() {
     const nextPath = await chooseFolder();
     if (!nextPath) return;
-    updateSettings({ outputRoot: nextPath });
+    updateSettings({ outputRoot: nextPath, outputRootConfirmed: true });
     setStatus("Output root updated to: " + nextPath);
   }
 
-  function handleReset() {
-    updateSettings({ outputRoot: "organized_output" });
-    setStatus("Output root reset to default: organized_output");
+  function handleClear() {
+    updateSettings({ outputRoot: "", outputRootConfirmed: false });
+    setStatus("Output root cleared. Choose a folder before running imports or advanced tools.");
   }
 
   return (
@@ -28,13 +28,16 @@ export default function SettingsScreen() {
         <div className="detail-box">
           <strong>Output Root</strong>
           <p className="muted">This is where Quantum writes archives, datasets, diagnostics, and history.</p>
-          <p><code>{settings.outputRoot}</code></p>
+          <p className="muted">
+            Choose a folder you control. Quantum does not assume a packaged-app default output location on first use.
+          </p>
+          <p><code>{settings.outputRoot || "No output folder selected yet."}</code></p>
           <div className="action-bar">
             <button className="primary-btn" type="button" onClick={handleBrowseOutput}>
               Choose Output Folder
             </button>
-            <button className="secondary-btn" type="button" onClick={handleReset}>
-              Reset to Default
+            <button className="secondary-btn" type="button" onClick={handleClear}>
+              Clear Selection
             </button>
           </div>
           {status ? <p className="muted">{status}</p> : null}

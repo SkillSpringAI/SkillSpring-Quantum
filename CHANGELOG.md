@@ -10,6 +10,42 @@ It is intentionally lightweight.
 
 ## 2026-07-12
 
+## 2026-07-18
+
+### Added
+
+- a first-run output-root confirmation flow so packaged installs now ask the user to choose a real local workspace before the main workflow begins
+- writable packaged governance workspace seeding under user-owned app data for packaged builds
+- natural-language drafting support for `redaction-rules.json`
+- a Windows packaging icon asset wired into the current installer/app build
+
+### Changed
+
+- refactored the main conversation pipeline into focused helper modules for streaming ChatGPT imports, conversation segment processing, and pipeline input handling
+- clarified archive-screen guidance in the Beta Guide and User Guide so topic groups, dates, and readable slices are explained as memory anchors before dataset review
+- documented large-workspace screen-loading expectations so beta testers know `Find Imports` is the quickest immediate follow-up, `Readable Archive` can take a few minutes at very high slice counts, and `Datasets` currently follows archive readiness
+- tightened Readable Archive overflow handling so long topic labels and markdown preview panes behave better in the desktop UI
+- expanded the technical pipeline documentation and removed the completed temporary pipeline refactor implementation note
+- README and beta-facing guidance now make it explicit that `Ask Quantum` is still experimental and not the primary or fully reliable evaluator path
+
+### Fixed
+
+- restored legacy ChatGPT import streaming on the modern intake path
+- packaged diagnostics actions now respect the selected output root instead of hardcoding `organized_output`
+- packaged governance and runtime rule loading now support live filesystem-backed rule files instead of relying only on static bundled JSON imports
+- runtime redaction and private-review classification now respect `redaction-rules.json`, including custom hard-private phrases drafted through governance
+- import reuse validation now invalidates preserved output when the import-affecting governance rule snapshot changes, so reruns no longer silently skip updated rule-driven output generation
+
+### Known follow-up
+
+- packaged diagnostics artifacts can exist on disk before the current UI reliably opens or summarizes every advanced diagnostics output
+
+### Validated
+
+- the Windows NSIS installer was rebuilt successfully on Saturday, July 18, 2026
+- live governance filesystem overrides were verified to affect runtime rule loading
+- natural-language redaction drafting was verified to generate structured rule JSON for quoted sensitive phrases
+
 ### Added
 
 - comprehensive README rewrite reflecting the actual July 2026 product shape and capabilities

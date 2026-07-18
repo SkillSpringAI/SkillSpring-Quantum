@@ -202,6 +202,42 @@ try {
     "Expected legacy records without reuse validation metadata not to be trusted as reusable imports"
   );
 
+  await tamperReuseValidation(ledgerPath, (value) => {
+    for (const record of value.records ?? []) {
+      if (record.reuseValidation) {
+        record.reuseValidation.governanceFingerprint = "governance.legacy";
+      }
+    }
+  });
+  await tamperReuseValidation(latestRunPath, (value) => {
+    for (const result of value.results ?? []) {
+      if (result.reuseValidation) {
+        result.reuseValidation.governanceFingerprint = "governance.legacy";
+      }
+    }
+  });
+  for (const historyFile of historyFiles) {
+    await tamperReuseValidation(historyFile, (value) => {
+      for (const result of value.results ?? []) {
+        if (result.reuseValidation) {
+          result.reuseValidation.governanceFingerprint = "governance.legacy";
+        }
+      }
+    });
+  }
+
+  const rerunAfterGovernanceMismatch = await runImportSource(exportFolder, outputRoot);
+  assert.equal(
+    rerunAfterGovernanceMismatch.filesImported,
+    2,
+    "Expected stale governance fingerprint metadata to invalidate reuse and force a rerun"
+  );
+  assert.equal(
+    rerunAfterGovernanceMismatch.results.filter((entry) => entry.message.includes("already imported successfully")).length,
+    0,
+    "Expected stale governance fingerprint metadata not to be trusted as reusable import output"
+  );
+
   await fs.rm(ledgerPath, { force: true });
 
   const rerunWithoutLedger = await runImportSource(exportFolder, outputRoot);

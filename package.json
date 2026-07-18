@@ -72,7 +72,8 @@
     "test:governance:fs": "tsx tests/governance/governance-fs.test.ts && tsx tests/governance/atomic-write.test.ts",
     "test:governance:write": "tsx tests/governance/governance-write-report.test.ts",
     "test:governance:validate": "tsx tests/governance/governance-validate-rule.test.ts",
-    "test:governance": "npm run test:waste && npm run test:scorer && npm run test:filter && npm run test:curation && npm run test:fingerprint && npm run test:review && npm run test:review:decision && npm run test:paths && npm run test:governance:fs && npm run test:governance:write && npm run test:governance:validate",
+    "test:governance:redaction": "tsx tests/governance/redaction-runtime.test.ts",
+    "test:governance": "npm run test:waste && npm run test:scorer && npm run test:filter && npm run test:curation && npm run test:fingerprint && npm run test:review && npm run test:review:decision && npm run test:paths && npm run test:governance:fs && npm run test:governance:write && npm run test:governance:validate && npm run test:governance:redaction",
     "test:ci": "npm run test:parser:coverage && npm run test:imports && npm run test:smoke:vendors && npm run test:retrieval && npm run test:pipeline && npm run test:assistant && npm run test:governance",
     "test:all": "npm run test:ci"
   },
@@ -105,6 +106,7 @@
     },
     "asar": true,
     "win": {
+      "icon": "electron/assets/icon.ico",
       "target": [
         "nsis"
       ],

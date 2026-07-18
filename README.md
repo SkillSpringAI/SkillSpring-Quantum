@@ -8,6 +8,8 @@ It is built for people who want to keep AI history on their own machine, revisit
 
 **Private beta preparation.** The core Windows workflow is implemented and validated. Quantum is preparing for a small external beta focused on usability and real-world feedback.
 
+`Ask Quantum` is still experimental and should not yet be treated as the primary or fully reliable workflow path.
+
 ## Why Quantum
 
 - Search conversations you remember asking
@@ -69,6 +71,12 @@ The current product includes dedicated views for:
 - Activity History
 - Search / Retrieval
 
+The main beta path is still:
+
+`Imports -> Readable Archive -> Datasets -> Search / Retrieval`
+
+`Ask Quantum`, Diagnostics, Governance, and the other extra tools are follow-up tools rather than the primary evaluator path today.
+
 Screenshot documentation is being prepared alongside the private beta packaging pass.
 
 ## Installation
@@ -93,6 +101,7 @@ Development setup, scripts, packaging, and test commands live in the [Developmen
 ## Documentation
 
 - [User Guide](docs/user/USER_GUIDE.md)
+- [Export Guides](docs/user/exports/README.md)
 - [FAQ](docs/user/FAQ.md)
 - [Known Limitations](docs/user/KNOWN_LIMITATIONS.md)
 - [Beta Guide](docs/user/BETA_GUIDE.md)

@@ -25,6 +25,7 @@ import {
   type ImportRunRetrievalSummary
 } from "./importMetadata.js";
 import { writeImportRetrievalIndex } from "./importRetrievalIndex.js";
+import { loadImportGovernanceSnapshot } from "../governance/importGovernanceSnapshot.js";
 
 const TEXT_EXTENSIONS = new Set([
   ".txt",
@@ -37,6 +38,7 @@ const TEXT_EXTENSIONS = new Set([
 const IMPORT_REUSE_CONFIG_HASH = sha256(JSON.stringify(programManifest));
 const IMPORT_REUSE_PROGRAM_VERSION = programManifest.program_version;
 const IMPORT_REUSE_PIPELINE_VERSION = programManifest.pipeline_version;
+const IMPORT_REUSE_GOVERNANCE_SNAPSHOT = loadImportGovernanceSnapshot();
 const IMPORT_REUSE_PARSER_SIGNATURE = [
   programManifest.segmentation_version,
   programManifest.topic_rules_version,
@@ -238,6 +240,7 @@ export interface ReuseValidationRecord {
   parserSignature: string;
   outputSchemaVersion: string;
   configHash: string;
+  governanceFingerprint: string;
 }
 
 export async function inspectImportSource(inputPath: string): Promise<ImportSourceSummary> {
@@ -870,7 +873,8 @@ function buildReuseValidationRecord(
       kind === "json_document" || kind === "text_document" || kind === "pdf_document"
         ? DOCUMENT_OUTPUT_SCHEMA_VERSION
         : CONVERSATION_OUTPUT_SCHEMA_VERSION,
-    configHash: IMPORT_REUSE_CONFIG_HASH
+    configHash: IMPORT_REUSE_CONFIG_HASH,
+    governanceFingerprint: IMPORT_REUSE_GOVERNANCE_SNAPSHOT.fingerprint
   };
 }
 
@@ -888,7 +892,8 @@ function isReuseValidationMatch(
     expected.pipelineVersion === actual.pipelineVersion &&
     expected.parserSignature === actual.parserSignature &&
     expected.outputSchemaVersion === actual.outputSchemaVersion &&
-    expected.configHash === actual.configHash
+    expected.configHash === actual.configHash &&
+    expected.governanceFingerprint === actual.governanceFingerprint
   );
 }
 

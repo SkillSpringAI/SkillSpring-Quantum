@@ -13,6 +13,7 @@ import OrganizedOutputScreen from "../screens/OrganizedOutputScreen";
 import DatasetsScreen from "../screens/DatasetsScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import { useNavigation } from "../state/navigationContext";
+import { useSettings } from "../state/settingsContext";
 import FirstRunGuide from "../components/FirstRunGuide";
 
 function ScreenRouter() {
@@ -48,6 +49,8 @@ function ScreenRouter() {
 
 export default function AppShell() {
   const { activeScreen, setActiveScreen } = useNavigation();
+  const { settings } = useSettings();
+  const outputRootReady = settings.outputRootConfirmed && settings.outputRoot.trim().length > 0;
 
   return (
     <div className="app-shell">
@@ -55,13 +58,27 @@ export default function AppShell() {
       <main className="main-area">
         <Topbar />
         <div className="screen-area">
-          <ScreenErrorBoundary
-            key={activeScreen}
-            screenId={activeScreen}
-            onGoDashboard={() => setActiveScreen("dashboard")}
-          >
-            <ScreenRouter />
-          </ScreenErrorBoundary>
+          {outputRootReady ? (
+            <ScreenErrorBoundary
+              key={activeScreen}
+              screenId={activeScreen}
+              onGoDashboard={() => setActiveScreen("dashboard")}
+            >
+              <ScreenRouter />
+            </ScreenErrorBoundary>
+          ) : (
+            <section className="screen-grid">
+              <div className="panel">
+                <h2>Choose Output Folder</h2>
+                <p className="muted">
+                  Quantum needs a local workspace folder before imports, archive review, datasets, diagnostics, or governance can run reliably.
+                </p>
+                <p className="muted">
+                  Use the first-run guide to choose where Quantum should store archives, datasets, diagnostics, and history on this machine.
+                </p>
+              </div>
+            </section>
+          )}
         </div>
       </main>
       <FirstRunGuide />

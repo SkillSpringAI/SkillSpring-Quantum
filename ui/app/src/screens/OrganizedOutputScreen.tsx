@@ -14,6 +14,7 @@ import { useNavigation } from "../state/navigationContext";
 import { useAgentContext } from "../state/agentContext";
 import { useImportActivity } from "../state/importActivityContext";
 import { useSettings } from "../state/settingsContext";
+import OpenPathButton from "../components/OpenPathButton";
 
 export default function OrganizedOutputScreen() {
   const { setActiveScreen } = useNavigation();
@@ -285,6 +286,9 @@ export default function OrganizedOutputScreen() {
               <button className="secondary-btn" type="button" onClick={refreshAll}>
                 Try Refresh Again
               </button>
+              <OpenPathButton className="secondary-btn" targetPath={settings.outputRoot}>
+                Open Output Folder
+              </OpenPathButton>
               <button className="primary-btn" type="button" onClick={() => setActiveScreen("imports")}>
                 Go To Imports
               </button>
@@ -304,6 +308,9 @@ export default function OrganizedOutputScreen() {
               </p>
             ) : null}
             <div className="action-bar">
+              <OpenPathButton className="secondary-btn" targetPath={settings.outputRoot}>
+                Open Output Folder
+              </OpenPathButton>
               <button className="primary-btn" type="button" onClick={() => setActiveScreen("imports")}>
                 Go To Imports
               </button>

@@ -180,6 +180,42 @@ try {
   assert.equal(shardedSummary.vendorSummaries[0]?.vendor, "chatgpt");
   assert.equal(shardedSummary.vendorSummaries[0]?.detectedFiles, 2);
   assert.ok((shardedSummary.vendorSummaries[0]?.companionFiles ?? 0) >= 4);
+
+  const legacyHtmlWithRendererFolder = path.join(tempRoot, "chatgpt-export-legacy-html-renderer");
+  await fs.mkdir(legacyHtmlWithRendererFolder, { recursive: true });
+  await fs.writeFile(
+    path.join(legacyHtmlWithRendererFolder, "chat.html"),
+    [
+      "<html>",
+      "<head><title>ChatGPT Data Export</title></head>",
+      "<body>",
+      "<script>",
+      "var jsonData = " + JSON.stringify([chatgptFixture]) + ";",
+      "for (const conversation of jsonData) {",
+      "  const currentNode = conversation.current_node;",
+      "  if (currentNode) {",
+      "    var node = conversation.mapping[currentNode];",
+      "    console.log(node?.id);",
+      "  }",
+      "}",
+      "</script>",
+      "</body>",
+      "</html>"
+    ].join(""),
+    "utf-8"
+  );
+
+  const rendererSummary = await inspectImportSource(legacyHtmlWithRendererFolder);
+  assert.equal(
+    rendererSummary.supportedFiles,
+    1,
+    "Expected legacy ChatGPT HTML export with trailing renderer script to remain importable"
+  );
+  assert.equal(
+    rendererSummary.countsByKind.chatgpt_export,
+    1,
+    "Expected legacy ChatGPT HTML export with trailing renderer script to remain recognized as ChatGPT"
+  );
 } finally {
   await fs.rm(tempRoot, { recursive: true, force: true });
 }

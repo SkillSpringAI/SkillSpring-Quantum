@@ -44,6 +44,10 @@ export function looksLikeChatGptConversationArrayText(raw: string): boolean {
   );
 }
 
+export function canStreamChatGptConversationsFromRaw(raw: string): boolean {
+  return extractEmbeddedChatGptExportJsonText(raw) !== null || looksLikeChatGptConversationArrayText(raw);
+}
+
 function mapRole(role?: string): Role {
   switch (role) {
     case "user":
@@ -214,12 +218,80 @@ function extractEmbeddedChatGptExportJsonText(raw: string): string | null {
   }
 
   const jsonStart = start + CHATGPT_HTML_JSON_MARKER.length;
-  const scriptEnd = raw.indexOf(";</script>", jsonStart);
-  if (scriptEnd === -1) {
+  const arrayBounds = findTopLevelJsonArrayBounds(raw, jsonStart);
+  if (!arrayBounds) {
     return null;
   }
 
-  return raw.slice(jsonStart, scriptEnd);
+  return raw.slice(arrayBounds.start, arrayBounds.end + 1);
+}
+
+function findTopLevelJsonArrayBounds(
+  raw: string,
+  startIndex: number
+): { start: number; end: number } | null {
+  let arrayStart = -1;
+  let nestingDepth = 0;
+  let inString = false;
+  let escaping = false;
+
+  for (let index = startIndex; index < raw.length; index += 1) {
+    const character = raw[index];
+
+    if (arrayStart === -1) {
+      if (/\s/.test(character)) {
+        continue;
+      }
+
+      if (character !== "[") {
+        return null;
+      }
+
+      arrayStart = index;
+      nestingDepth = 1;
+      continue;
+    }
+
+    if (inString) {
+      if (escaping) {
+        escaping = false;
+        continue;
+      }
+
+      if (character === "\\") {
+        escaping = true;
+        continue;
+      }
+
+      if (character === "\"") {
+        inString = false;
+      }
+
+      continue;
+    }
+
+    if (character === "\"") {
+      inString = true;
+      continue;
+    }
+
+    if (character === "[" || character === "{") {
+      nestingDepth += 1;
+      continue;
+    }
+
+    if (character === "]" || character === "}") {
+      nestingDepth -= 1;
+      if (nestingDepth === 0) {
+        return {
+          start: arrayStart,
+          end: index
+        };
+      }
+    }
+  }
+
+  return null;
 }
 
 function parseChatGptConversationArrayText(arrayText: string): ParseResult {

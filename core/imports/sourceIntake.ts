@@ -228,6 +228,7 @@ interface LatestImportRunPathRecord {
   kind: ImportSourceKind;
   metadata?: ImportFileMetadata;
   reuseValidation?: ReuseValidationRecord;
+  reusable?: boolean;
 }
 
 export interface ReuseValidationRecord {
@@ -523,6 +524,20 @@ export async function runImportSource(
             kind: supportedEntry.kind,
             status: "failed",
             message: "Import failed before archive and dataset outputs were completed. Check diagnostics for details.",
+            metadata: metadata ?? undefined
+          });
+          completedSupportedFiles += 1;
+          continue;
+        }
+
+        if (!conversationImportProducedUsableOutputs(diagnostics)) {
+          filesFailed += 1;
+          results.push({
+            path: filePath,
+            kind: supportedEntry.kind,
+            status: "failed",
+            message: "Import finished without usable conversation output. Quantum wrote diagnostics, but no readable archive or dataset outputs were produced from this file.",
+            artifacts: collectConversationFailureArtifacts(outputRoot, diagnostics),
             metadata: metadata ?? undefined
           });
           completedSupportedFiles += 1;
@@ -912,7 +927,8 @@ async function loadRecentImportRunPathRecords(
             status: result.status,
             kind: result.kind,
             metadata: result.metadata,
-            reuseValidation: result.reuseValidation
+            reuseValidation: result.reuseValidation,
+            reusable: isImportedResultReusable(result, latestRun.retrievalSummary)
           });
         }
       }
@@ -953,6 +969,7 @@ async function prepareImportFilesForRun(
       const historyRecoveredSuccess =
         !validatedLedgerRecord &&
         latestRunRecord?.status === "imported" &&
+        latestRunRecord.reusable !== false &&
         expectedReuseValidation &&
         isReuseValidationMatch(expectedReuseValidation, latestRunRecord.reuseValidation)
           ? {
@@ -1363,6 +1380,44 @@ function buildRunArtifacts(outputRoot: string, resultArtifacts: ImportArtifact[]
   ];
 
   return dedupeArtifacts(merged);
+}
+
+function collectConversationFailureArtifacts(
+  outputRoot: string,
+  diagnostics: Awaited<ReturnType<typeof runConversationPipeline>>
+): ImportArtifact[] {
+  return dedupeArtifacts([
+    { label: "Output root", path: outputRoot },
+    { label: "Diagnostics root", path: path.join(outputRoot, "diagnostics") },
+    { label: "Latest diagnostics", path: path.join(outputRoot, "diagnostics", "latest-run.json") },
+    { label: "Diagnostics history file", path: path.join(outputRoot, "diagnostics", "history", diagnostics.run_id + ".json") }
+  ]);
+}
+
+function conversationImportProducedUsableOutputs(
+  diagnostics: Awaited<ReturnType<typeof runConversationPipeline>>
+): boolean {
+  return diagnostics.conversations_found > 0;
+}
+
+function isImportedResultReusable(
+  result: ImportRunFileResult,
+  retrievalSummary: ImportRunRetrievalSummary | null
+): boolean {
+  if (result.status !== "imported") {
+    return false;
+  }
+
+  if (result.metadata?.sourceCategory === "conversation") {
+    if (!retrievalSummary) {
+      return false;
+    }
+
+    return retrievalSummary.conversationCount > 0 &&
+      retrievalSummary.messageCount > 0;
+  }
+
+  return true;
 }
 
 async function collectConversationArtifacts(
@@ -2137,12 +2192,14 @@ async function resolveDirectoryImportFiles(
         filePath === chatGptHtmlPath ||
         companionNames.has(path.basename(filePath).toLowerCase())
     );
+    const legacyHtmlSizeWarning = await buildLegacyChatGptHtmlSizeWarning(chatGptHtmlPath);
 
     return {
       files,
       notes: [
         "Legacy ChatGPT chat bundle detected. Quantum will inspect chat.html directly instead of flooding review with every package attachment file.",
-        "This legacy chat.html path can feel heavier than newer shard-first ChatGPT exports. If this is not the export you meant to use, stop here and switch paths before starting a long import."
+        "This legacy chat.html path can feel heavier than newer shard-first ChatGPT exports. If this is not the export you meant to use, stop here and switch paths before starting a long import.",
+        ...(legacyHtmlSizeWarning ? [legacyHtmlSizeWarning] : [])
       ]
     };
   }
@@ -2151,4 +2208,19 @@ async function resolveDirectoryImportFiles(
     files: await listFilesRecursive(root),
     notes: []
   };
+}
+
+async function buildLegacyChatGptHtmlSizeWarning(filePath: string): Promise<string | null> {
+  try {
+    const stat = await fs.stat(filePath);
+    const warningThresholdBytes = 32 * 1024 * 1024;
+    if (Number(stat.size) <= warningThresholdBytes) {
+      return null;
+    }
+
+    const sizeMb = Math.round(Number(stat.size) / (1024 * 1024));
+    return `Large legacy chat.html bundle detected (${sizeMb} MB). Quantum's current HTML import lane may run out of local memory on exports this large, so prefer a shard-first ChatGPT export when available.`;
+  } catch {
+    return null;
+  }
 }

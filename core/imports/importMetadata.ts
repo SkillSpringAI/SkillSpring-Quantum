@@ -1,7 +1,11 @@
 import { promises as fs } from "node:fs";
 import type { ConversationParserKind, DetectedConversationParse } from "../parser/detectConversationExport.js";
 import { detectAndParseConversationExport } from "../parser/index.js";
-import { looksLikeChatGptConversationArrayText } from "../parser/chatgpt.js";
+import {
+  canStreamChatGptConversationsFromRaw,
+  iterateChatGptConversationsFromRaw,
+  looksLikeChatGptConversationArrayText
+} from "../parser/chatgpt.js";
 import type { Conversation } from "../parser/types.js";
 import { segmentConversation } from "../pipeline/segmenter.js";
 import { formatNormalizedTopicLabel } from "../pipeline/topicNormalizer.js";
@@ -58,6 +62,10 @@ export async function readConversationImportMetadata(
   filePath: string
 ): Promise<ConversationImportMetadata | null> {
   const rawText = await fs.readFile(filePath, "utf-8");
+  if (canStreamChatGptConversationsFromRaw(rawText)) {
+    return summarizeChatGptConversationStream(rawText);
+  }
+
   const raw =
     filePath.toLowerCase().endsWith(".html") ||
     filePath.toLowerCase().endsWith(".csv") ||
@@ -124,6 +132,83 @@ export function summarizeDetectedConversationImport(
     conversationIds: conversations.map((conversation) => conversation.id),
     vendorSources,
     conversationCount: conversations.length,
+    messageCount,
+    participantCount,
+    attachmentCount,
+    startedAt: sortedTimestamps[0],
+    endedAt: sortedTimestamps[sortedTimestamps.length - 1],
+    sampleTitles,
+    topicHints
+  };
+}
+
+function summarizeChatGptConversationStream(rawText: string): ConversationImportMetadata | null {
+  return summarizeConversationCollection(
+    iterateChatGptConversationsFromRaw(rawText),
+    "chatgpt_export",
+    "ChatGPT export",
+    "mvp_first_class"
+  );
+}
+
+function summarizeConversationCollection(
+  conversations: Iterable<Conversation>,
+  detectedKind: ConversationParserKind,
+  detectedLabel: string,
+  supportTier: ImportSupportTier
+): ConversationImportMetadata | null {
+  const conversationIds: string[] = [];
+  const vendorSources: Conversation["source"][] = [];
+  const sampleTitles: string[] = [];
+  const timestamps: string[] = [];
+  const topicCounts = new Map<string, number>();
+  let messageCount = 0;
+  let participantCount = 0;
+  let attachmentCount = 0;
+
+  for (const conversation of conversations) {
+    conversationIds.push(conversation.id);
+    vendorSources.push(conversation.source);
+
+    const title = conversation.title?.trim();
+    if (title && !sampleTitles.includes(title) && sampleTitles.length < 5) {
+      sampleTitles.push(title);
+    }
+
+    timestamps.push(...collectConversationTimestamps(conversation));
+    messageCount += conversation.messages.length;
+    participantCount += conversation.participants.length;
+
+    for (const message of conversation.messages) {
+      attachmentCount += message.attachments?.length ?? 0;
+    }
+
+    const segments = segmentConversation(conversation);
+    for (const segment of segments) {
+      const topicHint = summarizeSegmentTopicHint(segment);
+      if (!topicHint) continue;
+      topicCounts.set(topicHint, (topicCounts.get(topicHint) ?? 0) + 1);
+    }
+  }
+
+  if (conversationIds.length === 0) {
+    return null;
+  }
+
+  const sortedTimestamps = timestamps.sort();
+  const topicHints = [...topicCounts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, 6)
+    .map(([topic]) => topic);
+
+  return {
+    sourceCategory: "conversation",
+    detectedKind,
+    detectedLabel,
+    supportTier,
+    conversationIds,
+    vendorSources: uniqueValues(vendorSources).sort(),
+    conversationCount: conversationIds.length,
     messageCount,
     participantCount,
     attachmentCount,

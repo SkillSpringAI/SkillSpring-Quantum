@@ -39,7 +39,7 @@
     "package:win": "npm run build:desktop && electron-builder --win nsis --publish never",
     "test:parser": "tsx tests/parser/chatgpt-parser.test.ts",
     "test:parser:coverage": "tsx tests/parser/chatgpt-parser.test.ts && tsx tests/parser/claude-parser.test.ts && tsx tests/parser/gemini-parser.test.ts && tsx tests/parser/copilot-parser.test.ts && tsx tests/parser/generic-conversation-parser.test.ts && tsx tests/parser/conversation-export-detection.test.ts && tsx tests/parser/gemini-activity-html-parser.test.ts && tsx tests/parser/copilot-activity-csv-parser.test.ts && tsx tests/parser/preflight-copilot-csv.test.ts && tsx tests/parser/import-result-messages.test.ts && tsx tests/parser/dataset-intent.test.ts && tsx tests/parser/dataset-intent-match.test.ts",
-    "test:import:intake": "tsx tests/parser/chatgpt-source-intake.test.ts && tsx tests/parser/chatgpt-html-source-intake.test.ts && tsx tests/parser/claude-source-intake.test.ts && tsx tests/parser/copilot-source-intake.test.ts && tsx tests/parser/vendor-package-source-intake.test.ts",
+    "test:import:intake": "tsx tests/parser/chatgpt-source-intake.test.ts && tsx tests/parser/chatgpt-html-source-intake.test.ts && tsx tests/parser/chatgpt-html-no-conversations-reuse.test.ts && tsx tests/parser/chatgpt-html-import-smoke.test.ts && tsx tests/parser/claude-source-intake.test.ts && tsx tests/parser/copilot-source-intake.test.ts && tsx tests/parser/vendor-package-source-intake.test.ts",
     "test:smoke:vendors": "tsx tests/parser/vendor-import-smoke.test.ts",
     "test:import:history": "tsx tests/parser/import-history-filter.test.ts",
     "test:import:metadata": "tsx tests/parser/import-metadata.test.ts",

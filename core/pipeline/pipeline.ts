@@ -3,6 +3,7 @@ import { promises as fs } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { detectAndParseConversationExport } from "../parser/index.js";
 import {
+  canStreamChatGptConversationsFromRaw,
   iterateChatGptConversationsFromRaw,
   looksLikeChatGptConversationArrayText
 } from "../parser/chatgpt.js";
@@ -15,7 +16,7 @@ import {
   rememberAlias,
   rememberProcessedConversationId
 } from "../index/indexStore.js";
-import { exportDatasets } from "./datasetExporter.js";
+import { exportDatasets, type DatasetSummary } from "./datasetExporter.js";
 import { buildDatasetPaths } from "./datasetVersioning.js";
 import { writeDiagnostics } from "../diagnostics/diagnosticStore.js";
 import type { RunDiagnostics } from "../diagnostics/types.js";
@@ -41,6 +42,7 @@ const DATASET_VERSION = programManifest.dataset_version;
 const PROGRAM_VERSION = programManifest.program_version;
 const SEGMENT_WINDOW_SIZE = 4;
 const STREAMING_SHARD_CHECKPOINT_INTERVAL = 10;
+const STREAMING_DATASET_FLUSH_CONVERSATION_INTERVAL = 25;
 
 interface PackageCompanionContext {
   package_companion_files?: number;
@@ -158,7 +160,7 @@ export async function runConversationPipeline(
     const index = await loadIndex(outputRoot);
 
     const raw = await readConversationImportSource(filePath);
-    if (typeof raw === "string" && looksLikeChatGptConversationArrayText(raw)) {
+    if (typeof raw === "string" && canStreamChatGptConversationsFromRaw(raw)) {
       return await runStreamingChatGptPipeline({
         raw,
         filePath,
@@ -424,6 +426,9 @@ async function runStreamingChatGptPipeline(args: {
   const datasetPaths = buildDatasetPaths(outputRoot, DATASET_VERSION, diagnostics.run_id);
   const completedConversationIds = await loadStreamingShardProgress(outputRoot, filePath);
   let newlyCompletedConversations = 0;
+  let pendingFlushConversationCount = 0;
+  let pendingDatasetSegments: ConversationSegment[] = [];
+  const pendingCompletedConversationIds: string[] = [];
   const aggregate: StreamingImportAggregate = {
     vendorSources: new Set<string>(["chatgpt"]),
     sampleTitles: new Set<string>(),
@@ -431,7 +436,7 @@ async function runStreamingChatGptPipeline(args: {
     messageCount: 0,
     attachmentCount: 0
   };
-  let datasetSummary: Awaited<ReturnType<typeof exportDatasets>> | null = null;
+  let datasetSummary: DatasetSummary | null = null;
 
   for (const conversation of iterateChatGptConversationsFromRaw(raw)) {
     if (completedConversationIds.has(conversation.id)) {
@@ -457,37 +462,20 @@ async function runStreamingChatGptPipeline(args: {
 
     if (batchSegments.length === 0) {
       aggregateConversation(aggregate, conversation, []);
-      completedConversationIds.add(conversation.id);
-      newlyCompletedConversations += 1;
-      if (newlyCompletedConversations % STREAMING_SHARD_CHECKPOINT_INTERVAL === 0) {
-        await saveStreamingShardProgress(outputRoot, filePath, completedConversationIds);
-      }
+      pendingCompletedConversationIds.push(conversation.id);
+      pendingFlushConversationCount += 1;
+      await flushStreamingConversationBatchIfNeeded(false);
       continue;
     }
 
     aggregateConversation(aggregate, conversation, batchSegments);
-
-    const batchSummary = await exportDatasets(
-      batchSegments,
-      outputRoot,
-      DATASET_VERSION,
-      {
-        pipeline_run_id: diagnostics.run_id,
-        source_input_path: filePath,
-        detected_kind: "chatgpt_export",
-        detected_label: "ChatGPT export",
-        support_tier: "mvp_first_class",
-        vendor_sources: ["chatgpt"]
-      },
-      datasetPaths
-    );
-    datasetSummary = datasetSummary ? mergeDatasetSummaries(datasetSummary, batchSummary) : batchSummary;
-    completedConversationIds.add(conversation.id);
-    newlyCompletedConversations += 1;
-    if (newlyCompletedConversations % STREAMING_SHARD_CHECKPOINT_INTERVAL === 0) {
-      await saveStreamingShardProgress(outputRoot, filePath, completedConversationIds);
-    }
+    pendingDatasetSegments.push(...batchSegments);
+    pendingCompletedConversationIds.push(conversation.id);
+    pendingFlushConversationCount += 1;
+    await flushStreamingConversationBatchIfNeeded(false);
   }
+
+  await flushStreamingConversationBatchIfNeeded(true);
 
   if (diagnostics.conversations_found === 0) {
     diagnostics.warnings.push({
@@ -504,27 +492,14 @@ async function runStreamingChatGptPipeline(args: {
 
   await saveIndex(outputRoot, index);
 
-  if (datasetSummary) {
-    datasetSummary.source_context = {
-      ...datasetSummary.source_context,
-      pipeline_run_id: diagnostics.run_id,
-      source_input_path: filePath,
-      detected_kind: "chatgpt_export",
-      detected_label: "ChatGPT export",
-      support_tier: "mvp_first_class",
-      vendor_sources: ["chatgpt"],
-      conversation_count: diagnostics.conversations_found,
-      message_count: aggregate.messageCount,
-      attachment_count: aggregate.attachmentCount,
-      topic_hints: [...aggregate.topicHints].slice(0, 6)
-    };
-    await writeDatasetSummaryArtifacts(outputRoot, datasetPaths.manifestFile, datasetSummary);
-
-    diagnostics.dataset_topic_segments = datasetSummary.topic_segments;
-    diagnostics.dataset_prompt_response_pairs = datasetSummary.prompt_response_pairs;
-    diagnostics.dataset_micro_segments = datasetSummary.micro_segments;
-    diagnostics.dataset_private_review_segments = datasetSummary.private_review_segments;
-  }
+  await finalizeStreamingDatasetSummary({
+    datasetSummary,
+    diagnostics,
+    outputRoot,
+    manifestFile: datasetPaths.manifestFile,
+    filePath,
+    aggregate
+  });
 
   const duplicateRate =
     diagnostics.segments_created > 0
@@ -561,6 +536,42 @@ async function runStreamingChatGptPipeline(args: {
   await writeDiagnostics(outputRoot, diagnostics);
   await clearStreamingShardProgress(outputRoot, filePath);
   return diagnostics;
+
+  async function flushStreamingConversationBatchIfNeeded(force: boolean): Promise<void> {
+    if (!force && pendingFlushConversationCount < STREAMING_DATASET_FLUSH_CONVERSATION_INTERVAL) {
+      return;
+    }
+
+    if (pendingDatasetSegments.length > 0) {
+      const batchSummary = await exportDatasets(
+        pendingDatasetSegments,
+        outputRoot,
+        DATASET_VERSION,
+        {
+          pipeline_run_id: diagnostics.run_id,
+          source_input_path: filePath,
+          detected_kind: "chatgpt_export",
+          detected_label: "ChatGPT export",
+          support_tier: "mvp_first_class",
+          vendor_sources: ["chatgpt"]
+        },
+        datasetPaths
+      );
+      datasetSummary = datasetSummary ? mergeDatasetSummaries(datasetSummary, batchSummary) : batchSummary;
+      pendingDatasetSegments = [];
+    }
+
+    if (pendingCompletedConversationIds.length > 0) {
+      for (const conversationId of pendingCompletedConversationIds) {
+        completedConversationIds.add(conversationId);
+      }
+      newlyCompletedConversations += pendingCompletedConversationIds.length;
+      pendingCompletedConversationIds.length = 0;
+      await saveStreamingShardProgress(outputRoot, filePath, completedConversationIds);
+    }
+
+    pendingFlushConversationCount = 0;
+  }
 }
 
 async function processConversationSegments(
@@ -672,10 +683,52 @@ function aggregateConversation(
   }
 }
 
+async function finalizeStreamingDatasetSummary(args: {
+  datasetSummary: DatasetSummary | null;
+  diagnostics: RunDiagnostics;
+  outputRoot: string;
+  manifestFile: string;
+  filePath: string;
+  aggregate: StreamingImportAggregate;
+}): Promise<void> {
+  const {
+    datasetSummary,
+    diagnostics,
+    outputRoot,
+    manifestFile,
+    filePath,
+    aggregate
+  } = args;
+
+  if (datasetSummary === null) {
+    return;
+  }
+
+  datasetSummary.source_context = {
+    ...datasetSummary.source_context,
+    pipeline_run_id: diagnostics.run_id,
+    source_input_path: filePath,
+    detected_kind: "chatgpt_export",
+    detected_label: "ChatGPT export",
+    support_tier: "mvp_first_class",
+    vendor_sources: ["chatgpt"],
+    conversation_count: diagnostics.conversations_found,
+    message_count: aggregate.messageCount,
+    attachment_count: aggregate.attachmentCount,
+    topic_hints: [...aggregate.topicHints].slice(0, 6)
+  };
+  await writeDatasetSummaryArtifacts(outputRoot, manifestFile, datasetSummary);
+
+  diagnostics.dataset_topic_segments = datasetSummary.topic_segments;
+  diagnostics.dataset_prompt_response_pairs = datasetSummary.prompt_response_pairs;
+  diagnostics.dataset_micro_segments = datasetSummary.micro_segments;
+  diagnostics.dataset_private_review_segments = datasetSummary.private_review_segments;
+}
+
 function mergeDatasetSummaries(
-  base: Awaited<ReturnType<typeof exportDatasets>>,
-  next: Awaited<ReturnType<typeof exportDatasets>>
-): Awaited<ReturnType<typeof exportDatasets>> {
+  base: DatasetSummary,
+  next: DatasetSummary
+): DatasetSummary {
   const mergedTopics = { ...base.topics };
   for (const [topic, count] of Object.entries(next.topics)) {
     mergedTopics[topic] = (mergedTopics[topic] ?? 0) + count;

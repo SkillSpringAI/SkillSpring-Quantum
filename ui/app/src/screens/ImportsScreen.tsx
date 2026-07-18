@@ -293,7 +293,7 @@ function buildPostRunStatusMessage(run: ImportRunSummary | null, fallbackMessage
 
   if (run.filesImported === 0) {
     if (previouslyImported > 0) {
-      return "Import finished quickly. Quantum recognized files that were already imported successfully in this output folder, so it reused the existing archive and dataset outputs here instead of processing them again.";
+      return "Import finished quickly. Quantum recognized files that were already imported successfully in this output folder, so it reused the existing archive and dataset outputs here instead of processing them again. Open Readable Archive, Datasets, or the current output folder to keep working from the existing results.";
     }
     return "Import finished without usable outputs. Re-inspect the source path and open diagnostics before retrying.";
   }
@@ -347,7 +347,7 @@ function buildWorkspaceAvailabilityHint(
     return `Output ${outputLabel} does not have import history yet. If you just switched output roots, that is expected until this workspace has its own runs.`;
   }
 
-  return `Output ${outputLabel} already has import history available, so rerun reuse and latest-run follow-up will be based on this workspace.`;
+  return `Output ${outputLabel} already has import history available, so rerun reuse and latest-run follow-up will be based on this workspace. If you are looking for work Quantum already processed, open this output folder or the latest archive and dataset shortcuts below instead of re-importing first.`;
 }
 
 function formatProgressElapsed(elapsedMs: number): string {
@@ -871,7 +871,7 @@ export default function ImportsScreen() {
     const previouslyImported = countPreviouslyImportedSkips(run);
     if (run.filesImported === 0) {
       if (previouslyImported > 0) {
-        return "This export was already imported successfully in the current output folder. Quantum reused the existing outputs there instead of processing the same files all over again.";
+        return "This export was already imported successfully in the current output folder. Quantum reused the existing outputs there instead of processing the same files all over again. Open the existing archive, datasets, or current output folder to continue from the preserved work.";
       }
       return "This run did not produce imported files. Check the source summary and diagnostics before trying again.";
     }
@@ -972,6 +972,16 @@ export default function ImportsScreen() {
           <strong>Output {describeOutputRoot(form.outputRoot)}</strong>
           <p className="muted">{buildOutputRootScopeHint(form.outputRoot)}</p>
           <p className="muted">{buildWorkspaceAvailabilityHint(form.outputRoot, latestRunForNextSteps ?? null)}</p>
+        </div>
+        <div className="action-bar">
+          <OpenPathButton className="secondary-btn" targetPath={form.outputRoot}>
+            Open Current Output Folder
+          </OpenPathButton>
+          {latestRunForNextSteps?.historyPath ? (
+            <OpenPathButton className="secondary-btn" targetPath={latestRunForNextSteps.historyPath}>
+              Open Latest Import History
+            </OpenPathButton>
+          ) : null}
         </div>
       </div>
 
@@ -1093,6 +1103,11 @@ export default function ImportsScreen() {
             {runState !== "running" && latestDatasetArtifactPath ? (
               <OpenPathButton className="secondary-btn" targetPath={latestDatasetArtifactPath}>
                 Open Latest Dataset File
+              </OpenPathButton>
+            ) : null}
+            {runState !== "running" ? (
+              <OpenPathButton className="secondary-btn" targetPath={latestRunForNextSteps.outputRoot}>
+                Open Current Output Folder
               </OpenPathButton>
             ) : null}
           </div>

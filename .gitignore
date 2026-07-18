@@ -23,6 +23,7 @@ backups/
 governance/logs/backups/
 governance/logs/writes/
 .electron-temp-rule.json
+.codex-remote-attachments/
 temp-*.json
 
 # Local raw vendor exports used for parser exploration

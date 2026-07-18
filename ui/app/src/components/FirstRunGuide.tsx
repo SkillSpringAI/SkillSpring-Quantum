@@ -26,11 +26,11 @@ const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   {
     id: "archive",
     label: "Step 2",
-    title: "Read the Archive first",
+    title: "Read the Readable Archive first",
     screen: "organized-output",
     summary: "Use Readable Archive as the first review lane after import so the conversation stays human-readable.",
     check: "Confirm the archive body, source clues, and next action feel easy to follow.",
-    cta: "Open Archive"
+    cta: "Open Readable Archive"
   },
   {
     id: "datasets",
@@ -38,7 +38,7 @@ const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     title: "Open Dataset View when you want structure",
     screen: "datasets",
     summary: "Go to Datasets after archive review when you want topic segments, prompt/response previews, or redaction context.",
-    check: "Confirm the dataset view still feels connected to what you just reviewed in Archive.",
+    check: "Confirm the dataset view still feels connected to what you just reviewed in Readable Archive.",
     cta: "Open Datasets"
   },
   {

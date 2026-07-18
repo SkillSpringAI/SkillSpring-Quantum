@@ -10,7 +10,7 @@ As of July 16, 2026, Quantum is in private beta preparation on Windows.
 
 The primary beta path is still:
 
-`Imports -> Readable Archive -> Datasets -> Search / Retrieval`
+`Imports -> Readable Archive -> Datasets -> Find Imports`
 
 `Ask Quantum` is currently experimental and should not yet be treated as the most reliable way to inspect, verify, or recover imported conversation history.
 
@@ -40,9 +40,10 @@ Avoid:
 4. Choose the export you downloaded
 5. Run `Export Check` first
 6. If the result looks right, import from that same path
-7. Review `Archive` first
+7. Review `Readable Archive` first
 8. Review `Datasets` second
-9. Use `Search / Retrieval` if you want to revisit earlier material
+9. Use `Find Imports` if you want to revisit earlier material
+10. Check `Activity History` when you want to verify or recover what happened
 
 ## Large import expectations
 
@@ -67,7 +68,7 @@ These are currently secondary tools for follow-up inspection, not the main beta 
 
 What this means for testers:
 
-- start with Imports, Archive, Datasets, and Search / Retrieval first
+- start with Imports, Readable Archive, Datasets, and Find Imports first
 - use `Ask Quantum` only as an experimental assistant layer
 - do not treat `Ask Quantum` as the authoritative answer when it conflicts with the deterministic archive, dataset, or activity-history outputs
 - defer `Diagnostics` during normal beta walkthroughs unless the maintainer specifically asks for it

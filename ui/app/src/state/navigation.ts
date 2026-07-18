@@ -33,10 +33,10 @@ export const SCREEN_LABELS: Record<ScreenId, string> = {
 export const NAV_ITEMS: NavItem[] = [
   { id: "dashboard", label: SCREEN_LABELS.dashboard },
   { id: "imports", label: SCREEN_LABELS.imports },
-  { id: "activity-log", label: SCREEN_LABELS["activity-log"] },
-  { id: "retrieval", label: SCREEN_LABELS.retrieval },
   { id: "organized-output", label: SCREEN_LABELS["organized-output"] },
   { id: "datasets", label: SCREEN_LABELS.datasets },
+  { id: "retrieval", label: SCREEN_LABELS.retrieval },
+  { id: "activity-log", label: SCREEN_LABELS["activity-log"] },
   { id: "tiered-db", label: SCREEN_LABELS["tiered-db"] },
   { id: "review-queue", label: SCREEN_LABELS["review-queue"] },
   { id: "diagnostics", label: SCREEN_LABELS.diagnostics },
@@ -47,10 +47,10 @@ export const NAV_ITEMS: NavItem[] = [
 export const PRIMARY_NAV_ITEMS: NavItem[] = [
   { id: "dashboard", label: "Dashboard" },
   { id: "imports", label: "Imports" },
-  { id: "activity-log", label: "Activity History" },
-  { id: "retrieval", label: "Find Imports" },
   { id: "organized-output", label: "Readable Archive" },
-  { id: "datasets", label: "Datasets" }
+  { id: "datasets", label: "Datasets" },
+  { id: "retrieval", label: "Find Imports" },
+  { id: "activity-log", label: "Activity History" }
 ];
 
 export const ADVANCED_NAV_ITEMS: NavItem[] = [

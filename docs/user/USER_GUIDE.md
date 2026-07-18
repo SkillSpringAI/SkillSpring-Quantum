@@ -24,9 +24,10 @@ Current private beta workflow:
 4. Choose the file or folder you exported
 5. Run `Export Check`
 6. Import from that same path
-7. Review `Archive`
-8. Use `Search / Retrieval` to find prior material
-9. Open `Datasets` when you want structured output
+7. Review `Readable Archive`
+8. Open `Datasets` when you want structured output
+9. Use `Find Imports` to find prior material
+10. Check `Activity History` when you want to verify or recover what happened
 
 ## Supported exports
 
@@ -57,14 +58,14 @@ If you are unsure which file to choose after downloading, start with the relevan
 
 - `Dashboard`: quick view of recent activity and workflow entry points
 - `Imports`: inspect an export and start an import
-- `Archive`: browse readable local output by topic group, date, and conversation slice before moving into structured datasets
-- `Search / Retrieval`: revisit prior imports by text, topic, vendor, date, and status
+- `Readable Archive`: browse readable local output by topic group, date, and conversation slice before moving into structured datasets
 - `Datasets`: inspect structured outputs generated from imported material
-- `Activity History`: review what Quantum did and where the workflow went next
+- `Find Imports`: revisit prior imports by text, topic, vendor, date, and status
+- `Activity History`: verify what Quantum did and recover context when something is unclear
 
-## How to read the Archive screen
+## How to read the Readable Archive screen
 
-Start in `Archive` after import.
+Start in `Readable Archive` after import.
 
 This screen is designed to help you recognize the right conversation again before you switch into more structured views.
 

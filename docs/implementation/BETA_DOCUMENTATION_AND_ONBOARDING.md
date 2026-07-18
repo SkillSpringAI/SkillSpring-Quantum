@@ -37,6 +37,8 @@ As of **Friday, July 17, 2026**:
 - the first general-user walkthrough has been pushed to next week so the session can happen at a better time and produce more representative usability feedback
 - export-specific documentation and clean-install screenshots are still incomplete
 
+For the Monday, July 20, 2026 submission pass, `MONDAY_SUBMISSION_READINESS_IMPLEMENTATION.md` owns sequencing and release gates. This file remains the longer-term onboarding and external-testing follow-up tracker.
+
 ## Priority 1 - Documentation Refresh
 
 ### README

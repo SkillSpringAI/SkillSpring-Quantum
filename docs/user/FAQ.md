@@ -20,6 +20,8 @@ Yes. The primary workflow is local-first and designed to work without sending yo
 
 No. The optional local AI layer is secondary. The deterministic import -> archive -> dataset workflow remains the primary product path.
 
+The ordinary beta workflow is `Imports -> Readable Archive -> Datasets -> Find Imports`.
+
 ## Which AI exports are currently supported?
 
 Current private beta support covers ChatGPT, Claude, Gemini, Grok, and the validated Microsoft Copilot activity CSV path. Gemini My Activity HTML remains a fallback path.
@@ -100,13 +102,25 @@ Not in the current product promise. The current release focus is supported AI co
 
 It can create readable archives, search indexes, import history, and privacy-aware dataset artifacts.
 
+## Which file should I select?
+
+Start with the downloaded export file or the top-level extracted export folder. Then run `Export Check` in `Imports` before importing.
+
+If the check does not recognize the export, read the relevant [Export Guide](exports/README.md) and try the top-level vendor export path rather than a random nested file.
+
+## What is the difference between Readable Archive and Datasets?
+
+`Readable Archive` is for human review. It preserves conversation slices as readable local markdown so you can recognize what happened.
+
+`Datasets` is the structured layer. Use it after archive review when you want topic segments, prompt/response previews, redaction context, or dataset files.
+
 ## Which screen should I open first after a large import?
 
 For large workspaces, start with `Find Imports` if you want the quickest immediate follow-up.
 
 `Readable Archive` can take around 2 to 3 minutes to finish loading when the selected output root contains more than 12,000 readable slices. `Datasets` should currently be treated as a later follow-up screen rather than the first screen to open in very large workspaces.
 
-## Why does the Readable Archive take longer than Search or Find Imports?
+## Why does the Readable Archive take longer than Find Imports?
 
 The archive view is loading a much larger readable slice layer, topic grouping, and review-ready metadata for the current workspace.
 

@@ -37,7 +37,7 @@ export default function ActivityLogScreen() {
       <div className="panel">
         <h2>Why This Helps</h2>
         <p className="muted">
-          This screen is here so you can sanity-check what Quantum has been doing without losing context when you move between Imports, Archive, Datasets, and follow-up review screens.
+          This screen is here so you can sanity-check what Quantum has been doing without losing context when you move between Imports, Readable Archive, Datasets, and Find Imports.
         </p>
         <div className="action-bar">
           <button className="primary-btn" type="button" onClick={() => setActiveScreen("imports")}>

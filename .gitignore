@@ -16,6 +16,8 @@ manual_test_output_*/
 /db/
 Exports/
 exports/
+!docs/user/exports/
+!docs/user/exports/*.md
 eports/
 backups/
 

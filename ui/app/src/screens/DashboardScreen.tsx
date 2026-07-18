@@ -176,7 +176,7 @@ export default function DashboardScreen() {
 
       <div className="panel">
         <h2>Main Flow</h2>
-        <p className="muted">Check the export → import locally → read the archive → open the dataset view → check deeper details only when needed.</p>
+        <p className="muted">Imports -&gt; Readable Archive -&gt; Datasets -&gt; Find Imports. Activity History is there when you want to verify or recover what happened.</p>
       </div>
     </section>
   );

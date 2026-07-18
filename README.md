@@ -20,27 +20,11 @@ It is built for people who want to keep AI history on their own machine, revisit
 
 ## Core Workflow
 
-Export AI conversations
+Export AI conversations, then use Quantum's main beta path:
 
-↓
+`Imports -> Readable Archive -> Datasets -> Find Imports`
 
-Open Quantum
-
-↓
-
-Import the export
-
-↓
-
-Review the archive
-
-↓
-
-Search previous conversations
-
-↓
-
-Explore datasets when needed
+`Activity History` sits after that path as a verification and recovery screen.
 
 ## Supported Exports
 
@@ -66,14 +50,14 @@ The current product includes dedicated views for:
 
 - Dashboard
 - Imports
-- Archive
+- Readable Archive
 - Datasets
+- Find Imports
 - Activity History
-- Search / Retrieval
 
 The main beta path is still:
 
-`Imports -> Readable Archive -> Datasets -> Search / Retrieval`
+`Imports -> Readable Archive -> Datasets -> Find Imports`
 
 `Ask Quantum`, Diagnostics, Governance, and the other extra tools are follow-up tools rather than the primary evaluator path today.
 

@@ -8,12 +8,11 @@ It is intentionally lightweight.
 - it does not try to list every internal edit
 - it is meant to complement the deeper roadmap and walkthrough notes under `docs/`
 
-## 2026-07-12
-
 ## 2026-07-18
 
 ### Added
 
+- export-guide documentation under `docs/user/exports/` for ChatGPT, Claude, Gemini, Microsoft Copilot, and Grok, with verification-pending screenshot placeholders
 - a first-run output-root confirmation flow so packaged installs now ask the user to choose a real local workspace before the main workflow begins
 - writable packaged governance workspace seeding under user-owned app data for packaged builds
 - natural-language drafting support for `redaction-rules.json`
@@ -27,6 +26,8 @@ It is intentionally lightweight.
 - tightened Readable Archive overflow handling so long topic labels and markdown preview panes behave better in the desktop UI
 - expanded the technical pipeline documentation and removed the completed temporary pipeline refactor implementation note
 - README and beta-facing guidance now make it explicit that `Ask Quantum` is still experimental and not the primary or fully reliable evaluator path
+- README, User Guide, Beta Guide, first-run guide, dashboard copy, and primary navigation now use the canonical beta workflow: `Imports -> Readable Archive -> Datasets -> Find Imports`
+- beta version metadata now identifies the submission candidate as `0.1.0-beta.1`
 
 ### Fixed
 
@@ -35,33 +36,19 @@ It is intentionally lightweight.
 - packaged governance and runtime rule loading now support live filesystem-backed rule files instead of relying only on static bundled JSON imports
 - runtime redaction and private-review classification now respect `redaction-rules.json`, including custom hard-private phrases drafted through governance
 - import reuse validation now invalidates preserved output when the import-affecting governance rule snapshot changes, so reruns no longer silently skip updated rule-driven output generation
+- previously broken README, User Guide, and Beta Guide export-guide links now resolve
 
 ### Known follow-up
 
 - packaged diagnostics artifacts can exist on disk before the current UI reliably opens or summarizes every advanced diagnostics output
+- vendor screenshots still need to be captured from the current live interfaces before private-beta distribution
+- the streaming-resume finalisation safety issue remains a focused release-blocking engineering task unless separately fixed and tested
 
 ### Validated
 
 - the Windows NSIS installer was rebuilt successfully on Saturday, July 18, 2026
 - live governance filesystem overrides were verified to affect runtime rule loading
 - natural-language redaction drafting was verified to generate structured rule JSON for quoted sensitive phrases
-
-### Added
-
-- comprehensive README rewrite reflecting the actual July 2026 product shape and capabilities
-- new `docs/NEXT_FIVE_SLICES_2026-07-12.md` with updated priority sequence after full-repo verification
-- new `docs/MANUAL_WALKTHROUGH_2026-07-12.md` capturing the unchanged-rerun trust result on a real large ChatGPT export
-- new `docs/MANUAL_TEST_SCRIPT_2026-07-12.md` for the full Slice 3 Electron retest across Imports, import history, archive, datasets, retrieval, and return-to-Imports continuity
-- `manual_test_output_*/` pattern to `.gitignore` to cover dated manual test directories
-
-### Changed
-
-- README now accurately documents the settings output root persistence, archive filtering, attachment visibility, auto-select behaviors, and review queue empty states that were already implemented in the July 9 commit
-- next-slice priority order updated to reflect that settings, filtering, attachment surfacing, auto-select, and review queue states are verified complete
-- priority shifted forward from "repair the shell" to "prepare for outside beta" framing
-- manual retest guidance now reflects that a full large ChatGPT import completed in roughly 90 minutes and an unchanged rerun completed in under 30 seconds through honest reuse
-- Imports now makes output-root scope more explicit so already-imported reuse is easier to understand when users switch local workspaces
-- active imports can now be force-stopped from the Imports screen instead of only waiting for completion or failure
 
 ## 2026-07-15
 
@@ -79,6 +66,25 @@ It is intentionally lightweight.
 
 - a full packaged-app walkthrough completed successfully against a fresh output root with a newly downloaded free-account ChatGPT export
 - an installed-build rerun against the same output root correctly recognized an already valid workspace and reused prior outputs instead of reprocessing them
+
+## 2026-07-12
+
+### Added
+
+- comprehensive README rewrite reflecting the actual July 2026 product shape and capabilities
+- new `docs/NEXT_FIVE_SLICES_2026-07-12.md` with updated priority sequence after full-repo verification
+- new `docs/MANUAL_WALKTHROUGH_2026-07-12.md` capturing the unchanged-rerun trust result on a real large ChatGPT export
+- new `docs/MANUAL_TEST_SCRIPT_2026-07-12.md` for the full Slice 3 Electron retest across Imports, import history, archive, datasets, retrieval, and return-to-Imports continuity
+- `manual_test_output_*/` pattern to `.gitignore` to cover dated manual test directories
+
+### Changed
+
+- README now accurately documents the settings output root persistence, archive filtering, attachment visibility, auto-select behaviors, and review queue empty states that were already implemented in the July 9 commit
+- next-slice priority order updated to reflect that settings, filtering, attachment surfacing, auto-select, and review queue states are verified complete
+- priority shifted forward from "repair the shell" to "prepare for outside beta" framing
+- manual retest guidance now reflects that a full large ChatGPT import completed in roughly 90 minutes and an unchanged rerun completed in under 30 seconds through honest reuse
+- Imports now makes output-root scope more explicit so already-imported reuse is easier to understand when users switch local workspaces
+- active imports can now be force-stopped from the Imports screen instead of only waiting for completion or failure
 
 ## 2026-07-09
 

@@ -753,6 +753,10 @@ select {
 
 .markdown-preview {
   max-height: 640px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .archive-file-meta {
@@ -768,6 +772,11 @@ select {
 
 .archive-detail-grid {
   margin-top: 12px;
+}
+
+.archive-detail-grid .stat-card strong {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .archive-reading-guide {

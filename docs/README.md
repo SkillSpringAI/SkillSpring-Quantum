@@ -18,6 +18,7 @@ Use this page to find the right document for the right audience.
 - [Project History](project/PROJECT_HISTORY.md)
 - [MVP Direction](project/MVP_DIRECTION.md)
 - [MVP Scope Lock](project/MVP_SCOPE_LOCK.md)
+- [OpenAI Build Week Submission](project/BUILD_WEEK_SUBMISSION.md)
 
 ## Implementation docs
 

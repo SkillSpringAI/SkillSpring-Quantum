@@ -42,7 +42,15 @@ It is intentionally lightweight.
 
 - packaged diagnostics artifacts can exist on disk before the current UI reliably opens or summarizes every advanced diagnostics output
 - vendor screenshots still need to be captured from the current live interfaces before private-beta distribution
-- the streaming-resume finalisation safety issue remains a focused release-blocking engineering task unless separately fixed and tested
+
+### Fixed after the initial beta candidate pass
+
+- streaming ChatGPT resume checkpoints now retain dataset-summary and aggregate state, so a fully checkpointed shard finalizes correctly instead of being misclassified as an empty export
+
+### Validated after the initial beta candidate pass
+
+- streaming-resume regression coverage now verifies finalization of a fully checkpointed shard
+- the Windows NSIS installer was rebuilt as `0.1.0-beta.1` after the resume-finalization fix
 
 ### Validated
 

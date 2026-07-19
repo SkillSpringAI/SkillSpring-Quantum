@@ -31,6 +31,16 @@ interface StreamingShardProgress {
   sourcePath: string;
   updatedAt: string;
   completedConversationIds: string[];
+  aggregate?: SerializedStreamingImportAggregate;
+  datasetSummary?: DatasetSummary;
+}
+
+interface SerializedStreamingImportAggregate {
+  vendorSources: string[];
+  sampleTitles: string[];
+  topicHints: string[];
+  messageCount: number;
+  attachmentCount: number;
 }
 
 export async function runStreamingChatGptPipeline(args: {
@@ -54,18 +64,13 @@ export async function runStreamingChatGptPipeline(args: {
     processConversationSegments
   } = args;
   const datasetPaths = buildDatasetPaths(outputRoot, datasetVersion, diagnostics.run_id);
-  const completedConversationIds = await loadStreamingShardProgress(outputRoot, filePath);
+  const checkpoint = await loadStreamingShardProgress(outputRoot, filePath);
+  const completedConversationIds = checkpoint.completedConversationIds;
   let pendingFlushConversationCount = 0;
   let pendingDatasetSegments: ConversationSegment[] = [];
   const pendingCompletedConversationIds: string[] = [];
-  const aggregate: StreamingImportAggregate = {
-    vendorSources: new Set<string>(["chatgpt"]),
-    sampleTitles: new Set<string>(),
-    topicHints: new Set<string>(),
-    messageCount: 0,
-    attachmentCount: 0
-  };
-  let datasetSummary: DatasetSummary | null = null;
+  const aggregate = restoreStreamingImportAggregate(checkpoint.aggregate);
+  let datasetSummary = checkpoint.datasetSummary ?? null;
 
   for (const conversation of iterateChatGptConversationsFromRaw(raw)) {
     if (completedConversationIds.has(conversation.id)) {
@@ -107,7 +112,7 @@ export async function runStreamingChatGptPipeline(args: {
 
   await flushStreamingConversationBatchIfNeeded(true);
 
-  if (diagnostics.conversations_found === 0) {
+  if (diagnostics.conversations_found === 0 && completedConversationIds.size === 0) {
     diagnostics.warnings.push({
       code: "NO_CONVERSATIONS_FOUND",
       message: "No conversations found in file for detected parser: ChatGPT export",
@@ -128,7 +133,8 @@ export async function runStreamingChatGptPipeline(args: {
     outputRoot,
     manifestFile: datasetPaths.manifestFile,
     filePath,
-    aggregate
+    aggregate,
+    completedConversationCount: completedConversationIds.size
   });
 
   const duplicateRate =
@@ -196,7 +202,11 @@ export async function runStreamingChatGptPipeline(args: {
         completedConversationIds.add(conversationId);
       }
       pendingCompletedConversationIds.length = 0;
-      await saveStreamingShardProgress(outputRoot, filePath, completedConversationIds);
+      await saveStreamingShardProgress(outputRoot, filePath, {
+        completedConversationIds,
+        aggregate,
+        datasetSummary
+      });
     }
 
     pendingFlushConversationCount = 0;
@@ -231,6 +241,30 @@ function aggregateConversation(
   }
 }
 
+function restoreStreamingImportAggregate(
+  aggregate: SerializedStreamingImportAggregate | undefined
+): StreamingImportAggregate {
+  return {
+    vendorSources: new Set(aggregate?.vendorSources ?? ["chatgpt"]),
+    sampleTitles: new Set(aggregate?.sampleTitles ?? []),
+    topicHints: new Set(aggregate?.topicHints ?? []),
+    messageCount: aggregate?.messageCount ?? 0,
+    attachmentCount: aggregate?.attachmentCount ?? 0
+  };
+}
+
+function serializeStreamingImportAggregate(
+  aggregate: StreamingImportAggregate
+): SerializedStreamingImportAggregate {
+  return {
+    vendorSources: [...aggregate.vendorSources],
+    sampleTitles: [...aggregate.sampleTitles],
+    topicHints: [...aggregate.topicHints],
+    messageCount: aggregate.messageCount,
+    attachmentCount: aggregate.attachmentCount
+  };
+}
+
 async function finalizeStreamingDatasetSummary(args: {
   datasetSummary: DatasetSummary | null;
   diagnostics: RunDiagnostics;
@@ -238,6 +272,7 @@ async function finalizeStreamingDatasetSummary(args: {
   manifestFile: string;
   filePath: string;
   aggregate: StreamingImportAggregate;
+  completedConversationCount: number;
 }): Promise<void> {
   const {
     datasetSummary,
@@ -245,13 +280,15 @@ async function finalizeStreamingDatasetSummary(args: {
     outputRoot,
     manifestFile,
     filePath,
-    aggregate
+    aggregate,
+    completedConversationCount
   } = args;
 
   if (datasetSummary === null) {
     return;
   }
 
+  datasetSummary.run_id = diagnostics.run_id;
   datasetSummary.source_context = {
     ...datasetSummary.source_context,
     pipeline_run_id: diagnostics.run_id,
@@ -260,7 +297,7 @@ async function finalizeStreamingDatasetSummary(args: {
     detected_label: "ChatGPT export",
     support_tier: "mvp_first_class",
     vendor_sources: ["chatgpt"],
-    conversation_count: diagnostics.conversations_found,
+    conversation_count: completedConversationCount,
     message_count: aggregate.messageCount,
     attachment_count: aggregate.attachmentCount,
     topic_hints: [...aggregate.topicHints].slice(0, 6)
@@ -335,24 +372,39 @@ function getStreamingShardProgressPath(outputRoot: string, filePath: string): st
   );
 }
 
-async function loadStreamingShardProgress(outputRoot: string, filePath: string): Promise<Set<string>> {
+async function loadStreamingShardProgress(
+  outputRoot: string,
+  filePath: string
+): Promise<{
+  completedConversationIds: Set<string>;
+  aggregate?: SerializedStreamingImportAggregate;
+  datasetSummary?: DatasetSummary;
+}> {
   const progressPath = getStreamingShardProgressPath(outputRoot, filePath);
   if (!(await fileExists(progressPath))) {
-    return new Set();
+    return { completedConversationIds: new Set() };
   }
 
   try {
     const loaded = JSON.parse(await fs.readFile(progressPath, "utf-8")) as StreamingShardProgress;
-    return new Set(loaded.completedConversationIds ?? []);
+    return {
+      completedConversationIds: new Set(loaded.completedConversationIds ?? []),
+      aggregate: loaded.aggregate,
+      datasetSummary: loaded.datasetSummary
+    };
   } catch {
-    return new Set();
+    return { completedConversationIds: new Set() };
   }
 }
 
 async function saveStreamingShardProgress(
   outputRoot: string,
   filePath: string,
-  completedConversationIds: Set<string>
+  state: {
+    completedConversationIds: Set<string>;
+    aggregate: StreamingImportAggregate;
+    datasetSummary: DatasetSummary | null;
+  }
 ): Promise<void> {
   const progressPath = getStreamingShardProgressPath(outputRoot, filePath);
   await fs.mkdir(path.dirname(progressPath), { recursive: true });
@@ -362,7 +414,9 @@ async function saveStreamingShardProgress(
       {
         sourcePath: filePath,
         updatedAt: new Date().toISOString(),
-        completedConversationIds: [...completedConversationIds]
+        completedConversationIds: [...state.completedConversationIds],
+        aggregate: serializeStreamingImportAggregate(state.aggregate),
+        datasetSummary: state.datasetSummary ?? undefined
       } satisfies StreamingShardProgress,
       null,
       2

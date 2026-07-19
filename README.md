@@ -26,6 +26,16 @@ Export AI conversations, then use Quantum's main beta path:
 
 `Activity History` sits after that path as a verification and recovery screen.
 
+## See the Workflow
+
+| Check an export before processing | Review a readable local archive |
+| --- | --- |
+| ![Quantum Export Check showing a valid import-ready ChatGPT export](docs/assets/screenshots/02-export-check-valid.png) | ![Quantum Readable Archive showing imported conversation slices](docs/assets/screenshots/05-readable-archive-overview.png) |
+
+| Inspect structured output | Find imported conversations again |
+| --- | --- |
+| ![Quantum Datasets view showing structured output](docs/assets/screenshots/06-datasets-overview.png) | ![Quantum Find Imports view showing searchable imported history](docs/assets/screenshots/07-find-imports-overview.png) |
+
 ## Supported Exports
 
 Current supported vendors for the private beta path:
@@ -63,6 +73,12 @@ The main beta path is still:
 
 Screenshot documentation is being prepared alongside the private beta packaging pass.
 
+## Built with Codex and GPT-5.6
+
+Quantum was developed with Codex and GPT-5.6 as active engineering collaborators. They were used to inspect and refactor the TypeScript and Electron codebase, plan and implement import-recovery safeguards, add regression tests, diagnose packaged-runtime problems, and shape the product and evaluator documentation.
+
+The product keeps deterministic code authoritative for import detection, preservation, archives, datasets, and search indexes. The optional local assistant remains secondary to that deterministic workflow.
+
 ## Installation
 
 ### Users
@@ -75,6 +91,12 @@ Planned user flow:
 2. Install Quantum
 3. Launch the app
 4. Import a supported AI export
+
+The current `0.1.0-beta.1` Windows installer completes as a standard local installation:
+
+![SkillSpring Quantum 0.1.0-beta.1 installer completion screen](docs/assets/screenshots/08-installer-complete-beta-1.png)
+
+Build Week evaluators can also use the included synthetic [demo export](examples/build-week-demo/README.md) without sharing personal conversation data.
 
 See the [Beta Guide](docs/user/BETA_GUIDE.md) and [User Guide](docs/user/USER_GUIDE.md) for the current workflow and expectations.
 
@@ -90,6 +112,7 @@ Development setup, scripts, packaging, and test commands live in the [Developmen
 - [Known Limitations](docs/user/KNOWN_LIMITATIONS.md)
 - [Beta Guide](docs/user/BETA_GUIDE.md)
 - [MVP Roadmap](docs/project/MVP_ROADMAP.md)
+- [Build Week Submission](docs/project/BUILD_WEEK_SUBMISSION.md)
 - [Project History](docs/project/PROJECT_HISTORY.md)
 - [Architecture](docs/technical/ARCHITECTURE.md)
 - [Development Guide](docs/technical/DEVELOPMENT_GUIDE.md)

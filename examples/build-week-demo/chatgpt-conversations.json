@@ -1,0 +1,46 @@
+[
+  {
+    "title": "Managing back pain after gardening",
+    "create_time": 1740787200,
+    "conversation_id": "quantum-demo-back-pain",
+    "mapping": {
+      "back-1": { "id": "back-1", "message": { "author": { "role": "user" }, "content": { "parts": ["My lower back has been sore since gardening yesterday. What should I do first?"] }, "create_time": 1740787201 } },
+      "back-2": { "id": "back-2", "message": { "author": { "role": "assistant" }, "content": { "parts": ["Gentle movement, a short walk, and avoiding heavy lifting can help. Seek urgent care for severe pain, weakness, numbness, fever, or bladder or bowel changes."] }, "create_time": 1740787202 } },
+      "back-3": { "id": "back-3", "message": { "author": { "role": "user" }, "content": { "parts": ["Can I do some stretches today?"] }, "create_time": 1740787203 } },
+      "back-4": { "id": "back-4", "message": { "author": { "role": "assistant" }, "content": { "parts": ["If movement is comfortable, keep stretches gentle and stop if pain gets sharper. A clinician or physiotherapist can advise if it is not improving."] }, "create_time": 1740787204 } }
+    }
+  },
+  {
+    "title": "A plan for quitting smoking",
+    "create_time": 1740873600,
+    "conversation_id": "quantum-demo-quitting-smoking",
+    "mapping": {
+      "smoke-1": { "id": "smoke-1", "message": { "author": { "role": "user" }, "content": { "parts": ["I want to quit smoking but I usually give up after a stressful day."] }, "create_time": 1740873601 } },
+      "smoke-2": { "id": "smoke-2", "message": { "author": { "role": "assistant" }, "content": { "parts": ["Choose a quit date, identify stress triggers, and plan a replacement action such as a walk, water, or messaging someone. A GP or pharmacist can discuss nicotine-replacement options and other support."] }, "create_time": 1740873602 } },
+      "smoke-3": { "id": "smoke-3", "message": { "author": { "role": "user" }, "content": { "parts": ["What should I put in a small plan for cravings?"] }, "create_time": 1740873603 } },
+      "smoke-4": { "id": "smoke-4", "message": { "author": { "role": "assistant" }, "content": { "parts": ["Write down your reason for quitting, three common triggers, a five-minute distraction, and one person or service you can contact for support."] }, "create_time": 1740873604 } }
+    }
+  },
+  {
+    "title": "Weekend garden planting plan",
+    "create_time": 1740960000,
+    "conversation_id": "quantum-demo-garden-plan",
+    "mapping": {
+      "garden-1": { "id": "garden-1", "message": { "author": { "role": "user" }, "content": { "parts": ["I have a small sunny garden bed. What vegetables are easy to start with this weekend?"] }, "create_time": 1740960001 } },
+      "garden-2": { "id": "garden-2", "message": { "author": { "role": "assistant" }, "content": { "parts": ["Choose vegetables suited to your season and local climate. Leafy greens, herbs, beans, and tomatoes are common options; check spacing, sunlight, and watering needs on seed packets."] }, "create_time": 1740960002 } },
+      "garden-3": { "id": "garden-3", "message": { "author": { "role": "user" }, "content": { "parts": ["How often should I water new seedlings?"] }, "create_time": 1740960003 } },
+      "garden-4": { "id": "garden-4", "message": { "author": { "role": "assistant" }, "content": { "parts": ["Check the soil rather than following a fixed schedule. Keep it evenly moist while seedlings establish, and water more deeply but less often as roots grow."] }, "create_time": 1740960004 } }
+    }
+  },
+  {
+    "title": "Planning a relaxed weekend trip",
+    "create_time": 1741046400,
+    "conversation_id": "quantum-demo-weekend-trip",
+    "mapping": {
+      "trip-1": { "id": "trip-1", "message": { "author": { "role": "user" }, "content": { "parts": ["Can you help me plan a relaxed weekend trip that does not feel rushed?"] }, "create_time": 1741046401 } },
+      "trip-2": { "id": "trip-2", "message": { "author": { "role": "assistant" }, "content": { "parts": ["Pick one base location, one main activity each day, and leave room for meals and rest. Book the essentials first, then keep a short optional list rather than a packed itinerary."] }, "create_time": 1741046402 } },
+      "trip-3": { "id": "trip-3", "message": { "author": { "role": "user" }, "content": { "parts": ["What should I remember to pack for a short road trip?"] }, "create_time": 1741046403 } },
+      "trip-4": { "id": "trip-4", "message": { "author": { "role": "assistant" }, "content": { "parts": ["Bring identification, medication, weather-appropriate clothes, charging cables, water, and any booking details. Check the car, route, and accommodation requirements before leaving."] }, "create_time": 1741046404 } }
+    }
+  }
+]

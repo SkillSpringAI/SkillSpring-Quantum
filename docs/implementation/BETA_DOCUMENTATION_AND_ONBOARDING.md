@@ -56,7 +56,7 @@ Objectives:
 Status:
 
 - [x] Product-first rewrite complete
-- [ ] Clean-install screenshots added
+- [x] Clean-install screenshots selected, privacy-reviewed, and added to README assets
 - [ ] Export-guide links added once those guides exist
 
 ### User Guide
@@ -177,15 +177,16 @@ Preparation:
 
 Capture sequence:
 
-- [ ] `01-dashboard-or-landing.png` - first useful screen after launch
-- [ ] `02-imports-empty.png` - imports screen before selecting anything
-- [ ] `03-export-check-valid.png` - valid export check result
-- [ ] `04-import-progress.png` - import visibly running
-- [ ] `05-activity-history.png` - activity history showing the workflow progression
-- [ ] `06-archive-overview.png` - archive screen with useful content loaded
-- [ ] `07-archive-detail.png` - selected archive file / readable conversation view
-- [ ] `08-datasets-overview.png` - datasets screen with a useful loaded state
-- [ ] `09-search-results.png` - retrieval/search results for a believable query
+- [x] installer completion - clean installer completion state
+- [ ] dashboard or landing - recapture only if it is stronger than the current product gallery
+- [ ] imports empty - retain for the User Guide if a first-run step needs it
+- [x] export check valid - valid export check result
+- [x] import progress - import visibly running
+- [x] activity history - activity history showing workflow progression
+- [x] readable archive overview - archive screen with useful content loaded
+- [ ] archive detail - deferred pending a final privacy review
+- [x] datasets overview - datasets screen with a useful loaded state
+- [x] find imports overview - searchable imported history
 - [ ] `10-dashboard-summary.png` - optional end-state dashboard or summary screen if it is better than the first dashboard shot
 
 Per-shot quality check:
@@ -198,8 +199,8 @@ Per-shot quality check:
 
 Post-capture:
 
-- [ ] choose one screenshot per major workflow for the README
-- [ ] keep extras available for the User Guide or Build Week submission
+- [x] choose one screenshot per major workflow for the README
+- [x] keep reviewed extras available for the User Guide or Build Week submission
 - [ ] replace any screenshot that shows a workflow you no longer want users to imitate
 - [ ] note any terminology or UX friction discovered while taking the screenshots
 
@@ -209,15 +210,15 @@ If time is limited, capture these first.
 
 Priority 1:
 
-- [ ] `01-dashboard-or-landing.png`
-- [ ] `03-export-check-valid.png`
-- [ ] `06-archive-overview.png`
-- [ ] `08-datasets-overview.png`
+- [x] export check valid
+- [x] readable archive overview
+- [x] datasets overview
+- [x] find imports overview
 
 Priority 2:
 
-- [ ] `04-import-progress.png`
-- [ ] `09-search-results.png`
+- [x] import progress
+- [x] activity history
 
 Recommended usage:
 

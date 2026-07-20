@@ -8,6 +8,16 @@ It is intentionally lightweight.
 - it does not try to list every internal edit
 - it is meant to complement the deeper roadmap and walkthrough notes under `docs/`
 
+## 2026-07-20
+
+### Submitted
+
+- published the `0.1.0-beta.1` OpenAI Build Week entry, including a three-minute product demo, synthetic reviewer export, product-first README, and recorded installer evidence
+
+### Changed
+
+- aligned the README, Build Week record, onboarding tracker, and MVP roadmap with the submitted snapshot and the next private-beta validation gates
+
 ## 2026-07-18
 
 ### Added

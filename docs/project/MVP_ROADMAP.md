@@ -8,6 +8,8 @@ This document is for contributors, maintainers, and beta planning.
 
 **Target:** begin a small private beta by **August 15, 2026**.
 
+**Build Week note:** the `0.1.0-beta.1` submission was published on July 20, 2026. The submission snapshot is recorded in [Build Week Submission](BUILD_WEEK_SUBMISSION.md); it is not a reason to pause private-beta validation.
+
 ## Product promise being tested
 
 > Import major AI conversation exports, turn them into readable local archives and privacy-aware datasets, and make the results understandable and searchable without uploading the source material to a third-party service.
@@ -106,8 +108,8 @@ Suggested order:
 
 ## Current priorities
 
-1. finish the documentation refresh for private beta readiness
-2. keep the Windows packaging path reproducible and understandable
-3. complete tester-facing support artifacts
-4. continue improving activity-history clarity where it helps trust
-5. let private beta observation shape non-blocking UX polish
+1. complete the clean-machine release rehearsal with the recorded `0.1.0-beta.1` installer
+2. verify the ChatGPT export guide against the current live interface
+3. prepare a minimal, privacy-safe support procedure for beta testers
+4. run the first general-user session without redesigning around assumptions
+5. let repeated beta evidence, rather than one-off preferences, shape non-blocking UX polish

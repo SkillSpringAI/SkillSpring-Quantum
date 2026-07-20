@@ -30,14 +30,15 @@ That means the path from "I have AI conversations" to "I can find them again" sh
 
 ## Current context
 
-As of **Friday, July 17, 2026**:
+As of **Monday, July 20, 2026**:
 
 - the README has already been reshaped into a product-first landing page
 - the user, project, technical, and reference docs have been separated more clearly
 - the first general-user walkthrough has been pushed to next week so the session can happen at a better time and produce more representative usability feedback
-- export-specific documentation and clean-install screenshots are still incomplete
+- the Build Week snapshot, demo video, and clean-install screenshot set have been completed
+- export guides now exist for all currently supported vendors; live-interface screenshots and verification dates remain follow-up work
 
-For the Monday, July 20, 2026 submission pass, `MONDAY_SUBMISSION_READINESS_IMPLEMENTATION.md` owns sequencing and release gates. This file remains the longer-term onboarding and external-testing follow-up tracker.
+The Build Week submission record lives in [`../project/BUILD_WEEK_SUBMISSION.md`](../project/BUILD_WEEK_SUBMISSION.md). This file remains the longer-term onboarding and external-testing follow-up tracker.
 
 ## Priority 1 - Documentation Refresh
 
@@ -57,7 +58,7 @@ Status:
 
 - [x] Product-first rewrite complete
 - [x] Clean-install screenshots selected, privacy-reviewed, and added to README assets
-- [ ] Export-guide links added once those guides exist
+- [x] Export-guide links added
 
 ### User Guide
 
@@ -98,13 +99,13 @@ Status:
 
 Create one guide per supported vendor under `docs/user/exports/`.
 
-Supported guides to create:
+Supported guides:
 
-- [ ] ChatGPT
-- [ ] Claude
-- [ ] Gemini
-- [ ] Grok
-- [ ] Microsoft Copilot
+- [x] ChatGPT
+- [x] Claude
+- [x] Gemini
+- [x] Grok
+- [x] Microsoft Copilot
 
 Each guide should include:
 
@@ -115,6 +116,8 @@ Each guide should include:
 - screenshots where useful
 - common problems
 - importing into Quantum
+
+Follow-up: verify each guide against the current live vendor interface and add a `last verified` date. Do not treat this as a reason to delay the first ChatGPT-focused beta session.
 
 ## Priority 3 - Screenshot Collection
 

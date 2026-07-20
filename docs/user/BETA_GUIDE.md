@@ -6,7 +6,7 @@ This guide is for private beta testers.
 
 ## Current beta status
 
-As of July 16, 2026, Quantum is in private beta preparation on Windows.
+As of July 20, 2026, Quantum's `0.1.0-beta.1` Build Week snapshot has been submitted and private-beta preparation continues on Windows.
 
 The primary beta path is still:
 

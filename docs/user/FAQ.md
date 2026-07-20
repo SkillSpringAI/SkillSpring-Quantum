@@ -140,4 +140,4 @@ As of Saturday, July 18, 2026, Quantum now treats changes to the relevant import
 
 ## Is the project publicly launched?
 
-No. As of Saturday, July 18, 2026, Quantum is preparing for a small private beta.
+No. As of July 20, 2026, Quantum's `0.1.0-beta.1` Build Week snapshot has been submitted and the project is preparing for a small private beta.

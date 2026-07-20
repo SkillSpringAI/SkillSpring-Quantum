@@ -6,7 +6,9 @@ It is built for people who want to keep AI history on their own machine, revisit
 
 ## Current Status
 
-**Private beta preparation.** The core Windows workflow is implemented and validated. Quantum is preparing for a small external beta focused on usability and real-world feedback.
+**OpenAI Build Week submission published; private beta preparation continues.** The core Windows workflow and `0.1.0-beta.1` installer have been validated on a separate clean laptop. The next stage is controlled external testing focused on usability, recovery, and real-world search quality.
+
+Watch the [three-minute Build Week demo](https://www.youtube.com/watch?v=pldsPIb_Evo) or view the [Devpost submission](https://devpost.com/software/skillspring-quantum).
 
 `Ask Quantum` is still experimental and should not yet be treated as the primary or fully reliable workflow path.
 
@@ -71,8 +73,6 @@ The main beta path is still:
 
 `Ask Quantum`, Diagnostics, Governance, and the other extra tools are follow-up tools rather than the primary evaluator path today.
 
-Screenshot documentation is being prepared alongside the private beta packaging pass.
-
 ## Built with Codex and GPT-5.6
 
 Quantum was developed with Codex and GPT-5.6 as active engineering collaborators. They were used to inspect and refactor the TypeScript and Electron codebase, plan and implement import-recovery safeguards, add regression tests, diagnose packaged-runtime problems, and shape the product and evaluator documentation.
@@ -83,9 +83,9 @@ The product keeps deterministic code authoritative for import detection, preserv
 
 ### Users
 
-Quantum is currently being prepared for private beta distribution on Windows.
+Quantum is currently distributed as a controlled Windows private-beta build.
 
-Planned user flow:
+Current user flow:
 
 1. Download the Windows installer
 2. Install Quantum
@@ -99,6 +99,19 @@ The current `0.1.0-beta.1` Windows installer completes as a standard local insta
 Build Week evaluators can also use the included synthetic [demo export](examples/build-week-demo/README.md) without sharing personal conversation data.
 
 See the [Beta Guide](docs/user/BETA_GUIDE.md) and [User Guide](docs/user/USER_GUIDE.md) for the current workflow and expectations.
+
+### Evaluate from source
+
+To run the evaluator path without a personal export, install the development dependencies and launch the desktop app:
+
+```bash
+npm install
+npm run electron:dev
+```
+
+Then open `Imports`, select [`examples/build-week-demo/chatgpt-conversations.json`](examples/build-week-demo/chatgpt-conversations.json), run `Export Check`, and import it. Try `back pain`, `quitting smoking`, `garden`, or `weekend trip` in `Find Imports`.
+
+For a Windows installer built from the checked-out source, run `npm run package:win`. Full setup and verification commands are in the [Development Guide](docs/technical/DEVELOPMENT_GUIDE.md).
 
 ### Developers
 

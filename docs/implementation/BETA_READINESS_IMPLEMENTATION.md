@@ -13,7 +13,7 @@ This is the short operational companion to the [MVP Roadmap](../project/MVP_ROAD
 - A full fresh walkthrough completed with both a real ChatGPT export and the synthetic Build Week demo export.
 - The core workflow, Activity History, and the hidden advanced-tools screen were exercised.
 - Governance redaction worked during manual testing. Its phrase matching is intentionally conservative today; for example, a rule for `bank` also matches `Reserve Bank of New Zealand`.
-- A fresh Grok export imported into the same output root as existing ChatGPT data; both vendors remained viewable in the app.
+- Fresh Grok and Claude exports imported into the same output root as existing ChatGPT data; all three vendors remained viewable in the app.
 
 ## Confirmed issue: current Microsoft Copilot CSV
 
@@ -34,6 +34,28 @@ Required implementation:
 3. Run the current raw Copilot export through `Export Check`, import it, and verify archive, datasets, and Find Imports in the shared output root.
 
 Do not broaden Copilot parsing beyond this proven issue until new evidence appears.
+
+## Confirmed issue: Gemini attachment-only Takeout
+
+**Status: pre-beta intake hardening**
+
+The inspected Google Takeout root contains a Gemini Apps attachment folder but no parseable Gemini conversation-history export:
+
+- 202 JPGs, 17 PNGs, 39 PDFs, 5 DOCX files, and 1 XLSX file
+- two 11-byte Gemini HTML placeholders for Gems and scheduled actions
+- no Gemini conversation JSON, CSV, or activity-history HTML containing conversation text
+
+Quantum currently processes the attachment PDFs through the generic document path when the user selects Gemini. This is not a valid Gemini conversation import and should not be presented as one.
+
+Required implementation:
+
+1. Detect a Google Takeout / Gemini Apps root before generic document handling.
+2. Require parseable Gemini activity or conversation content before marking the source import-ready.
+3. When only Gemini attachments are present, stop at Export Check with a clear recovery message: re-export with **My Activity -> Gemini Apps** selected for chat activity.
+4. Keep generic PDF import separate from the named Gemini vendor path.
+5. Add an attachment-only Gemini Takeout regression fixture or equivalent intake test.
+
+Google's current export instructions distinguish the `Gemini` selection for Gems from `My Activity -> Gemini Apps` for Gemini chats, generated media, and uploads. Verify the live export guide before changing the user-facing wording.
 
 ## Required local automated gate
 
@@ -70,6 +92,8 @@ Use a fresh output root outside the repository unless the scenario explicitly te
 | Fresh real ChatGPT export | Core workflow completes in a new output root | Passed |
 | Fresh Grok export in an existing ChatGPT output root | Both vendors remain visible and usable | Passed |
 | Current raw Copilot activity CSV | Recognizes, imports, and remains visible with other vendors | Blocked by BOM fix |
+| Gemini attachment-only Takeout | Stops at Export Check without processing attachment documents as Gemini conversations | Blocked by intake hardening |
+| Fresh Claude export in the shared output root | Claude and existing vendor content remain visible and usable | Passed: ChatGPT, Grok, and Claude visible together |
 | Same-export rerun | Honest reuse is shown without duplicated outputs | Required per candidate |
 | Stop an active large import | App remains usable; rerun can recover safely | Required per candidate |
 | Clearly wrong source or wrong vendor selection | Export Check explains the issue without importing | Required per candidate |
@@ -95,4 +119,4 @@ Before the first external tester, confirm the maintainer can tell a tester:
 
 ## Exit condition
 
-Quantum is ready to start the small private beta when the Copilot CSV regression is fixed and tested, the required walkthrough rows are complete for the release candidate, support guidance is usable, and no unresolved import-integrity issue remains.
+Quantum is ready to start the small private beta when the Copilot CSV and Gemini intake regressions are fixed and tested, the required walkthrough rows are complete for the release candidate, support guidance is usable, and no unresolved import-integrity issue remains.

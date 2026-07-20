@@ -9,7 +9,7 @@ This folder contains a small synthetic ChatGPT-style export for evaluating Skill
 3. Run `Export Check` and then import the same file.
 4. Open `Readable Archive`, `Datasets`, or `Find Imports`.
 
-Try searches such as `back pain`, `quitting smoking`, `garden`, or `weekend trip`.
+In `Find Imports`, start with one of Quantum's suggested topics and refine from the visible imported results if needed.
 
 ## Privacy
 

@@ -56,7 +56,7 @@ For a no-account, no-personal-data evaluation:
 2. Select [`examples/build-week-demo/chatgpt-conversations.json`](../../examples/build-week-demo/chatgpt-conversations.json).
 3. Run `Export Check`, then import the same file.
 4. Review `Readable Archive`, `Datasets`, and `Find Imports`.
-5. Try `back pain`, `quitting smoking`, `garden`, or `weekend trip`.
+5. In `Find Imports`, start with one of Quantum's suggested topics and refine from the visible imported results if needed.
 
 The sample export is entirely synthetic and was verified through the streaming ChatGPT import path.
 

@@ -115,7 +115,7 @@ npm install
 npm run electron:dev
 ```
 
-Then open `Imports`, select [`examples/build-week-demo/chatgpt-conversations.json`](examples/build-week-demo/chatgpt-conversations.json), run `Export Check`, and import it. Try `back pain`, `quitting smoking`, `garden`, or `weekend trip` in `Find Imports`.
+Then open `Imports`, select [`examples/build-week-demo/chatgpt-conversations.json`](examples/build-week-demo/chatgpt-conversations.json), run `Export Check`, and import it. In `Find Imports`, start with one of Quantum's suggested topics, then refine from the visible imported results if needed.
 
 For a Windows installer built from the checked-out source, run `npm run package:win`. Full setup and verification commands are in the [Development Guide](docs/technical/DEVELOPMENT_GUIDE.md).
 

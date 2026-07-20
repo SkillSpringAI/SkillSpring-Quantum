@@ -83,7 +83,7 @@ Current scheduling note:
 
 ## Gate 5: Internal release rehearsal
 
-**Status:** pending
+**Status:** active
 
 Minimum rehearsal:
 
@@ -109,7 +109,7 @@ Suggested order:
 ## Current priorities
 
 1. complete the clean-machine release rehearsal with the recorded `0.1.0-beta.1` installer
-2. verify the ChatGPT export guide against the current live interface
-3. prepare a minimal, privacy-safe support procedure for beta testers
-4. run the first general-user session without redesigning around assumptions
-5. let repeated beta evidence, rather than one-off preferences, shape non-blocking UX polish
+2. fix and regression-test the current Microsoft Copilot CSV UTF-8 BOM compatibility issue
+3. verify the ChatGPT export guide against the current live interface
+4. prepare a minimal, privacy-safe support procedure for beta testers
+5. run the first general-user session without redesigning around assumptions

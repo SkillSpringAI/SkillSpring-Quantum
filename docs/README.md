@@ -23,6 +23,7 @@ Use this page to find the right document for the right audience.
 ## Implementation docs
 
 - [Beta Documentation & Onboarding Implementation](implementation/BETA_DOCUMENTATION_AND_ONBOARDING.md)
+- [Beta Readiness Implementation](implementation/BETA_READINESS_IMPLEMENTATION.md)
 
 ## Reference
 

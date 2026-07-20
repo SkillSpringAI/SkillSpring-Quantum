@@ -85,6 +85,10 @@ The product keeps deterministic code authoritative for import detection, preserv
 
 Quantum is currently distributed as a controlled Windows private-beta build.
 
+> [**Download SkillSpring Quantum for Windows (0.1.0-beta.1)**](https://github.com/SkillSpringAI/SkillSpring-Quantum/releases/download/v0.1.0-beta.1/SkillSpring-Quantum-0.1.0-beta.1-Setup.exe)
+>
+> This is an unsigned private-beta installer. Windows SmartScreen may require **More info** then **Run anyway** when you install this trusted build.
+
 Current user flow:
 
 1. Download the Windows installer
@@ -95,6 +99,8 @@ Current user flow:
 The current `0.1.0-beta.1` Windows installer completes as a standard local installation:
 
 ![SkillSpring Quantum 0.1.0-beta.1 installer completion screen](docs/assets/screenshots/08-installer-complete-beta-1.png)
+
+The [GitHub prerelease page](https://github.com/SkillSpringAI/SkillSpring-Quantum/releases/tag/v0.1.0-beta.1) also includes the installer checksum and supporting update metadata.
 
 Build Week evaluators can also use the included synthetic [demo export](examples/build-week-demo/README.md) without sharing personal conversation data.
 

@@ -17,6 +17,7 @@ This document is the authoritative checklist for the submission snapshot. It com
 - Installer: `SkillSpring-Quantum-0.1.0-beta.1-Setup.exe`
 - Installer size: `94,687,121` bytes
 - Installer SHA-256: `7EADDEBF6BA9B145FDD6D3333C76C615E1A08BA4609F33AC6A0A2EA4A9DD4940`
+- Hosted prerelease: [GitHub Releases](https://github.com/SkillSpringAI/SkillSpring-Quantum/releases/tag/v0.1.0-beta.1)
 - Synthetic demo export: `examples/build-week-demo/chatgpt-conversations.json`
 - Synthetic demo export Git blob: `fcd493ff8e9bdfb81a063a2bcc3115ad686a32eb`
 - Demo video: [YouTube](https://www.youtube.com/watch?v=pldsPIb_Evo)
@@ -45,7 +46,7 @@ Quantum was built with Codex and GPT-5.6 as engineering collaborators for codeba
 
 ### Windows installer
 
-The submitted Windows installer is recorded in the snapshot above. The repository does not currently host a public binary download; evaluators can build the installer with `npm run package:win` or run the synthetic demo from source.
+The submitted Windows installer is hosted on the [GitHub prerelease page](https://github.com/SkillSpringAI/SkillSpring-Quantum/releases/tag/v0.1.0-beta.1). Evaluators can also build it with `npm run package:win` or run the synthetic demo from source.
 
 ### Synthetic demo path
 

@@ -13,6 +13,7 @@ It is intentionally lightweight.
 ### Submitted
 
 - published the `0.1.0-beta.1` OpenAI Build Week entry, including a three-minute product demo, synthetic reviewer export, product-first README, and recorded installer evidence
+- published the signed-off `0.1.0-beta.1` installer, blockmap, and update manifest as a GitHub prerelease
 
 ### Changed
 

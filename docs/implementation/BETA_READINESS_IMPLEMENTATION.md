@@ -2,7 +2,7 @@
 
 ## Status
 
-Active pre-private-beta checklist, updated July 20, 2026.
+Active pre-private-beta checklist, updated July 21, 2026.
 
 This is the short operational companion to the [MVP Roadmap](../project/MVP_ROADMAP.md). It records only the remaining local verification, bounded fixes, and walkthrough evidence needed before external testers receive Quantum.
 
@@ -14,10 +14,19 @@ This is the short operational companion to the [MVP Roadmap](../project/MVP_ROAD
 - The core workflow, Activity History, and the hidden advanced-tools screen were exercised.
 - Governance redaction worked during manual testing. Its phrase matching is intentionally conservative today; for example, a rule for `bank` also matches `Reserve Bank of New Zealand`.
 - Fresh Grok and Claude exports imported into the same output root as existing ChatGPT data; all three vendors remained viewable in the app.
+- Local candidate `0.1.0-beta.2` was packaged after the Copilot and Gemini intake fixes. `npm run build`, `npm run test:ci`, and `npm run package:win` passed.
+
+## Current local candidate
+
+- Version: `0.1.0-beta.2`
+- Commit: `61e2b01 Guard Gemini attachment-only Takeout imports`
+- Installer: `SkillSpring-Quantum-0.1.0-beta.2-Setup.exe`
+- SHA-256: `F677E6A0DD36C2DE3937639CAB1199B7FBF3C4FF59153E8EF4178B8B2D460D33`
+- Status: local packaged candidate only; do not replace the submitted `0.1.0-beta.1` Build Week release.
 
 ## Confirmed issue: current Microsoft Copilot CSV
 
-**Status: pre-beta compatibility fix**
+**Status: implementation complete; packaged walkthrough pending**
 
 The current `copilot-activity-history.csv` downloaded from Microsoft is non-empty and otherwise matches Quantum's named activity-CSV shape:
 
@@ -27,11 +36,13 @@ The current `copilot-activity-history.csv` downloaded from Microsoft is non-empt
 
 It begins with a UTF-8 byte-order mark (BOM). Quantum currently compares the first header literally, so it sees `\uFEFFConversation` instead of `Conversation` and reports a vendor mismatch.
 
-Required implementation:
+Implemented:
 
 1. Strip one leading UTF-8 BOM before Copilot CSV header detection and parsing.
 2. Add a regression fixture or test that preserves the BOM.
-3. Run the current raw Copilot export through `Export Check`, import it, and verify archive, datasets, and Find Imports in the shared output root.
+3. Preserve the exact raw-export shape in automated intake coverage.
+
+Still required: run the current raw Copilot export through the packaged candidate's Export Check, import it, and verify archive, datasets, and Find Imports in the shared output root.
 
 Do not broaden Copilot parsing beyond this proven issue until new evidence appears.
 

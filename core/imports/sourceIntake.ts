@@ -294,6 +294,7 @@ export async function inspectImportSource(inputPath: string): Promise<ImportSour
 
   const geminiTakeoutAttachmentOnly = isGeminiTakeoutAttachmentOnly(files, entries);
   if (geminiTakeoutAttachmentOnly) {
+    markGeminiTakeoutAttachmentEntriesUnsupported(entries, countsByKind);
     notes.push(
       "Gemini Takeout attachment files were found, but no Gemini conversation activity was recognized. Re-export from Google Takeout with My Activity selected, then choose only Gemini Apps."
     );
@@ -363,6 +364,25 @@ export async function inspectImportSource(inputPath: string): Promise<ImportSour
   };
 }
 
+function markGeminiTakeoutAttachmentEntriesUnsupported(
+  entries: ImportSourceEntry[],
+  countsByKind: Record<ImportSourceKind, number>
+): void {
+  for (const entry of entries) {
+    if (!entry.supported) {
+      continue;
+    }
+
+    countsByKind[entry.kind] -= 1;
+    countsByKind.unsupported += 1;
+    entry.kind = "unsupported";
+    entry.displayLabel = "Gemini Takeout attachment file";
+    entry.supported = false;
+    entry.supportTier = "unsupported";
+    entry.reason = "Skip this Google Takeout attachment file because the folder does not contain Gemini conversation activity. Re-export with My Activity and Gemini Apps selected.";
+  }
+}
+
 function isGeminiTakeoutAttachmentOnly(
   files: string[],
   entries: ImportSourceEntry[]
@@ -407,6 +427,12 @@ export async function runImportSource(
 
   if (summary.inputType === "missing") {
     throw new Error("Import path not found: " + summary.inputPath);
+  }
+
+  if (summary.geminiTakeoutAttachmentOnly) {
+    throw new Error(
+      "Gemini conversation activity was not found in this Google Takeout folder. Re-export with My Activity and Gemini Apps selected before importing."
+    );
   }
 
   const runAt = new Date().toISOString();
@@ -2053,6 +2079,10 @@ function buildImportSourceVendorSummaries(
 function inferVendorFromImportEntry(
   entry: ImportSourceEntry
 ): ImportSourceVendorSummary["vendor"] | null {
+  if (!entry.supported && entry.reason.includes("Google Takeout attachment file")) {
+    return null;
+  }
+
   if (entry.kind === "chatgpt_export") return "chatgpt";
   if (entry.kind === "gemini_activity_html") return "gemini";
 

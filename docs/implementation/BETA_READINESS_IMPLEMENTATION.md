@@ -14,14 +14,13 @@ This is the short operational companion to the [MVP Roadmap](../project/MVP_ROAD
 - The core workflow, Activity History, and the hidden advanced-tools screen were exercised.
 - Governance redaction worked during manual testing. Its phrase matching is intentionally conservative today; for example, a rule for `bank` also matches `Reserve Bank of New Zealand`.
 - Fresh Grok and Claude exports imported into the same output root as existing ChatGPT data; all three vendors remained viewable in the app.
-- Local candidate `0.1.0-beta.2` was packaged after the Copilot and Gemini intake fixes. `npm run build`, `npm run test:ci`, and `npm run package:win` passed.
+- The first local `0.1.0-beta.2` package exposed an Auto Detect gap in the Gemini guard. It was not released. The corrected `0.1.0-beta.3` candidate passed the local build, full regression, and Windows packaging gates.
 
 ## Current local candidate
 
-- Version: `0.1.0-beta.2`
-- Commit: `61e2b01 Guard Gemini attachment-only Takeout imports`
-- Installer: `SkillSpring-Quantum-0.1.0-beta.2-Setup.exe`
-- SHA-256: `F677E6A0DD36C2DE3937639CAB1199B7FBF3C4FF59153E8EF4178B8B2D460D33`
+- Version: `0.1.0-beta.3`
+- Installer: `SkillSpring-Quantum-0.1.0-beta.3-Setup.exe`
+- SHA-256: `B818DD080BE92A914AA0C004AF370BF930B1DE205E06A31F61A0964AF0534004`
 - Status: local packaged candidate only; do not replace the submitted `0.1.0-beta.1` Build Week release.
 
 ## Confirmed issue: current Microsoft Copilot CSV

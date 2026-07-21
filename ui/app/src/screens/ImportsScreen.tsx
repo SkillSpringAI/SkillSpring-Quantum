@@ -1521,12 +1521,12 @@ function buildValidationChecklistLead(
     return "This path still needs adjustment before import.";
   }
 
-  if (expectedVendor === "auto_detect") {
-    return "Quantum found something usable here. Keep this path if it matches the export you meant to import.";
+  if (sourceSummary.geminiTakeoutAttachmentOnly) {
+    return "This Gemini Takeout folder needs a fresh export with My Activity and Gemini Apps selected before import.";
   }
 
-  if (expectedVendor === "gemini" && sourceSummary.geminiTakeoutAttachmentOnly) {
-    return "This Gemini Takeout folder needs a fresh export with My Activity and Gemini Apps selected before import.";
+  if (expectedVendor === "auto_detect") {
+    return "Quantum found something usable here. Keep this path if it matches the export you meant to import.";
   }
 
   const match = sourceSummary.vendorSummaries.find((summary) => summary.vendor === expectedVendor);
@@ -1549,14 +1549,14 @@ function buildExpectedVendorMessage(
     return "No export has been checked yet.";
   }
 
+  if (sourceSummary.geminiTakeoutAttachmentOnly) {
+    return "This Google Takeout folder contains Gemini attachments or Gems data, not Gemini conversation history. Re-export with My Activity > Gemini Apps selected.";
+  }
+
   if (expectedVendor === "auto_detect") {
     return sourceSummary.supportedFiles > 0
       ? `Quantum found ${sourceSummary.supportedFiles} importable file(s) in this path.`
       : "Quantum did not find a usable export in this path yet.";
-  }
-
-  if (expectedVendor === "gemini" && sourceSummary.geminiTakeoutAttachmentOnly) {
-    return "This Google Takeout folder contains Gemini attachments or Gems data, not Gemini conversation history. Re-export with My Activity > Gemini Apps selected.";
   }
 
   const match = sourceSummary.vendorSummaries.find((summary) => summary.vendor === expectedVendor);
@@ -1604,13 +1604,7 @@ function buildValidationCard(
     };
   }
 
-  if (expectedVendor === "auto_detect") {
-    return sourceSummary.supportedFiles > 0
-      ? { title: "Usable export found", toneClass: "context-tip", state: "ready", kicker: "Check result", badge: "import-ready" }
-      : { title: "No usable export found yet", toneClass: "warning-box", state: "mismatch", kicker: "Check result", badge: "nothing usable yet" };
-  }
-
-  if (expectedVendor === "gemini" && sourceSummary.geminiTakeoutAttachmentOnly) {
+  if (sourceSummary.geminiTakeoutAttachmentOnly) {
     return {
       title: "Gemini chat history not found",
       toneClass: "warning-box",
@@ -1618,6 +1612,12 @@ function buildValidationCard(
       kicker: "Check result",
       badge: "re-export needed"
     };
+  }
+
+  if (expectedVendor === "auto_detect") {
+    return sourceSummary.supportedFiles > 0
+      ? { title: "Usable export found", toneClass: "context-tip", state: "ready", kicker: "Check result", badge: "import-ready" }
+      : { title: "No usable export found yet", toneClass: "warning-box", state: "mismatch", kicker: "Check result", badge: "nothing usable yet" };
   }
 
   const match = sourceSummary.vendorSummaries.find((summary) => summary.vendor === expectedVendor);
@@ -1672,14 +1672,14 @@ function buildValidationOutcomeLead(
     return "Quantum did not find a usable import path in this file or folder yet.";
   }
 
+  if (sourceSummary.geminiTakeoutAttachmentOnly) {
+    return "Quantum found Gemini attachments, but not the conversation activity needed for a Gemini import.";
+  }
+
   if (expectedVendor === "auto_detect") {
     return sourceSummary.unsupportedFiles > 0
       ? "Quantum found something it can import here, along with extra files it will leave alone."
       : "Quantum found an importable export here.";
-  }
-
-  if (expectedVendor === "gemini" && sourceSummary.geminiTakeoutAttachmentOnly) {
-    return "Quantum found Gemini attachments, but not the conversation activity needed for a Gemini import.";
   }
 
   const match = sourceSummary.vendorSummaries.find((summary) => summary.vendor === expectedVendor);
@@ -1710,12 +1710,12 @@ function buildValidationNextStep(
     return "Try the downloaded export folder or switch the selected vendor before importing.";
   }
 
-  if (expectedVendor === "auto_detect") {
-    return "If this is the folder you meant to import, you can keep this path and run the import.";
+  if (sourceSummary.geminiTakeoutAttachmentOnly) {
+    return "Re-export from Google Takeout with My Activity selected, then choose only Gemini Apps before checking the new folder.";
   }
 
-  if (expectedVendor === "gemini" && sourceSummary.geminiTakeoutAttachmentOnly) {
-    return "Re-export from Google Takeout with My Activity selected, then choose only Gemini Apps before checking the new folder.";
+  if (expectedVendor === "auto_detect") {
+    return "If this is the folder you meant to import, you can keep this path and run the import.";
   }
 
   const match = sourceSummary.vendorSummaries.find((summary) => summary.vendor === expectedVendor);

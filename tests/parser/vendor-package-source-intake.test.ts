@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { promises as fs } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { inspectImportSource } from "../../core/imports/sourceIntake.js";
+import { inspectImportSource, runImportSource } from "../../core/imports/sourceIntake.js";
 
 const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "vendor-package-source-intake-"));
 
@@ -100,6 +100,16 @@ try {
     "Expected a Gemini Takeout attachment package without activity data to be called out explicitly"
   );
   assert.equal(
+    attachmentOnlyGeminiSummary.supportedFiles,
+    0,
+    "Expected Gemini Takeout attachments not to become generic import candidates"
+  );
+  assert.equal(
+    attachmentOnlyGeminiSummary.countsByKind.pdf_document,
+    0,
+    "Expected Gemini Takeout PDFs to be removed from the generic PDF lane"
+  );
+  assert.equal(
     attachmentOnlyGeminiSummary.vendorSummaries.some((summary) => summary.vendor === "gemini"),
     false,
     "Expected attachment-only Gemini Takeout files not to be presented as a Gemini conversation export"
@@ -116,6 +126,16 @@ try {
     directGeminiFolderSummary.geminiTakeoutAttachmentOnly,
     true,
     "Expected the same guard when the user chooses the nested Gemini folder directly"
+  );
+  assert.equal(
+    directGeminiFolderSummary.supportedFiles,
+    0,
+    "Expected direct selection of the nested Gemini attachment folder to remain blocked"
+  );
+  await assert.rejects(
+    runImportSource(attachmentOnlyGeminiFolder, path.join(tempRoot, "blocked-gemini-output")),
+    /Gemini conversation activity was not found/,
+    "Expected the import runner to reject attachment-only Gemini Takeout folders even when a caller bypasses Export Check"
   );
 } finally {
   await fs.rm(tempRoot, { recursive: true, force: true });

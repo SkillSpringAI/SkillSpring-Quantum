@@ -13,7 +13,7 @@ export function parseCopilotActivityCsv(raw: unknown): ParseResult {
     return { conversations: [] };
   }
 
-  const rows = parseCopilotRows(raw);
+  const rows = parseCopilotRows(stripLeadingUtf8Bom(raw));
   if (rows.length === 0) {
     return { conversations: [] };
   }
@@ -32,6 +32,10 @@ export function parseCopilotActivityCsv(raw: unknown): ParseResult {
       .map(([title, conversationRows]) => buildConversation(title, conversationRows))
       .filter((conversation): conversation is Conversation => conversation !== null)
   };
+}
+
+function stripLeadingUtf8Bom(value: string): string {
+  return value.startsWith("\uFEFF") ? value.slice(1) : value;
 }
 
 function buildConversation(title: string, rows: CopilotRow[]): Conversation | null {

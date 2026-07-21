@@ -3,7 +3,9 @@ import { fileURLToPath } from "node:url";
 import { inspectImportSource } from "../../core/imports/sourceIntake.js";
 
 const fixturePath = fileURLToPath(new URL("../fixtures/sample-copilot-activity.csv", import.meta.url));
+const bomFixturePath = fileURLToPath(new URL("../fixtures/sample-copilot-activity-bom.csv", import.meta.url));
 const summary = await inspectImportSource(fixturePath);
+const bomSummary = await inspectImportSource(bomFixturePath);
 
 assert.equal(summary.inputType, "file", "Expected Copilot fixture to inspect as a file");
 assert.equal(summary.totalFiles, 1, "Expected one Copilot fixture file");
@@ -21,5 +23,7 @@ assert.ok(
   summary.sampleFiles[0]?.reason.includes("Microsoft Copilot activity export"),
   "Expected Copilot CSV reason to mention Copilot activity export"
 );
+assert.equal(bomSummary.supportedFiles, 1, "Expected BOM-prefixed Copilot CSV to be supported");
+assert.equal(bomSummary.vendorSummaries[0]?.vendor, "copilot", "Expected BOM-prefixed CSV vendor to remain Copilot");
 
 console.log("copilot-source-intake.test.ts passed");

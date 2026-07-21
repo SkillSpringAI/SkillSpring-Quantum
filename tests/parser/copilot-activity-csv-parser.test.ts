@@ -4,6 +4,8 @@ import { parseCopilotActivityCsv } from "../../core/parser/index.js";
 
 const fixture = await readFile(new URL("../fixtures/sample-copilot-activity.csv", import.meta.url), "utf-8");
 const parsed = parseCopilotActivityCsv(fixture);
+const bomFixture = await readFile(new URL("../fixtures/sample-copilot-activity-bom.csv", import.meta.url), "utf-8");
+const bomParsed = parseCopilotActivityCsv(bomFixture);
 
 assert.equal(parsed.conversations.length, 2, "Expected two Copilot conversations");
 assert.equal(parsed.conversations[0].source, "copilot", "Expected Copilot source");
@@ -15,5 +17,8 @@ assert.ok(
   parsed.conversations[0].messages[1].text.includes("You can play free-to-play Xbox games"),
   "Expected Copilot message text to parse"
 );
+assert.equal(bomParsed.conversations.length, 1, "Expected BOM-prefixed Copilot CSV to parse");
+assert.equal(bomParsed.conversations[0].title, "Current Copilot Export", "Expected BOM fixture title to parse");
+assert.equal(bomParsed.conversations[0].messages.length, 2, "Expected BOM fixture messages to parse");
 
 console.log("copilot-activity-csv-parser.test.ts passed");

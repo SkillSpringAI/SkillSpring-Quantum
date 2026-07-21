@@ -108,6 +108,10 @@ Start with the downloaded export file or the top-level extracted export folder. 
 
 If the check does not recognize the export, read the relevant [Export Guide](exports/README.md) and try the top-level vendor export path rather than a random nested file.
 
+## Can I use the export folder as Quantum's output folder?
+
+No. Choose a separate output folder that you control. Keep the downloaded export unchanged, and let Quantum write its archive, datasets, indexes, and history to a different folder.
+
 ## What is the difference between Readable Archive and Datasets?
 
 `Readable Archive` is for human review. It preserves conversation slices as readable local markdown so you can recognize what happened.

@@ -17,6 +17,7 @@ This is the short operational companion to the [MVP Roadmap](../project/MVP_ROAD
 - The current sharded ChatGPT export processed 10 of 10 conversation files cleanly. Its legacy `chat.html` compatibility path did not show file-level progress before a safe force-stop, so the current export remains the documented normal route.
 - A four-vendor workspace with 11,188 topic groups and 14,596 readable files loaded both Readable Archive and Datasets. Readable Archive took longer; this is documented guidance rather than an immediate optimization project.
 - The first local `0.1.0-beta.2` package exposed an Auto Detect gap in the Gemini guard. It was not released. The corrected `0.1.0-beta.3` candidate passed the local build, full regression, and Windows packaging gates.
+- `0.1.0-beta.3` passed the packaged Auto Detect check against the attachment-only Gemini Takeout: it showed `Gemini chat history not found`, `0 import-ready`, and no Import action.
 
 ## Current local candidate
 
@@ -67,7 +68,9 @@ Implemented:
 4. Block the attachment-only Gemini Takeout package in both named Gemini and Auto Detect paths. Generic PDFs remain a separate capability only when selected outside that rejected package.
 5. Cover the attachment-only shape with an intake regression test.
 
-Still required: verify this result through the packaged beta candidate's Export Check before recording the walkthrough row as passed.
+Packaged walkthrough: passed with `0.1.0-beta.3`. Auto Detect showed `Gemini chat history not found`, `0 import-ready`, and no Import action.
+
+Beta observation: the generic **Best next move** panel still says to try another export or switch vendor, while the Gemini-specific recovery text above it is more precise. Record this wording issue during beta; it is not an import-integrity blocker.
 
 Google's current export instructions distinguish the `Gemini` selection for Gems from `My Activity -> Gemini Apps` for Gemini chats, generated media, and uploads. Verify the live export guide before changing the user-facing wording.
 
@@ -106,12 +109,26 @@ Use a fresh output root outside the repository unless the scenario explicitly te
 | Fresh real ChatGPT export | Core workflow completes in a new output root | Passed |
 | Fresh Grok export in an existing ChatGPT output root | Both vendors remain visible and usable | Passed |
 | Current raw Copilot activity CSV | Recognizes, imports, and remains visible with other vendors | Passed in shared four-vendor workspace |
-| Gemini attachment-only Takeout | Stops at Export Check without processing attachment documents as Gemini conversations | Implementation verified locally; packaged walkthrough required |
+| Gemini attachment-only Takeout | Stops at Export Check without processing attachment documents as Gemini conversations | Passed with `0.1.0-beta.3` Auto Detect |
 | Fresh Claude export in the shared output root | Claude and existing vendor content remain visible and usable | Passed: ChatGPT, Claude, Copilot, and Grok visible together |
 | Same-export rerun | Honest reuse is shown without duplicated outputs | Required per candidate |
 | Stop an active import | App remains usable; the stopped run is explicitly not treated as completed output | Passed for legacy ChatGPT `chat.html`; large current-export stop/recovery remains optional additional evidence |
 | Clearly wrong source or wrong vendor selection | Export Check explains the issue without importing | Required per candidate |
 | Uninstall and reinstall | Record retained local workspace behaviour and any SmartScreen friction | Required before wider beta distribution |
+
+## Confirmed issue: source and output-root collision
+
+**Status: pre-beta safety guard**
+
+During the initial Gemini test, the raw Google Takeout folder was also selected as Quantum's output root. Quantum did not delete the source, but it wrote normal workspace folders alongside the original export. That is confusing and could cause a later folder import to encounter Quantum's own output.
+
+Required implementation:
+
+1. Refuse an output root that is the same as, or inside, the selected source folder.
+2. Explain that the user should choose a separate folder they control for Quantum output.
+3. Add a regression test for exact and nested source/output collisions.
+
+Do not delete or move existing user files as part of this guard.
 
 ## Support-readiness check
 

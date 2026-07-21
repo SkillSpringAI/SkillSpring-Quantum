@@ -24,6 +24,15 @@ This document is the authoritative checklist for the submission snapshot. It com
 
 The installer was installed and demonstrated on a separate clean laptop. This record is intentionally pinned to the commit hash; any later beta change should use a new version and its own validation record.
 
+## Post-submission limitations discovered
+
+The following findings were discovered during private-beta preparation after the Build Week submission. They do **not** change the submitted `0.1.0-beta.1` artifact, checksum, demo video, or pinned source commit.
+
+- The submitted installer should not be represented as release-validated for the current Microsoft Copilot activity CSV shape: a leading UTF-8 BOM required a later compatibility fix before the CSV could be recognised reliably.
+- The submitted installer should not be represented as release-validated for Gemini Auto Detect: an attachment-only Google Takeout folder could enter the generic document lane instead of being rejected as missing Gemini conversation activity.
+
+The Build Week evaluator path remains the synthetic ChatGPT demo export documented below. The repository's later private-beta work adds regression coverage and packaged validation for both findings; see [Beta Readiness](../implementation/BETA_READINESS_IMPLEMENTATION.md).
+
 ## Project summary
 
 ### Title

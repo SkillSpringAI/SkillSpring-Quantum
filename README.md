@@ -6,7 +6,9 @@ It is built for people who want to keep AI history on their own machine, revisit
 
 ## Current Status
 
-**OpenAI Build Week submission published; private beta preparation continues.** The core Windows workflow and `0.1.0-beta.1` installer have been validated on a separate clean laptop. The next stage is controlled external testing focused on usability, recovery, and real-world search quality.
+**OpenAI Build Week submission published; private beta preparation continues.** The submitted `0.1.0-beta.1` installer was validated on a separate clean laptop through the included synthetic ChatGPT demo workflow: import, readable archive, datasets, and Find Imports.
+
+Post-submission private-beta testing found a Microsoft Copilot CSV BOM compatibility issue and an Auto Detect safeguard gap for attachment-only Google Takeout folders. Do not treat the hosted `0.1.0-beta.1` Build Week installer as validated support for those paths. Later fixes are intentionally unreleased while they complete private-beta validation; they do not alter the submitted installer or its checksum. See [Build Week Submission](docs/project/BUILD_WEEK_SUBMISSION.md) for the pinned snapshot.
 
 Watch the [three-minute Build Week demo](https://www.youtube.com/watch?v=pldsPIb_Evo) or view the [Devpost submission](https://devpost.com/software/skillspring-quantum).
 
@@ -38,19 +40,15 @@ Export AI conversations, then use Quantum's main beta path:
 | --- | --- |
 | ![Quantum Datasets view showing structured output](docs/assets/screenshots/06-datasets-overview.png) | ![Quantum Find Imports view showing searchable imported history](docs/assets/screenshots/07-find-imports-overview.png) |
 
-## Supported Exports
+## Submitted Build Week evaluator coverage
 
-Current supported vendors for the private beta path:
+The verified no-account evaluator path for the hosted `0.1.0-beta.1` installer is:
 
-- ChatGPT / OpenAI
-- Claude
-- Gemini
-- Grok
-- Microsoft Copilot activity CSV for the validated export shape
+- the included synthetic ChatGPT demo export
+- Export Check, import, Readable Archive, Datasets, and Find Imports
+- local Windows installation on a separate clean laptop
 
-Compatibility fallback:
-
-- Gemini My Activity HTML
+The hosted Build Week `0.1.0-beta.1` download should be evaluated with that synthetic ChatGPT demo. Copilot and Gemini are not presented here as release-tested beta.1 paths; their later-discovered limitations are documented above.
 
 ## Platform
 
@@ -83,18 +81,18 @@ The product keeps deterministic code authoritative for import detection, preserv
 
 ### Users
 
-Quantum is currently distributed as a controlled Windows private-beta build.
+The hosted Build Week download is a fixed Windows submission snapshot. It is not the changing private-beta candidate stream.
 
 > [**Download SkillSpring Quantum for Windows (0.1.0-beta.1)**](https://github.com/SkillSpringAI/SkillSpring-Quantum/releases/download/v0.1.0-beta.1/SkillSpring-Quantum-0.1.0-beta.1-Setup.exe)
 >
 > This is an unsigned private-beta installer. Windows SmartScreen may require **More info** then **Run anyway** when you install this trusted build.
 
-Current user flow:
+Build Week evaluator flow:
 
 1. Download the Windows installer
 2. Install Quantum
 3. Launch the app
-4. Import a supported AI export
+4. Import the included synthetic ChatGPT demo export
 
 The current `0.1.0-beta.1` Windows installer completes as a standard local installation:
 
@@ -102,7 +100,7 @@ The current `0.1.0-beta.1` Windows installer completes as a standard local insta
 
 The [GitHub prerelease page](https://github.com/SkillSpringAI/SkillSpring-Quantum/releases/tag/v0.1.0-beta.1) also includes the installer checksum and supporting update metadata.
 
-Build Week evaluators can also use the included synthetic [demo export](examples/build-week-demo/README.md) without sharing personal conversation data.
+Build Week evaluators should use the included synthetic [demo export](examples/build-week-demo/README.md) without sharing personal conversation data. Later private-beta candidates are tested and documented separately; they do not replace this submitted artifact.
 
 See the [Beta Guide](docs/user/BETA_GUIDE.md) and [User Guide](docs/user/USER_GUIDE.md) for the current workflow and expectations.
 

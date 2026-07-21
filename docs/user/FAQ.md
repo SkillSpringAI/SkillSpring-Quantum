@@ -118,13 +118,19 @@ If the check does not recognize the export, read the relevant [Export Guide](exp
 
 For large workspaces, start with `Find Imports` if you want the quickest immediate follow-up.
 
-`Readable Archive` can take around 2 to 3 minutes to finish loading when the selected output root contains more than 12,000 readable slices. `Datasets` should currently be treated as a later follow-up screen rather than the first screen to open in very large workspaces.
+`Readable Archive` can take several minutes to finish loading when the selected output root contains many thousands of readable slices. `Datasets` may load sooner, but both are intended for review after the import has completed.
 
 ## Why does the Readable Archive take longer than Find Imports?
 
 The archive view is loading a much larger readable slice layer, topic grouping, and review-ready metadata for the current workspace.
 
-That heavier archive layer is also why the current `Datasets` view may not feel ready until archive loading has settled first.
+This is most noticeable in a shared workspace containing many imports. It does not mean the import failed; give the screen time to finish loading, or use `Find Imports` for the quickest follow-up.
+
+## Should I use one output folder for every vendor?
+
+Use one output folder when exports belong to the same collection and you want to search across vendors in one local workspace.
+
+For very large or unrelated collections, choose separate output folders to keep archive loading and review manageable. Each output folder has its own import history, archive, datasets, and Find Imports workspace, so separate folders are a trade-off: less to load at once, but no combined cross-vendor search.
 
 ## Are Diagnostics ready for normal beta testing?
 

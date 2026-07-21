@@ -13,7 +13,9 @@ This is the short operational companion to the [MVP Roadmap](../project/MVP_ROAD
 - A full fresh walkthrough completed with both a real ChatGPT export and the synthetic Build Week demo export.
 - The core workflow, Activity History, and the hidden advanced-tools screen were exercised.
 - Governance redaction worked during manual testing. Its phrase matching is intentionally conservative today; for example, a rule for `bank` also matches `Reserve Bank of New Zealand`.
-- Fresh Grok and Claude exports imported into the same output root as existing ChatGPT data; all three vendors remained viewable in the app.
+- Fresh Grok, Claude, Copilot, and current sharded ChatGPT exports imported into one output root; Find Imports showed all four vendors together across 1,000 conversations and 27,017 messages.
+- The current sharded ChatGPT export processed 10 of 10 conversation files cleanly. Its legacy `chat.html` compatibility path did not show file-level progress before a safe force-stop, so the current export remains the documented normal route.
+- A four-vendor workspace with 11,188 topic groups and 14,596 readable files loaded both Readable Archive and Datasets. Readable Archive took longer; this is documented guidance rather than an immediate optimization project.
 - The first local `0.1.0-beta.2` package exposed an Auto Detect gap in the Gemini guard. It was not released. The corrected `0.1.0-beta.3` candidate passed the local build, full regression, and Windows packaging gates.
 
 ## Current local candidate
@@ -41,7 +43,7 @@ Implemented:
 2. Add a regression fixture or test that preserves the BOM.
 3. Preserve the exact raw-export shape in automated intake coverage.
 
-Still required: run the current raw Copilot export through the packaged candidate's Export Check, import it, and verify archive, datasets, and Find Imports in the shared output root.
+Packaged walkthrough: passed in a shared output root. The raw CSV was recognized, imported, and remains searchable alongside ChatGPT, Claude, and Grok.
 
 Do not broaden Copilot parsing beyond this proven issue until new evidence appears.
 
@@ -55,14 +57,14 @@ The inspected Google Takeout root contains a Gemini Apps attachment folder but n
 - two 11-byte Gemini HTML placeholders for Gems and scheduled actions
 - no Gemini conversation JSON, CSV, or activity-history HTML containing conversation text
 
-Quantum currently processes the attachment PDFs through the generic document path when the user selects Gemini. This is not a valid Gemini conversation import and should not be presented as one.
+The first local `0.1.0-beta.2` candidate still processed the attachment PDFs through the generic document path under Auto Detect. This was not a valid Gemini conversation import and is now explicitly blocked in `0.1.0-beta.3`.
 
 Implemented:
 
 1. Detect a Google Takeout / Gemini Apps attachment-only path, including when the nested Gemini folder is selected directly.
 2. Require a detected Gemini activity or conversation source before the named Gemini route can enable import.
 3. Show a recovery message at Export Check: re-export with **My Activity -> Gemini Apps** selected for chat activity.
-4. Keep generic PDF import available only through the generic or Auto Detect route rather than presenting it as a Gemini conversation import.
+4. Block the attachment-only Gemini Takeout package in both named Gemini and Auto Detect paths. Generic PDFs remain a separate capability only when selected outside that rejected package.
 5. Cover the attachment-only shape with an intake regression test.
 
 Still required: verify this result through the packaged beta candidate's Export Check before recording the walkthrough row as passed.
@@ -103,11 +105,11 @@ Use a fresh output root outside the repository unless the scenario explicitly te
 | Synthetic demo export | Export Check, import, archive, datasets, and Find Imports complete | Passed |
 | Fresh real ChatGPT export | Core workflow completes in a new output root | Passed |
 | Fresh Grok export in an existing ChatGPT output root | Both vendors remain visible and usable | Passed |
-| Current raw Copilot activity CSV | Recognizes, imports, and remains visible with other vendors | Blocked by BOM fix |
+| Current raw Copilot activity CSV | Recognizes, imports, and remains visible with other vendors | Passed in shared four-vendor workspace |
 | Gemini attachment-only Takeout | Stops at Export Check without processing attachment documents as Gemini conversations | Implementation verified locally; packaged walkthrough required |
-| Fresh Claude export in the shared output root | Claude and existing vendor content remain visible and usable | Passed: ChatGPT, Grok, and Claude visible together |
+| Fresh Claude export in the shared output root | Claude and existing vendor content remain visible and usable | Passed: ChatGPT, Claude, Copilot, and Grok visible together |
 | Same-export rerun | Honest reuse is shown without duplicated outputs | Required per candidate |
-| Stop an active large import | App remains usable; rerun can recover safely | Required per candidate |
+| Stop an active import | App remains usable; the stopped run is explicitly not treated as completed output | Passed for legacy ChatGPT `chat.html`; large current-export stop/recovery remains optional additional evidence |
 | Clearly wrong source or wrong vendor selection | Export Check explains the issue without importing | Required per candidate |
 | Uninstall and reinstall | Record retained local workspace behaviour and any SmartScreen friction | Required before wider beta distribution |
 

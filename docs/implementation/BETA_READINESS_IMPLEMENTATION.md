@@ -37,7 +37,7 @@ Do not broaden Copilot parsing beyond this proven issue until new evidence appea
 
 ## Confirmed issue: Gemini attachment-only Takeout
 
-**Status: pre-beta intake hardening**
+**Status: implementation complete; packaged walkthrough pending**
 
 The inspected Google Takeout root contains a Gemini Apps attachment folder but no parseable Gemini conversation-history export:
 
@@ -47,13 +47,15 @@ The inspected Google Takeout root contains a Gemini Apps attachment folder but n
 
 Quantum currently processes the attachment PDFs through the generic document path when the user selects Gemini. This is not a valid Gemini conversation import and should not be presented as one.
 
-Required implementation:
+Implemented:
 
-1. Detect a Google Takeout / Gemini Apps root before generic document handling.
-2. Require parseable Gemini activity or conversation content before marking the source import-ready.
-3. When only Gemini attachments are present, stop at Export Check with a clear recovery message: re-export with **My Activity -> Gemini Apps** selected for chat activity.
-4. Keep generic PDF import separate from the named Gemini vendor path.
-5. Add an attachment-only Gemini Takeout regression fixture or equivalent intake test.
+1. Detect a Google Takeout / Gemini Apps attachment-only path, including when the nested Gemini folder is selected directly.
+2. Require a detected Gemini activity or conversation source before the named Gemini route can enable import.
+3. Show a recovery message at Export Check: re-export with **My Activity -> Gemini Apps** selected for chat activity.
+4. Keep generic PDF import available only through the generic or Auto Detect route rather than presenting it as a Gemini conversation import.
+5. Cover the attachment-only shape with an intake regression test.
+
+Still required: verify this result through the packaged beta candidate's Export Check before recording the walkthrough row as passed.
 
 Google's current export instructions distinguish the `Gemini` selection for Gems from `My Activity -> Gemini Apps` for Gemini chats, generated media, and uploads. Verify the live export guide before changing the user-facing wording.
 
@@ -92,7 +94,7 @@ Use a fresh output root outside the repository unless the scenario explicitly te
 | Fresh real ChatGPT export | Core workflow completes in a new output root | Passed |
 | Fresh Grok export in an existing ChatGPT output root | Both vendors remain visible and usable | Passed |
 | Current raw Copilot activity CSV | Recognizes, imports, and remains visible with other vendors | Blocked by BOM fix |
-| Gemini attachment-only Takeout | Stops at Export Check without processing attachment documents as Gemini conversations | Blocked by intake hardening |
+| Gemini attachment-only Takeout | Stops at Export Check without processing attachment documents as Gemini conversations | Implementation verified locally; packaged walkthrough required |
 | Fresh Claude export in the shared output root | Claude and existing vendor content remain visible and usable | Passed: ChatGPT, Grok, and Claude visible together |
 | Same-export rerun | Honest reuse is shown without duplicated outputs | Required per candidate |
 | Stop an active large import | App remains usable; rerun can recover safely | Required per candidate |

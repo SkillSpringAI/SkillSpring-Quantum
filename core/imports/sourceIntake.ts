@@ -88,6 +88,7 @@ export interface ImportSourceSummary {
   notes: string[];
   sampleFiles: ImportSourceEntry[];
   vendorSummaries: ImportSourceVendorSummary[];
+  geminiTakeoutAttachmentOnly: boolean;
 }
 
 export interface ImportRunFileResult {
@@ -270,7 +271,8 @@ export async function inspectImportSource(inputPath: string): Promise<ImportSour
       countsByKind,
       notes: ["Path does not exist."],
       sampleFiles: [],
-      vendorSummaries: []
+      vendorSummaries: [],
+      geminiTakeoutAttachmentOnly: false
     };
   }
 
@@ -288,6 +290,13 @@ export async function inspectImportSource(inputPath: string): Promise<ImportSour
     const entry = await classifyImportFile(filePath, packageCompanionReasons);
     countsByKind[entry.kind] += 1;
     entries.push(entry);
+  }
+
+  const geminiTakeoutAttachmentOnly = isGeminiTakeoutAttachmentOnly(files, entries);
+  if (geminiTakeoutAttachmentOnly) {
+    notes.push(
+      "Gemini Takeout attachment files were found, but no Gemini conversation activity was recognized. Re-export from Google Takeout with My Activity selected, then choose only Gemini Apps."
+    );
   }
 
   if (countsByKind.pdf_document > 0) {
@@ -349,8 +358,31 @@ export async function inspectImportSource(inputPath: string): Promise<ImportSour
     countsByKind,
     notes,
     sampleFiles: sortImportSourceEntriesForDisplay(entries).slice(0, 12),
-    vendorSummaries: buildImportSourceVendorSummaries(entries)
+    vendorSummaries: buildImportSourceVendorSummaries(entries),
+    geminiTakeoutAttachmentOnly
   };
+}
+
+function isGeminiTakeoutAttachmentOnly(
+  files: string[],
+  entries: ImportSourceEntry[]
+): boolean {
+  const hasGeminiConversation = entries.some(
+    (entry) =>
+      entry.kind === "gemini_activity_html" ||
+      (entry.kind === "conversation_json" && entry.displayLabel === "Gemini export")
+  );
+
+  if (hasGeminiConversation) {
+    return false;
+  }
+
+  return files.some((filePath) => {
+    const pathSegments = filePath.toLowerCase().split(/[\\/]+/).filter(Boolean);
+    const includesGeminiPath = pathSegments.includes("gemini") || pathSegments.includes("gemini apps");
+    const looksLikeTakeout = pathSegments.includes("takeout") || pathSegments.includes("my activity");
+    return includesGeminiPath && looksLikeTakeout;
+  });
 }
 
 export async function runImportSource(

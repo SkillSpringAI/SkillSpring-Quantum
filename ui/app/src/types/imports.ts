@@ -52,6 +52,7 @@ export interface ImportSourceSummary {
   notes: string[];
   sampleFiles: ImportSourceEntry[];
   vendorSummaries: ImportSourceVendorSummary[];
+  geminiTakeoutAttachmentOnly?: boolean;
 }
 
 export interface ImportRunResult {

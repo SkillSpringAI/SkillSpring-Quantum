@@ -686,6 +686,14 @@ export default function ImportsScreen() {
   }
 
   async function handleSubmit() {
+    if (!isImportReadyForExpectedVendor(sourceSummary, form.expectedVendor)) {
+      const message = buildValidationNextStep(sourceSummary, form.expectedVendor);
+      setRunState("idle");
+      setStatusMessage(message);
+      appendLogEntry("warning", message);
+      return;
+    }
+
     setRunState("running");
     setStatusMessage("Running import...");
     setImportProgress(null);
@@ -790,6 +798,7 @@ export default function ImportsScreen() {
   const showHistoryPanel = Boolean(importHistory?.runs.length || importHistory?.latest || historyMode === "query");
   const showArchivePanel = Boolean(latestArchive || archiveEvents.length > 0);
   const expectedVendorSummary = findExpectedVendorSummary(sourceSummary, form.expectedVendor);
+  const importReady = isImportReadyForExpectedVendor(sourceSummary, form.expectedVendor);
   const expectedVendorMessage = buildExpectedVendorMessage(sourceSummary, form.expectedVendor);
   const validationCard = buildValidationCard(sourceSummary, form.expectedVendor);
   const showSourceResults = sourceSummary !== null;
@@ -943,7 +952,7 @@ export default function ImportsScreen() {
     <section className="screen-grid imports-layout">
       <ImportForm
         value={form}
-        importReady={Boolean(sourceSummary?.supportedFiles)}
+        importReady={importReady}
         latestRunSummary={latestRunFormSummary}
         onChange={setForm}
         onOutputRootChange={handleOutputRootChange}
@@ -1468,6 +1477,21 @@ function findExpectedVendorSummary(
   return sourceSummary.vendorSummaries.find((summary) => summary.vendor === expectedVendor) ?? null;
 }
 
+function isImportReadyForExpectedVendor(
+  sourceSummary: ImportSourceSummary | null,
+  expectedVendor: ImportVendorChoice
+): boolean {
+  if (!sourceSummary || sourceSummary.supportedFiles === 0) {
+    return false;
+  }
+
+  if (expectedVendor === "auto_detect") {
+    return true;
+  }
+
+  return sourceSummary.vendorSummaries.some((summary) => summary.vendor === expectedVendor);
+}
+
 function buildPreInspectVendorHint(expectedVendor: ImportVendorChoice): string {
   switch (expectedVendor) {
     case "chatgpt":
@@ -1501,6 +1525,10 @@ function buildValidationChecklistLead(
     return "Quantum found something usable here. Keep this path if it matches the export you meant to import.";
   }
 
+  if (expectedVendor === "gemini" && sourceSummary.geminiTakeoutAttachmentOnly) {
+    return "This Gemini Takeout folder needs a fresh export with My Activity and Gemini Apps selected before import.";
+  }
+
   const match = sourceSummary.vendorSummaries.find((summary) => summary.vendor === expectedVendor);
   if (!match) {
     return "The selected vendor and the checked path do not line up yet.";
@@ -1525,6 +1553,10 @@ function buildExpectedVendorMessage(
     return sourceSummary.supportedFiles > 0
       ? `Quantum found ${sourceSummary.supportedFiles} importable file(s) in this path.`
       : "Quantum did not find a usable export in this path yet.";
+  }
+
+  if (expectedVendor === "gemini" && sourceSummary.geminiTakeoutAttachmentOnly) {
+    return "This Google Takeout folder contains Gemini attachments or Gems data, not Gemini conversation history. Re-export with My Activity > Gemini Apps selected.";
   }
 
   const match = sourceSummary.vendorSummaries.find((summary) => summary.vendor === expectedVendor);
@@ -1576,6 +1608,16 @@ function buildValidationCard(
     return sourceSummary.supportedFiles > 0
       ? { title: "Usable export found", toneClass: "context-tip", state: "ready", kicker: "Check result", badge: "import-ready" }
       : { title: "No usable export found yet", toneClass: "warning-box", state: "mismatch", kicker: "Check result", badge: "nothing usable yet" };
+  }
+
+  if (expectedVendor === "gemini" && sourceSummary.geminiTakeoutAttachmentOnly) {
+    return {
+      title: "Gemini chat history not found",
+      toneClass: "warning-box",
+      state: "mismatch",
+      kicker: "Check result",
+      badge: "re-export needed"
+    };
   }
 
   const match = sourceSummary.vendorSummaries.find((summary) => summary.vendor === expectedVendor);
@@ -1636,6 +1678,10 @@ function buildValidationOutcomeLead(
       : "Quantum found an importable export here.";
   }
 
+  if (expectedVendor === "gemini" && sourceSummary.geminiTakeoutAttachmentOnly) {
+    return "Quantum found Gemini attachments, but not the conversation activity needed for a Gemini import.";
+  }
+
   const match = sourceSummary.vendorSummaries.find((summary) => summary.vendor === expectedVendor);
   if (!match) {
     return `This path does not currently look like the ${EXPECTED_VENDOR_LABELS[expectedVendor]} export you selected.`;
@@ -1668,6 +1714,10 @@ function buildValidationNextStep(
     return "If this is the folder you meant to import, you can keep this path and run the import.";
   }
 
+  if (expectedVendor === "gemini" && sourceSummary.geminiTakeoutAttachmentOnly) {
+    return "Re-export from Google Takeout with My Activity selected, then choose only Gemini Apps before checking the new folder.";
+  }
+
   const match = sourceSummary.vendorSummaries.find((summary) => summary.vendor === expectedVendor);
   if (!match) {
     return "Switch to the vendor that matches this folder, or browse to a different export before importing.";
@@ -1688,6 +1738,10 @@ function buildValidationNextStep(
 }
 
 function buildSourceSummaryLead(sourceSummary: ImportSourceSummary): string {
+  if (sourceSummary.geminiTakeoutAttachmentOnly) {
+    return "Quantum found a Gemini Takeout attachment package, but no Gemini conversation activity that it can safely import.";
+  }
+
   if (sourceSummaryHasLegacyChatGptBundle(sourceSummary)) {
     return "Quantum found a legacy ChatGPT chat bundle here. It can still import this export, but this older chat.html lane may be heavier than newer shard-first packages.";
   }

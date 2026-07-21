@@ -79,6 +79,44 @@ try {
   assert.equal(geminiSummary.vendorSummaries[0]?.vendor, "gemini");
   assert.equal(geminiSummary.vendorSummaries[0]?.detectedFiles, 1);
   assert.equal(geminiSummary.vendorSummaries[0]?.companionFiles, 1);
+
+  const attachmentOnlyGeminiFolder = path.join(tempRoot, "gemini-takeout-attachments-only");
+  await fs.mkdir(path.join(attachmentOnlyGeminiFolder, "Takeout", "Gemini"), { recursive: true });
+  await fs.writeFile(
+    path.join(attachmentOnlyGeminiFolder, "Takeout", "Gemini", "gemini_gems_data.html"),
+    "<html></html>",
+    "utf-8"
+  );
+  await fs.writeFile(
+    path.join(attachmentOnlyGeminiFolder, "Takeout", "Gemini", "conversation-attachment.pdf"),
+    "%PDF-1.4",
+    "utf-8"
+  );
+
+  const attachmentOnlyGeminiSummary = await inspectImportSource(attachmentOnlyGeminiFolder);
+  assert.equal(
+    attachmentOnlyGeminiSummary.geminiTakeoutAttachmentOnly,
+    true,
+    "Expected a Gemini Takeout attachment package without activity data to be called out explicitly"
+  );
+  assert.equal(
+    attachmentOnlyGeminiSummary.vendorSummaries.some((summary) => summary.vendor === "gemini"),
+    false,
+    "Expected attachment-only Gemini Takeout files not to be presented as a Gemini conversation export"
+  );
+  assert.ok(
+    attachmentOnlyGeminiSummary.notes.some((note) => note.includes("My Activity selected")),
+    "Expected Gemini attachment-only guidance to explain the required Takeout selection"
+  );
+
+  const directGeminiFolderSummary = await inspectImportSource(
+    path.join(attachmentOnlyGeminiFolder, "Takeout", "Gemini")
+  );
+  assert.equal(
+    directGeminiFolderSummary.geminiTakeoutAttachmentOnly,
+    true,
+    "Expected the same guard when the user chooses the nested Gemini folder directly"
+  );
 } finally {
   await fs.rm(tempRoot, { recursive: true, force: true });
 }

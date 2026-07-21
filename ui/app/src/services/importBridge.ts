@@ -77,7 +77,8 @@ export async function inspectSourcePath(inputPath: string): Promise<ImportSource
     },
     notes: Array.isArray(result.notes) ? result.notes : [],
     sampleFiles: Array.isArray(result.sampleFiles) ? result.sampleFiles : [],
-    vendorSummaries: Array.isArray(result.vendorSummaries) ? result.vendorSummaries : []
+    vendorSummaries: Array.isArray(result.vendorSummaries) ? result.vendorSummaries : [],
+    geminiTakeoutAttachmentOnly: result.geminiTakeoutAttachmentOnly ?? false
   };
 }
 
